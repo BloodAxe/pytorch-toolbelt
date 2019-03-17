@@ -15,7 +15,7 @@ import re
 import os
 from setuptools import find_packages, setup
 
-DEPENDENCIES = ["pytorch>=0.4.1", "torchvision>0.2"]
+DEPENDENCIES = ["torch>=0.4.1", "torchvision>0.2"]
 EXCLUDE_FROM_PACKAGES = ["contrib", "docs", "tests*"]
 CURDIR = os.path.abspath(os.path.dirname(__file__))
 
