@@ -37,6 +37,13 @@ def tta_fliplr_image2mask(model: nn.Module, image: Tensor) -> Tensor:
 
 
 def tta_d4_image2label(model: nn.Module, image: Tensor) -> Tensor:
+    """Test-time augmentation for image classification that averages predictions
+    of all D4 augmentations applied to input image.
+
+    :param model: Model to use for making predictions.
+    :param image: Model input.
+    :return: Arithmetically averaged predictions
+    """
     output = model.predict(image)
 
     for aug in [F.torch_rot90, F.torch_rot180, F.torch_rot270]:
@@ -54,6 +61,15 @@ def tta_d4_image2label(model: nn.Module, image: Tensor) -> Tensor:
 
 
 def tta_d4_image2mask(model: nn.Module, image: Tensor) -> Tensor:
+    """Test-time augmentation for image classification that averages predictions
+    of all D4 augmentations applied to input image.
+
+    For segmentation we need to reverse the augmentation after making a prediction
+    on augmented input.
+    :param model: Model to use for making predictions.
+    :param image: Model input.
+    :return: Arithmetically averaged predictions
+    """
     output = model.predict(image)
 
     for aug, deaug in zip([F.torch_rot90, F.torch_rot180, F.torch_rot270], [F.torch_rot270, F.torch_rot180, F.torch_rot90]):
@@ -62,7 +78,7 @@ def tta_d4_image2mask(model: nn.Module, image: Tensor) -> Tensor:
 
     image = F.torch_transpose(image)
 
-    for aug, deaug in [F.torch_none, F.torch_rot90, F.torch_rot180, F.torch_rot270]:
+    for aug, deaug in zip([F.torch_none, F.torch_rot90, F.torch_rot180, F.torch_rot270], [F.torch_none, F.torch_rot270, F.torch_rot180, F.torch_rot90]):
         x = deaug(model.predict(aug(image)))
         output = output + x
 

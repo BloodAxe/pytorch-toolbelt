@@ -1,10 +1,23 @@
+"""Implementation of tile-based inference allowing to predict huge images that does not fit into GPU memory entirely
+in a sliding-window fashion and merging prediction mask back to full-resolution.
+"""
+
 import numpy as np
 import cv2
 import math
 import torch
 
 
-def compute_patch_weight_loss(width, height):
+def compute_pyramid_patch_weight_loss(width, height) -> np.ndarray:
+    """Computes a weight image that puts more importance on center pixels of an image and
+    puts less weight to pixels on image boundary.
+    This weight matrix then used for merging individual tile predictions and helps dealing
+    with prediction artifacts on tile boundaries.
+    
+    :param width: Tile width
+    :param height: Tile height
+    :return: Since-channel image [Width x Height]
+    """
     xc = width * 0.5
     yc = height * 0.5
     xl = 0
@@ -30,7 +43,7 @@ def compute_patch_weight_loss(width, height):
 
 class ImageSlicer:
     """
-    Helper class to slice image into tiles and merge them back with fusion
+    Helper class to slice image into tiles and merge them back
     """
 
     def __init__(self, image_shape, tile_size, tile_step=0, image_margin=0, weight='mean'):
@@ -172,13 +185,13 @@ class ImageSlicer:
         return np.ones((tile_size[0], tile_size[1]), dtype=np.float32)
 
     def _pyramid(self, tile_size):
-        w, _, _ = compute_patch_weight_loss(tile_size[0], tile_size[1])
+        w, _, _ = compute_pyramid_patch_weight_loss(tile_size[0], tile_size[1])
         return w
 
 
 class CudaTileMerger:
     """
-    Helper class to slice image into tiles and merge them back with fusion
+    Helper class to merge final image on GPU. This generally faster than moving individual tiles to CPU.
     """
 
     def __init__(self, image_shape, channels, weight):
@@ -186,7 +199,7 @@ class CudaTileMerger:
 
         :param image_shape: Shape of the source image
         :param image_margin:
-        :param weight: Fusion algorithm. 'mean' - avegaing
+        :param weight: Weighting matrix
         """
         self.image_height = image_shape[0]
         self.image_width = image_shape[1]
@@ -196,17 +209,19 @@ class CudaTileMerger:
         self.image = torch.zeros((channels, self.image_height, self.image_width)).cuda()
         self.norm_mask = torch.zeros((1, self.image_height, self.image_width)).cuda()
 
-    def integrate_batch(self, y, crops):
-        if len(y) != len(crops):
+    def integrate_batch(self, batch, crop_coords):
+        """
+        Accumulates batch of tile predictions
+        :param batch: Predicted tiles
+        :param crop_coords: Corresponding tile crops w.r.t to original image
+        """
+        if len(batch) != len(crop_coords):
             raise ValueError
 
-        for tile, (x, y, tile_width, tile_height) in zip(y, crops):
-            self.image[:, y:y + tile_height, x:x + tile_width] += tile * self.weight
-            self.norm_mask[:, y:y + tile_height, x:x + tile_width] += self.weight
+        for tile, (x, batch, tile_width, tile_height) in zip(batch, crop_coords):
+            self.image[:, batch:batch + tile_height, x:x + tile_width] += tile * self.weight
+            self.norm_mask[:, batch:batch + tile_height, x:x + tile_width] += self.weight
 
     def merge(self):
         self.image /= self.norm_mask
         return self.image
-
-        # np.clip(norm_mask, a_min=np.finfo(norm_mask.dtype).eps, a_max=None, out=norm_mask)
-        # np.divide(image, norm_mask, out=image)
