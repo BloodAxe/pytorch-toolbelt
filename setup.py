@@ -24,7 +24,7 @@ with io.open(os.path.join(CURDIR, "README.md"), "r", encoding="utf-8") as f:
 
 
 def get_version():
-    main_file = os.path.join(CURDIR, "pytorch-toolbelt", "main.py")
+    main_file = os.path.join(CURDIR, "pytorch-toolbelt", "__init__.py")
     _version_re = re.compile(r"__version__\s+=\s+(?P<version>.*)")
     with open(main_file, "r", encoding="utf8") as f:
         match = _version_re.search(f.read())
@@ -53,11 +53,16 @@ setup(
     # https://pypi.org/pypi?%3Aaction=list_classifiers
     license="License :: OSI Approved :: MIT License",
     classifiers=[
+        'Development Status :: 4 - Beta',
+        'Intended Audience :: Developers',
+        'Intended Audience :: Science/Research',
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",
         "Topic :: Scientific/Engineering :: Mathematics",
         "Topic :: Scientific/Engineering :: Image Recognition"
+        'Topic :: Software Development :: Libraries',
+        'Topic :: Software Development :: Libraries :: Python Modules',
         "Topic :: Software Development :: Libraries :: Application Frameworks"
         # "Private :: Do Not Upload"
     ],

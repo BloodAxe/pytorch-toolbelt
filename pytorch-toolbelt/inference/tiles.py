@@ -13,7 +13,7 @@ def compute_pyramid_patch_weight_loss(width, height) -> np.ndarray:
     puts less weight to pixels on image boundary.
     This weight matrix then used for merging individual tile predictions and helps dealing
     with prediction artifacts on tile boundaries.
-    
+
     :param width: Tile width
     :param height: Tile height
     :return: Since-channel image [Width x Height]
