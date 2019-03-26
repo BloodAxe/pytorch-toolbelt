@@ -1,6 +1,6 @@
 import pytest
 import torch
-from pytorch_toolbelt.modules import SqueezenetEncoder, MobilenetV2Encoder, \
+from pytorch_toolbelt.modules.encoders import SqueezenetEncoder, MobilenetV2Encoder, \
     Resnet152Encoder, Resnet101Encoder, Resnet50Encoder, Resnet34Encoder, Resnet18Encoder, \
     SENet154Encoder, SEResnet152Encoder, SEResnet50Encoder, \
     SEResNeXt101Encoder, SEResNeXt50Encoder, SEResnet101Encoder, EncoderModule
@@ -23,9 +23,9 @@ from pytorch_toolbelt.utils.torch_utils import maybe_cuda, count_parameters
     [SENet154Encoder, {}],
 ])
 def test_encoders(encoder: EncoderModule, encoder_params):
-    net = encoder(**encoder_params).eval()
-    print(net.__class__.__name__, count_parameters(net))
     with torch.no_grad():
+        net = encoder(**encoder_params).eval()
+        print(net.__class__.__name__, count_parameters(net))
         input = torch.rand((4, 3, 512, 512))
         input = maybe_cuda(input)
         net = maybe_cuda(net)
