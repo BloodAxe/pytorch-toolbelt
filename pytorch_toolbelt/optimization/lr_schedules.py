@@ -58,9 +58,10 @@ class CosineAnnealingLRWithDecay(_LRScheduler):
         super(CosineAnnealingLRWithDecay, self).__init__(optimizer, last_epoch)
 
     def get_lr(self):
-        return [self.eta_min + (base_lr * self.gamma ** self.last_epoch - self.eta_min) *
-                (1 + math.cos(math.pi * self.last_epoch / self.T_max)) / 2
-                for base_lr in self.base_lrs]
+        def compute_lr(base_lr):
+            return self.eta_min + (base_lr * self.gamma ** self.last_epoch - self.eta_min) * (1 + math.cos(math.pi * self.last_epoch / self.T_max)) / 2
+
+        return [compute_lr(base_lr) for base_lr in self.base_lrs]
 
 
 if __name__ == '__main__':

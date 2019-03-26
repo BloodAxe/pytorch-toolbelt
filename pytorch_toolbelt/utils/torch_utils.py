@@ -55,3 +55,9 @@ def rgb_image_from_tensor(image: torch.Tensor, mean, std, max_pixel_value=255.0)
     std = to_numpy(std)
     rgb_image = (max_pixel_value * (image * std + mean) + 0.5).astype(np.uint8)
     return rgb_image
+
+
+def maybe_cuda(x):
+    if torch.cuda.is_available():
+        return x.cuda()
+    return x

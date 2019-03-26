@@ -97,7 +97,6 @@ class MobileNetV2(nn.Module):
 
             self.add_module(f'layer{layer_index + 1}', nn.Sequential(*blocks))
 
-
         # building last several layers
         self.final_layer = conv_1x1_bn(input_channel, self.last_channel)
 

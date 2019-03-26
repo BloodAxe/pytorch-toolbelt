@@ -3,7 +3,6 @@
 Original paper: https://arxiv.org/abs/1803.02579
 """
 
-import torch
 from torch import nn, Tensor
 from torch.nn import functional as F
 
@@ -49,6 +48,7 @@ class ChannelSpatialGate2d(nn.Module):
     """
     Concurrent Spatial and Channel Squeeze & Excitation
     """
+
     def __init__(self, channels):
         super().__init__()
         self.channel_gate = ChannelGate2d(channels)

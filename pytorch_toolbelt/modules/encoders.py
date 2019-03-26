@@ -5,11 +5,10 @@ Encodes listed here provides easy way to swap backbone of classification/segment
 
 from collections import OrderedDict
 from typing import List
-import torch
+
 from torch import nn
 from torchvision.models import resnet50, resnet34, resnet18, resnet101, resnet152, squeezenet1_1
 
-from torch.nn import functional as F
 from .backbone.mobilenet import MobileNetV2
 from .backbone.senet import SENet, se_resnext50_32x4d, se_resnext101_32x4d, se_resnet50, se_resnet101, se_resnet152, senet154
 

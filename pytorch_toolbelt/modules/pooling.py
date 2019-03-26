@@ -80,7 +80,7 @@ class MILCustomPoolingModule(nn.Module):
                                               nn.Sigmoid())
 
     def forward(self, x):
-        w = self.weight_generator(x)
-        l = self.classifier(x)
-        logits = torch.sum(w * l, dim=[2, 3]) / (torch.sum(w, dim=[2, 3]) + 1e-6)
+        weight = self.weight_generator(x)
+        loss = self.classifier(x)
+        logits = torch.sum(weight * loss, dim=[2, 3]) / (torch.sum(weight, dim=[2, 3]) + 1e-6)
         return logits

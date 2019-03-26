@@ -24,7 +24,7 @@ with io.open(os.path.join(CURDIR, "README.md"), "r", encoding="utf-8") as f:
 
 
 def get_version():
-    main_file = os.path.join(CURDIR, "pytorch-toolbelt", "__init__.py")
+    main_file = os.path.join(CURDIR, "pytorch_toolbelt", "__init__.py")
     _version_re = re.compile(r"__version__\s+=\s+(?P<version>.*)")
     with open(main_file, "r", encoding="utf8") as f:
         match = _version_re.search(f.read())
@@ -33,7 +33,7 @@ def get_version():
 
 
 setup(
-    name="pytorch-toolbelt",
+    name="pytorch_toolbelt",
     version=get_version(),
     author="Eugene Khvedchenya",
     author_email="ekhvedchenya@gmail.com",
@@ -47,7 +47,7 @@ setup(
     scripts=[],
     zip_safe=False,
     install_requires=DEPENDENCIES,
-    test_suite="tests.test_project",
+    test_suite="tests",
     python_requires=">=3.6",
     # license and classifier list:
     # https://pypi.org/pypi?%3Aaction=list_classifiers
