@@ -52,7 +52,6 @@ setup(
     url="https://github.com/BloodAxe/pytorch-toolbelt",
     packages=find_packages(exclude=EXCLUDE_FROM_PACKAGES),
     extras_require={'tests': get_test_requirements()},
-    tests_require=['pytest'],
     include_package_data=True,
     keywords=["PyTorch", "Kaggle", "Deep Learning", "Machine Learning", "ResNet", "VGG", "ResNext", "Unet", "Focal"],
     scripts=[],
