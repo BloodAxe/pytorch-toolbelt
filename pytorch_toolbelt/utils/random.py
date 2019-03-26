@@ -2,6 +2,8 @@
 
 """
 import random
+import warnings
+
 import torch
 
 
@@ -28,22 +30,22 @@ def set_rng_state(rng_state: dict):
         torch_rng = rng_state['torch_rng']
         torch.set_rng_state(torch_rng)
         print('Set torch rng state')
-    except:
-        pass
+    except ValueError as e:
+        warnings.warn(e)
 
     try:
         torch_rng_cuda = rng_state['torch_rng_cuda']
         torch.cuda.set_rng_state(torch_rng_cuda)
         print('Set torch rng cuda state')
-    except:
-        pass
+    except ValueError as e:
+        warnings.warn(e)
 
     try:
         python_rng = rng_state['python_rng']
         random.setstate(python_rng)
         print('Set python rng state')
-    except:
-        pass
+    except ValueError as e:
+        warnings.warn(e)
 
 
 def get_random_name() -> str:

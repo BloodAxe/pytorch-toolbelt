@@ -1,6 +1,9 @@
 import pytest
 import torch
-from pytorch_toolbelt.modules import *
+from pytorch_toolbelt.modules import SqueezenetEncoder, MobilenetV2Encoder, \
+    Resnet152Encoder, Resnet101Encoder, Resnet50Encoder, Resnet34Encoder, Resnet18Encoder, \
+    SENet154Encoder, SEResnet152Encoder, SEResnet50Encoder, \
+    SEResNeXt101Encoder, SEResNeXt50Encoder, SEResnet101Encoder, EncoderModule
 from pytorch_toolbelt.utils.torch_utils import maybe_cuda, count_parameters
 
 
