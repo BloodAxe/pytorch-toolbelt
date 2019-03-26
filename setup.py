@@ -13,6 +13,8 @@ import ast
 import io
 import re
 import os
+import sys
+
 from setuptools import find_packages, setup
 
 DEPENDENCIES = ["torch>=0.4.1", "torchvision>0.2"]
@@ -32,6 +34,13 @@ def get_version():
     return str(ast.literal_eval(version))
 
 
+def get_test_requirements():
+    requirements = ['pytest']
+    if sys.version_info < (3, 3):
+        requirements.append('mock')
+    return requirements
+
+
 setup(
     name="pytorch_toolbelt",
     version=get_version(),
@@ -42,12 +51,13 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/BloodAxe/pytorch-toolbelt",
     packages=find_packages(exclude=EXCLUDE_FROM_PACKAGES),
+    extras_require={'tests': get_test_requirements()},
+    tests_require=['pytest'],
     include_package_data=True,
     keywords=["PyTorch", "Kaggle", "Deep Learning", "Machine Learning", "ResNet", "VGG", "ResNext", "Unet", "Focal"],
     scripts=[],
     zip_safe=False,
     install_requires=DEPENDENCIES,
-    test_suite="tests",
     python_requires=">=3.6",
     # license and classifier list:
     # https://pypi.org/pypi?%3Aaction=list_classifiers
