@@ -10,6 +10,7 @@ from catalyst.dl.callbacks import EarlyStoppingCallback, PrecisionCallback, Util
 from catalyst.dl.experiments import SupervisedRunner
 from sklearn.model_selection import train_test_split
 from torch import nn
+from torch.backends import cudnn
 from torch.optim import Adam
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
@@ -41,12 +42,22 @@ class CannyModel(nn.Module):
 
 
 class EdgesDataset(Dataset):
-    def __init__(self, images, image_size=(224, 224)):
+    def __init__(self, images, image_size=(224, 224), training=True):
         self.images = images
         self.transform = A.Compose([
-            A.PadIfNeeded(224),
-            A.RandomCrop(image_size[0], image_size[1]),
-            A.RandomRotate90()
+            A.Compose([
+                A.PadIfNeeded(256, 256),
+                A.RandomSizedCrop((128, 256), image_size[0], image_size[1]),
+                A.RandomRotate90(),
+                A.RandomBrightnessContrast(),
+                A.GaussNoise(),
+                A.ElasticTransform()
+            ], p=float(training)),
+            A.Compose([
+                A.PadIfNeeded(image_size[0], image_size[1]),
+                A.CenterCrop(image_size[0], image_size[1])
+            ], p=float(not training)),
+
         ])
         self.normalize = A.Normalize()
 
@@ -64,20 +75,27 @@ class EdgesDataset(Dataset):
 
 
 def main():
-    images_dir = 'c:\datasets\ILSVRC2013_DET_val'
+    images_dir = 'c:\\Develop\\data\\mirflickr'
 
     canny_cnn = maybe_cuda(CannyModel())
-    optimizer = Adam(canny_cnn.parameters(), lr=1e-4)
+    optimizer = Adam(canny_cnn.parameters(), lr=1e-3)
 
     images = find_images_in_dir(images_dir)
     train_images, valid_images = train_test_split(images, test_size=0.1, random_state=1234)
-
-    num_workers = 4
+    print('Train', len(train_images), 'Test', len(valid_images))
+    num_workers = 16
     num_epochs = 100
-    batch_size = 16
+    batch_size = 256
 
-    train_loader = DataLoader(EdgesDataset(train_images), batch_size=batch_size, num_workers=num_workers, shuffle=True, drop_last=True, pin_memory=True)
-    valid_loader = DataLoader(EdgesDataset(valid_images), batch_size=batch_size, num_workers=num_workers, pin_memory=True)
+    train_loader = DataLoader(EdgesDataset(train_images, training=True),
+                              batch_size=batch_size,
+                              num_workers=num_workers,
+                              shuffle=True,
+                              drop_last=True, pin_memory=True)
+    valid_loader = DataLoader(EdgesDataset(valid_images, training=False),
+                              batch_size=batch_size,
+                              num_workers=num_workers,
+                              pin_memory=True)
     loaders = collections.OrderedDict()
     loaders["train"] = train_loader
     loaders["valid"] = valid_loader
@@ -104,10 +122,11 @@ def main():
         # check=True
     )
 
-    UtilsFactory.plot_metrics(
-        logdir='logs',
-        metrics=["loss", "precision01", "precision03", "base/lr"])
+    # UtilsFactory.plot_metrics(
+    #     logdir='logs',
+    #     metrics=["loss", "precision01", "precision03", "base/lr"])
 
 
 if __name__ == '__main__':
+    torch.backends.cudnn.benchmark = True
     main()
