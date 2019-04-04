@@ -194,6 +194,9 @@ def main():
     # model runner
     runner = SupervisedRunner()
 
+    # checkpoint = UtilsFactory.load_checkpoint("logs/checkpoints//best.pth")
+    # UtilsFactory.unpack_checkpoint(checkpoint, model=canny_cnn)
+
     # model training
     runner.train(
         model=canny_cnn,
@@ -203,7 +206,7 @@ def main():
         callbacks=[
             JaccardCallback(),
             ShowPolarBatchesCallback(visualize_canny_predictions, metric='jaccard', minimize=False),
-            EarlyStoppingCallback(patience=5, min_delta=0.01),
+            EarlyStoppingCallback(patience=5, min_delta=0.01, metric='jaccard', minimize=False),
         ],
         loaders=loaders,
         logdir='logs',
