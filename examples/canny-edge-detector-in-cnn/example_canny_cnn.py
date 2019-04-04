@@ -1,18 +1,18 @@
 import collections
 
+import albumentations as A
 import cv2
 import numpy as np
 import torch
-import albumentations as A
-import torch.nn.functional as F
 from catalyst.contrib.criterion import FocalLoss
-from catalyst.dl.callbacks import EarlyStoppingCallback, PrecisionCallback, UtilsFactory, JaccardCallback, Callback, RunnerState, TensorboardLogger
+from catalyst.dl.callbacks import EarlyStoppingCallback, JaccardCallback, Callback, \
+    RunnerState, TensorboardLogger
 from catalyst.dl.experiments import SupervisedRunner
 from sklearn.model_selection import train_test_split
 from torch import nn
+from torch.backends import cudnn
 from torch.optim import Adam
 from torch.utils.data import DataLoader, Dataset
-from tqdm import tqdm
 
 from pytorch_toolbelt.utils.fs import find_images_in_dir, read_rgb_image
 from pytorch_toolbelt.utils.torch_utils import maybe_cuda, tensor_from_rgb_image, rgb_image_from_tensor, to_numpy
@@ -24,32 +24,71 @@ def canny_edges(image):
     return (edges > 0).astype(np.uint8)
 
 
+def conv_bn_relu(input_channels, output_channels):
+    return nn.Sequential(nn.Conv2d(input_channels, output_channels, kernel_size=3, padding=1, bias=False),
+                         nn.BatchNorm2d(output_channels),
+                         nn.LeakyReLU(inplace=True))
+
+
+class PoolUnpool(nn.Module):
+    def __init__(self, kernel_size=3, padding=1, stride=2):
+        super().__init__()
+        self.pool = nn.MaxPool2d(kernel_size=kernel_size, padding=1, stride=stride, return_indices=True)
+        self.unpool = nn.MaxUnpool2d(kernel_size=kernel_size, padding=padding, stride=stride)
+
+    def forward(self, x):
+        x, index = self.pool(x)
+        unpuul = self.unpool(x, index)
+        return unpuul
+
+
 class CannyModel(nn.Module):
     def __init__(self, input_channels=3, features=16):
         super().__init__()
-        self.conv1 = nn.Conv2d(input_channels, features, kernel_size=3, padding=1)
-        self.conv2 = nn.Conv2d(features, features, kernel_size=3, padding=1)
-        self.final = nn.Conv2d(features, 1, kernel_size=3, padding=1)
+        self.conv1 = conv_bn_relu(input_channels, features)
+        self.conv2 = conv_bn_relu(features, features)
+
+        self.conv3 = conv_bn_relu(features * 2, features)
+        self.conv4 = conv_bn_relu(features * 2, features)
+
+        self.pool1 = PoolUnpool(features)
+        self.pool2 = PoolUnpool(features)
+
+        self.final = nn.Conv2d(features, 1, kernel_size=1)
 
     def forward(self, x):
         x = self.conv1(x)
-        x = F.selu(x)
         x = self.conv2(x)
-        x = F.selu(x)
+
+        p1 = self.pool1(x)
+        x = torch.cat([x, p1], dim=1)
+        x = self.conv3(x)
+
+        p2 = self.pool2(x)
+        x = torch.cat([x, p2], dim=1)
+        x = self.conv4(x)
+
         x = self.final(x)
         return x
 
 
 class EdgesDataset(Dataset):
-    def __init__(self, images, image_size=(224, 224)):
+    def __init__(self, images, image_size=(224, 224), training=True):
         self.images = images
         self.transform = A.Compose([
-            A.PadIfNeeded(256, 256),
-            A.RandomSizedCrop((128, 256), image_size[0], image_size[1]),
-            A.RandomRotate90(),
-            A.RandomBrightnessContrast(),
-            A.ElasticTransform(),
-            A.Cutout()
+            A.Compose([
+                A.PadIfNeeded(256, 256),
+                A.RandomSizedCrop((128, 256), image_size[0], image_size[1]),
+                A.RandomRotate90(),
+                A.RandomBrightnessContrast(),
+                A.GaussNoise(),
+                A.Cutout(),
+                A.ElasticTransform()
+            ], p=float(training)),
+            A.Compose([
+                A.PadIfNeeded(image_size[0], image_size[1]),
+                A.CenterCrop(image_size[0], image_size[1])
+            ], p=float(not training))
         ])
         self.normalize = A.Normalize()
 
@@ -169,7 +208,7 @@ def main():
     images_dir = 'd:\datasets\mirflickr'
 
     canny_cnn = maybe_cuda(CannyModel())
-    optimizer = Adam(canny_cnn.parameters(), lr=1e-4)
+    optimizer = Adam(canny_cnn.parameters(), lr=1e-3)
 
     images = find_images_in_dir(images_dir)
     train_images, valid_images = train_test_split(images, test_size=0.1, random_state=1234)
@@ -183,8 +222,11 @@ def main():
         train_images = train_images[:batch_size * 4]
         valid_images = valid_images[:batch_size * 4]
 
-    train_loader = DataLoader(EdgesDataset(train_images), batch_size=batch_size, num_workers=num_workers, shuffle=True, drop_last=True, pin_memory=True)
-    valid_loader = DataLoader(EdgesDataset(valid_images), batch_size=batch_size, num_workers=num_workers, pin_memory=True)
+    train_loader = DataLoader(EdgesDataset(train_images), batch_size=batch_size, num_workers=num_workers, shuffle=True,
+                              drop_last=True, pin_memory=True)
+    valid_loader = DataLoader(EdgesDataset(valid_images), batch_size=batch_size, num_workers=num_workers,
+                              pin_memory=True)
+
     loaders = collections.OrderedDict()
     loaders["train"] = train_loader
     loaders["valid"] = valid_loader
@@ -217,10 +259,7 @@ def main():
         # check=True
     )
 
-    UtilsFactory.plot_metrics(
-        logdir='logs',
-        metrics=["loss", "jaccard", "base/lr"])
-
 
 if __name__ == '__main__':
+    torch.backends.cudnn.benchmark = True
     main()
