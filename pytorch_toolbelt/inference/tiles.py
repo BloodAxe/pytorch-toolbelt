@@ -1,6 +1,7 @@
 """Implementation of tile-based inference allowing to predict huge images that does not fit into GPU memory entirely
 in a sliding-window fashion and merging prediction mask back to full-resolution.
 """
+from typing import List
 
 import numpy as np
 import cv2
@@ -137,7 +138,7 @@ class ImageSlicer:
 
         return tiles
 
-    def cut_patch(self, image, slice_index, borderType=cv2.BORDER_REFLECT101, value=0):
+    def cut_patch(self, image: np.ndarray, slice_index, borderType=cv2.BORDER_REFLECT101, value=0):
         assert image.shape[0] == self.image_height
         assert image.shape[1] == self.image_width
 
@@ -155,7 +156,7 @@ class ImageSlicer:
         assert tile.shape[1] == self.tile_size[1]
         return tile
 
-    def merge(self, tiles, dtype=np.float32):
+    def merge(self, tiles: List[np.ndarray], dtype=np.float32):
         if len(tiles) != len(self.crops):
             raise ValueError
 
