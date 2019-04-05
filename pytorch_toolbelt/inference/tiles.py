@@ -50,9 +50,9 @@ class ImageSlicer:
     def __init__(self, image_shape, tile_size, tile_step=0, image_margin=0, weight='mean'):
         """
 
-        :param image_shape: Shape of the source image
-        :param tile_size: Tile size (Scalar or tuple (height, width)
-        :param tile_step: Step in pixels between tiles (Scalar or tuple (height, width)
+        :param image_shape: Shape of the source image (H, W)
+        :param tile_size: Tile size (Scalar or tuple (H, W)
+        :param tile_step: Step in pixels between tiles (Scalar or tuple (H, W))
         :param image_margin:
         :param weight: Fusion algorithm. 'mean' - avergaing
         """
