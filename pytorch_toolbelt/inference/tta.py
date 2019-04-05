@@ -16,7 +16,7 @@ def tta_fliplr_image2label(model: nn.Module, image: Tensor) -> Tensor:
     :param image:
     :return:
     """
-    output = model.predict(image) + model(F.torch_fliplp(image))
+    output = model(image) + model(F.torch_fliplp(image))
     one_over_2 = float(1.0 / 2.0)
     return output * one_over_2
 
@@ -31,7 +31,7 @@ def tta_fliplr_image2mask(model: nn.Module, image: Tensor) -> Tensor:
     :param image: Model input.
     :return: Arithmetically averaged predictions
     """
-    output = model.predict(image) + F.torch_fliplp(model(F.torch_fliplp(image)))
+    output = model(image) + F.torch_fliplp(model(F.torch_fliplp(image)))
     one_over_2 = float(1.0 / 2.0)
     return output * one_over_2
 
@@ -44,16 +44,16 @@ def tta_d4_image2label(model: nn.Module, image: Tensor) -> Tensor:
     :param image: Model input.
     :return: Arithmetically averaged predictions
     """
-    output = model.predict(image)
+    output = model(image)
 
     for aug in [F.torch_rot90, F.torch_rot180, F.torch_rot270]:
-        x = model.predict(aug(image))
+        x = model(aug(image))
         output = output + x
 
     image = F.torch_transpose(image)
 
     for aug in [F.torch_none, F.torch_rot90, F.torch_rot180, F.torch_rot270]:
-        x = model.predict(aug(image))
+        x = model(aug(image))
         output = output + x
 
     one_over_8 = float(1.0 / 8.0)
@@ -70,16 +70,16 @@ def tta_d4_image2mask(model: nn.Module, image: Tensor) -> Tensor:
     :param image: Model input.
     :return: Arithmetically averaged predictions
     """
-    output = model.predict(image)
+    output = model(image)
 
     for aug, deaug in zip([F.torch_rot90, F.torch_rot180, F.torch_rot270], [F.torch_rot270, F.torch_rot180, F.torch_rot90]):
-        x = deaug(model.predict(aug(image)))
+        x = deaug(model(aug(image)))
         output = output + x
 
     image = F.torch_transpose(image)
 
     for aug, deaug in zip([F.torch_none, F.torch_rot90, F.torch_rot180, F.torch_rot270], [F.torch_none, F.torch_rot270, F.torch_rot180, F.torch_rot90]):
-        x = deaug(model.predict(aug(image)))
+        x = deaug(model(aug(image)))
         output = output + x
 
     one_over_8 = float(1.0 / 8.0)
