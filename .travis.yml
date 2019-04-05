@@ -1,12 +1,17 @@
+group: travis_latest
 language: python
+cache: pip
+
+# safelist
+branches:
+  only:
+    - master
+    - develop
+    - gh-pages
 
 notifications:
   email:
     on_success: never
-
-cache:
-  directories:
-    - $HOME/.cache/pip
 
 matrix:
   include:
@@ -15,10 +20,11 @@ matrix:
       dist: xenial
       sudo: true
 
+
 install:
-- if [[ "$TEST_MODE" == "DOCS" ]]; then pip install -q .; fi
-- if [[ "$TEST_MODE" != "DOCS" ]]; then pip install -q .[tests]; fi
-- if [[ "$TEST_MODE" != "DOCS" ]]; then pip install flake8 flake8-docstrings; fi
+  - if [[ "$TEST_MODE" == "DOCS" ]]; then pip install -q .; fi
+  - if [[ "$TEST_MODE" != "DOCS" ]]; then pip install -q .[tests]; fi
+  - if [[ "$TEST_MODE" != "DOCS" ]]; then pip install flake8 flake8-docstrings; fi
 
 script:
   - if [[ "$TEST_MODE" != "DOCS" ]]; then pytest; fi
