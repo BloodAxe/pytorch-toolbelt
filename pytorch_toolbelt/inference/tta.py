@@ -40,8 +40,8 @@ def tta_fivecrop_image2label(model: nn.Module, image: Tensor, crop_size: Tuple) 
     bottom_crop_start = image_height - crop_height
     right_crop_start = image_width - crop_width
     crop_tl = image[..., :crop_height, :crop_width]
-    crop_tr = image[..., :image_height, right_crop_start:]
-    crop_bl = image[..., bottom_crop_start:, :image_width]
+    crop_tr = image[..., :crop_height, right_crop_start:]
+    crop_bl = image[..., bottom_crop_start:, :crop_width]
     crop_br = image[..., bottom_crop_start:, right_crop_start:]
 
     assert crop_tl.size(2) == crop_height
