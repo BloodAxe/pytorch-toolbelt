@@ -3,6 +3,7 @@
 Despite this is called test-time augmentation, these method can be used at training time as well since all
 transformation written in PyTorch and respect gradients flow.
 """
+from typing import Tuple
 
 from torch import Tensor, nn
 from . import functional as F
@@ -19,6 +20,50 @@ def tta_fliplr_image2label(model: nn.Module, image: Tensor) -> Tensor:
     output = model(image) + model(F.torch_fliplp(image))
     one_over_2 = float(1.0 / 2.0)
     return output * one_over_2
+
+
+def tta_fivecrop_image2label(model: nn.Module, image: Tensor, crop_size: Tuple) -> Tensor:
+    """Test-time augmentation for image classification that takes five crops out of input tensor (4 on corners and central)
+    and averages predictions from them.
+
+    :param model:
+    :param image:
+    :param crop_size:
+    :return:
+    """
+    image_height, image_width = int(image.size(2)), int(image.size(3))
+    crop_height, crop_width = crop_size
+
+    assert crop_height <= image_height
+    assert crop_width <= image_width
+
+    bottom_crop_start = image_height - crop_height
+    right_crop_start = image_width - crop_width
+    crop_tl = image[..., :crop_height, :crop_width]
+    crop_tr = image[..., :image_height, right_crop_start:]
+    crop_bl = image[..., bottom_crop_start:, :image_width]
+    crop_br = image[..., bottom_crop_start:, right_crop_start:]
+
+    assert crop_tl.size(2) == crop_height
+    assert crop_tr.size(2) == crop_height
+    assert crop_bl.size(2) == crop_height
+    assert crop_br.size(2) == crop_height
+
+    assert crop_tl.size(3) == crop_width
+    assert crop_tr.size(3) == crop_width
+    assert crop_bl.size(3) == crop_width
+    assert crop_br.size(3) == crop_width
+
+    center_crop_y = (image_height - crop_height) // 2
+    center_crop_x = (image_width - crop_width) // 2
+
+    crop_cc = image[..., center_crop_y:center_crop_y + crop_height, center_crop_x:center_crop_x + crop_width]
+    assert crop_cc.size(2) == crop_height
+    assert crop_cc.size(3) == crop_width
+
+    output = model(crop_tl) + model(crop_tr) + model(crop_bl) + model(crop_br) + model(crop_cc)
+    one_over_5 = float(1.0 / 5.0)
+    return output * one_over_5
 
 
 def tta_fliplr_image2mask(model: nn.Module, image: Tensor) -> Tensor:
