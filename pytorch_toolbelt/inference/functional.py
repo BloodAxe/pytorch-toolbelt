@@ -1,3 +1,5 @@
+from collections import Sized, Iterable
+
 import torch
 from torch import Tensor
 
@@ -50,18 +52,24 @@ def pad_tensor(image_tensor: Tensor, pad_size: int = 32):
     :return: Tuple of output tensor and pad params. Second argument can be used to reverse pad operation of model output
     """
     rows, cols = image_tensor.size(2), image_tensor.size(3)
-
-    if rows > pad_size:
-        pad_rows = rows % pad_size
-        pad_rows = pad_size - pad_rows if pad_rows > 0 else 0
+    if isinstance(pad_size, Sized) and isinstance(pad_size, Iterable) and len(pad_size) == 2:
+        pad_height, pad_width = [int(val) for val in pad_size]
+    elif isinstance(pad_size, int):
+        pad_height = pad_width = pad_size
     else:
-        pad_rows = pad_size - rows
+        raise ValueError(f"Unsupported pad_size: {pad_size}, must be either tuple(pad_rows,pad_cols) or single int scalar.")
 
-    if cols > pad_size:
-        pad_cols = cols % pad_size
-        pad_cols = pad_size - pad_cols if pad_cols > 0 else 0
+    if rows > pad_height:
+        pad_rows = rows % pad_height
+        pad_rows = pad_height - pad_rows if pad_rows > 0 else 0
     else:
-        pad_cols = pad_size - cols
+        pad_rows = pad_height - rows
+
+    if cols > pad_width:
+        pad_cols = cols % pad_width
+        pad_cols = pad_width - pad_cols if pad_cols > 0 else 0
+    else:
+        pad_cols = pad_width - cols
 
     if pad_rows == 0 and pad_cols == 0:
         return image_tensor, (0, 0, 0, 0)
