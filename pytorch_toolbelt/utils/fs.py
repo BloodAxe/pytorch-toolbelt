@@ -60,11 +60,15 @@ def auto_file(filename: str, where: str = '.') -> str:
 
 
 def read_rgb_image(fname: str) -> np.ndarray:
-    image = cv2.imread(fname, cv2.IMREAD_COLOR)
-    if image is None:
-        raise IOError(f'Cannot read image \"{fname}\"')
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    import PIL
+    image = np.asarray(PIL.Image.open(fname))
     return image
+
+    # image = cv2.imread(fname, cv2.IMREAD_COLOR)
+    # if image is None:
+    #     raise IOError(f'Cannot read image \"{fname}\"')
+    # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    # return image
 
 
 def read_image_as_is(fname: str) -> np.ndarray:
