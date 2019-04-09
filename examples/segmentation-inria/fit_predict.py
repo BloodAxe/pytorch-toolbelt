@@ -24,6 +24,7 @@ from torch.nn import BCEWithLogitsLoss
 from torch.optim import Adam
 from torch.utils.data import DataLoader, WeightedRandomSampler
 from models.fpn import fpn_resnext50
+from models.linknet import LinkNet152, LinkNet34
 
 
 def get_model(model_name: str, image_size=None) -> nn.Module:
@@ -256,7 +257,6 @@ def main():
         scheduler=scheduler,
         callbacks=[
             JaccardCallback(),
-            PrecisionCallback(precision_args=[1]),
             ShowPolarBatchesCallback(visualize_inria_predictions, metric='jaccard', minimize=False),
             EarlyStoppingCallback(patience=5, min_delta=0.01, metric='jaccard', minimize=False),
         ],
