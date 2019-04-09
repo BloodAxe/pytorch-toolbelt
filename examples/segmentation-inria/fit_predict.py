@@ -10,7 +10,7 @@ import cv2
 import numpy as np
 import torch
 from catalyst.contrib.models import UNet
-from catalyst.dl.callbacks import EarlyStoppingCallback, UtilsFactory, JaccardCallback
+from catalyst.dl.callbacks import EarlyStoppingCallback, UtilsFactory, JaccardCallback, PrecisionCallback
 from catalyst.dl.experiments import SupervisedRunner
 from pytorch_toolbelt.utils.catalyst_utils import ShowPolarBatchesCallback
 from pytorch_toolbelt.utils.dataset_utils import ImageMaskDataset, TiledImageMaskDataset
@@ -31,6 +31,12 @@ def get_model(model_name: str, image_size=None) -> nn.Module:
 
     if model_name == 'fpn_resnext50':
         return fpn_resnext50()
+
+    if model_name == 'linknet34':
+        return LinkNet34()
+
+    if model_name == 'linknet152':
+        return LinkNet152()
 
     raise ValueError("Unsupported model name " + model_name)
 
@@ -249,6 +255,7 @@ def main():
         scheduler=scheduler,
         callbacks=[
             JaccardCallback(),
+            PrecisionCallback(precision_args=[1]),
             ShowPolarBatchesCallback(visualize_inria_predictions, metric='jaccard', minimize=False),
             EarlyStoppingCallback(patience=5, min_delta=0.01, metric='jaccard', minimize=False),
         ],
