@@ -23,6 +23,7 @@ from torch.backends import cudnn
 from torch.nn import BCEWithLogitsLoss
 from torch.optim import Adam
 from torch.utils.data import DataLoader, WeightedRandomSampler
+from models.fpn import fpn_resnext50
 
 
 def get_model(model_name: str, image_size=None) -> nn.Module:
