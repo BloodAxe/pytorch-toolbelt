@@ -1,9 +1,34 @@
+from .functional import sigmoid_focal_loss
 from torch.nn.modules.loss import _Loss
 
-from .functional import sigmoid_focal_loss
+__all__ = ['BinaryFocalLoss', 'FocalLoss']
 
 
-class CEFocalLoss(_Loss):
+class BinaryFocalLoss(_Loss):
+    def __init__(self, alpha=0.5, gamma=2, ignore=None):
+        super().__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+        self.ignore = ignore
+
+    def forward(self, label_input, label_target):
+        """Compute focal loss for binary classification problem.
+        """
+        num_classes = label_input.size(1)
+        label_target = label_target.view(-1)
+        label_input = label_input.view(-1, num_classes)
+
+        if self.ignore is not None:
+            # Filter predictions with ignore label from loss computation
+            not_ignored = label_target != self.ignore
+            label_input = label_input[not_ignored]
+            label_target = label_target[not_ignored]
+
+        loss = sigmoid_focal_loss(label_input, label_target, gamma=self.gamma, alpha=self.alpha)
+        return loss
+
+
+class FocalLoss(_Loss):
     def __init__(self, alpha=0.5, gamma=2):
         super().__init__()
         self.alpha = alpha
