@@ -89,3 +89,17 @@ def unpad_tensor(image_tensor, pad):
     pad_left, pad_right, pad_top, pad_btm = pad
     rows, cols = image_tensor.size(2), image_tensor.size(3)
     return image_tensor[..., pad_top:rows - pad_btm, pad_left: cols - pad_right]
+
+
+def unpad_xyxy_bboxes(bboxes_tensor: torch.Tensor, pad, dim=-1):
+    pad_left, pad_right, pad_top, pad_btm = pad
+    pad = torch.tensor([pad_left, pad_top, pad_left, pad_top], dtype=bboxes_tensor.dtype).to(bboxes_tensor.device)
+
+    if dim == -1:
+        dim = len(bboxes_tensor.size()) - 1
+
+    expand_dims = list(set(range(len(bboxes_tensor.size()))) - {dim})
+    for i, dim in enumerate(expand_dims):
+        pad = pad.unsqueeze(dim)
+
+    return bboxes_tensor - pad
