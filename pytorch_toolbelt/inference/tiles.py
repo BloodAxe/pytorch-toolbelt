@@ -10,8 +10,8 @@ import torch
 
 
 def compute_pyramid_patch_weight_loss(width, height) -> np.ndarray:
-    """Computes a weight image that puts more importance on center pixels of an image and
-    puts less weight to pixels on image boundary.
+    """Compute a weight matrix that assigns bigger weight on pixels in center and
+    less weight to pixels on image boundary.
     This weight matrix then used for merging individual tile predictions and helps dealing
     with prediction artifacts on tile boundaries.
 

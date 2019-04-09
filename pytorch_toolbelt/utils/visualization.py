@@ -12,7 +12,7 @@ def plot_confusion_matrix(cm, class_names,
                           fname=None,
                           noshow=False):
     """
-    This function prints and plots the confusion matrix.
+    Render the confusion matrix and return matplotlib's figure with it.
     Normalization can be applied by setting `normalize=True`.
     """
 

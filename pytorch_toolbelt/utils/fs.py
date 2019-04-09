@@ -36,7 +36,8 @@ def change_extension(fname: str, new_ext: str):
 
 def auto_file(filename: str, where: str = '.') -> str:
     """
-    Helper function to find a unique filename in subdirectory without specifying fill path to it
+    Get a full path to file using it's name. This function recisively search for matching filename in @where and returns single match.
+
     :param where:
     :param filename:
     :return:
@@ -60,15 +61,14 @@ def auto_file(filename: str, where: str = '.') -> str:
 
 
 def read_rgb_image(fname: str) -> np.ndarray:
+    """
+    Read RGB image from filesystem. This function uses PIL to load image since PIL respects EXIF image orientation flag.
+    :param fname: Image file path
+    :return: A numpy array with a loaded image in RGB format
+    """
     import PIL
     image = np.asarray(PIL.Image.open(fname))
     return image
-
-    # image = cv2.imread(fname, cv2.IMREAD_COLOR)
-    # if image is None:
-    #     raise IOError(f'Cannot read image \"{fname}\"')
-    # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    # return image
 
 
 def read_image_as_is(fname: str) -> np.ndarray:

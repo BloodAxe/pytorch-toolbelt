@@ -3,7 +3,6 @@ from torch.nn.modules.loss import _Loss
 from .functional import sigmoid_focal_loss
 
 
-
 class CEFocalLoss(_Loss):
     def __init__(self, alpha=0.5, gamma=2):
         super().__init__()
@@ -16,7 +15,7 @@ class CEFocalLoss(_Loss):
         Ignores anchors having -1 target label
         """
 
-        batch_size, num_classes = label_input.size(0), label_input.size(1)
+        num_classes = label_input.size(1)
         loss = 0
         label_target = label_target.view(-1)
         label_input = label_input.view(-1, num_classes)
