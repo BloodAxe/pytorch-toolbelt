@@ -49,6 +49,12 @@ def tensor_from_rgb_image(image: np.ndarray) -> torch.Tensor:
     return image
 
 
+def tensor_from_mask_image(mask: np.ndarray) -> torch.Tensor:
+    if len(mask.shape) == 2:
+        mask = np.expand_dims(mask, -1)
+    return tensor_from_rgb_image(mask)
+
+
 def rgb_image_from_tensor(image: torch.Tensor, mean, std, max_pixel_value=255.0) -> np.ndarray:
     image = np.moveaxis(to_numpy(image), 0, -1)
     mean = to_numpy(mean)
