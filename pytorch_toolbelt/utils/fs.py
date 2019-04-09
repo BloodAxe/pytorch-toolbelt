@@ -35,14 +35,12 @@ def change_extension(fname: str, new_ext: str):
 
 
 def auto_file(filename: str, where: str = '.') -> str:
-    """
-    Get a full path to file using it's name. This function recisively search for matching filename in @where and returns single match.
-
+    """Get a full path to file using it's name.
+    This function recisively search for matching filename in @where and returns single match.
     :param where:
     :param filename:
     :return:
     """
-
     if os.path.isabs(filename):
         return filename
 
@@ -61,8 +59,7 @@ def auto_file(filename: str, where: str = '.') -> str:
 
 
 def read_rgb_image(fname: str) -> np.ndarray:
-    """
-    Read RGB image from filesystem. This function uses PIL to load image since PIL respects EXIF image orientation flag.
+    """Read RGB image from filesystem. This function uses PIL to load image since PIL respects EXIF image orientation flag.
     :param fname: Image file path
     :return: A numpy array with a loaded image in RGB format
     """

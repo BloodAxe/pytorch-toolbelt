@@ -136,6 +136,7 @@ class SEBottleneck(Bottleneck):
     """
     Bottleneck for SENet154.
     """
+
     expansion = 4
 
     def __init__(self, inplanes, planes, groups, reduction, stride=1,
@@ -162,6 +163,7 @@ class SEResNetBottleneck(Bottleneck):
     implementation and uses `stride=stride` in `conv1` and not in `conv2`
     (the latter is used in the torchvision implementation of ResNet).
     """
+
     expansion = 4
 
     def __init__(self, inplanes, planes, groups, reduction, stride=1,
@@ -185,6 +187,7 @@ class SEResNeXtBottleneck(Bottleneck):
     """
     ResNeXt bottleneck type C with a Squeeze-and-Excitation module.
     """
+
     expansion = 4
 
     def __init__(self, inplanes, planes, groups, reduction, stride=1,

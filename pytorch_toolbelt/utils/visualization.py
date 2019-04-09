@@ -11,11 +11,9 @@ def plot_confusion_matrix(cm, class_names,
                           title='Confusion matrix',
                           fname=None,
                           noshow=False):
-    """
-    Render the confusion matrix and return matplotlib's figure with it.
+    """Render the confusion matrix and return matplotlib's figure with it.
     Normalization can be applied by setting `normalize=True`.
     """
-
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt

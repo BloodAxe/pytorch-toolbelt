@@ -10,11 +10,9 @@ class CEFocalLoss(_Loss):
         self.gamma = gamma
 
     def forward(self, label_input, label_target):
-        """
-
+        """Compute focal loss for multi-class problem.
         Ignores anchors having -1 target label
         """
-
         num_classes = label_input.size(1)
         loss = 0
         label_target = label_target.view(-1)
