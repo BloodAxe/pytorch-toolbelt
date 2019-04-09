@@ -7,8 +7,7 @@ def sigmoid_focal_loss(input: torch.Tensor,
                        gamma=2.0,
                        alpha=0.25,
                        reduction='mean'):
-    """Function that measures focal loss between target and output
-    logits.
+    """Compute binary focal loss between target and output logits.
 
     See :class:`~pytorch_toolbelt.losses.FocalLoss` for details.
 

@@ -8,9 +8,8 @@ import torch
 
 
 def set_manual_seed(seed):
-    """ If manual seed is not specified, choose a random one and communicate it to the user.
+    """Set random seed for Python and PyTorch random generators.
     """
-
     random.seed(seed)
     torch.manual_seed(seed)
 
