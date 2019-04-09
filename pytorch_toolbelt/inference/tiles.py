@@ -1,6 +1,7 @@
 """Implementation of tile-based inference allowing to predict huge images that does not fit into GPU memory entirely
 in a sliding-window fashion and merging prediction mask back to full-resolution.
 """
+from typing import List
 
 import numpy as np
 import cv2
@@ -9,8 +10,8 @@ import torch
 
 
 def compute_pyramid_patch_weight_loss(width, height) -> np.ndarray:
-    """Computes a weight image that puts more importance on center pixels of an image and
-    puts less weight to pixels on image boundary.
+    """Compute a weight matrix that assigns bigger weight on pixels in center and
+    less weight to pixels on image boundary.
     This weight matrix then used for merging individual tile predictions and helps dealing
     with prediction artifacts on tile boundaries.
 
@@ -49,9 +50,9 @@ class ImageSlicer:
     def __init__(self, image_shape, tile_size, tile_step=0, image_margin=0, weight='mean'):
         """
 
-        :param image_shape: Shape of the source image
-        :param tile_size: Tile size (Scalar or tuple (height, width)
-        :param tile_step: Step in pixels between tiles (Scalar or tuple (height, width)
+        :param image_shape: Shape of the source image (H, W)
+        :param tile_size: Tile size (Scalar or tuple (H, W)
+        :param tile_step: Step in pixels between tiles (Scalar or tuple (H, W))
         :param image_margin:
         :param weight: Fusion algorithm. 'mean' - avergaing
         """
@@ -137,7 +138,7 @@ class ImageSlicer:
 
         return tiles
 
-    def cut_patch(self, image, slice_index, borderType=cv2.BORDER_REFLECT101, value=0):
+    def cut_patch(self, image: np.ndarray, slice_index, borderType=cv2.BORDER_REFLECT101, value=0):
         assert image.shape[0] == self.image_height
         assert image.shape[1] == self.image_width
 
@@ -155,7 +156,7 @@ class ImageSlicer:
         assert tile.shape[1] == self.tile_size[1]
         return tile
 
-    def merge(self, tiles, dtype=np.float32):
+    def merge(self, tiles: List[np.ndarray], dtype=np.float32):
         if len(tiles) != len(self.crops):
             raise ValueError
 

@@ -16,7 +16,7 @@ def logit(x: torch.Tensor, eps=1e-5):
 
 def count_parameters(model: nn.Module) -> Tuple[int, int]:
     """
-    Counts number of total and trainable parameters of a model
+    Count number of total and trainable parameters of a model
     :param model: A model
     :return: Tuple (total, trainable)
     """
@@ -27,7 +27,7 @@ def count_parameters(model: nn.Module) -> Tuple[int, int]:
 
 def to_numpy(x) -> np.ndarray:
     """
-    Converts whatever to numpy array
+    Convert whatever to numpy array
     :param x: List, tuple, PyTorch tensor or numpy array
     :return: Numpy array
     """
