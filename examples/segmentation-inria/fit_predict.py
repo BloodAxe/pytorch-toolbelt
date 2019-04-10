@@ -23,7 +23,7 @@ from torch.backends import cudnn
 from torch.nn import BCEWithLogitsLoss
 from torch.optim import Adam
 from torch.utils.data import DataLoader, WeightedRandomSampler
-from models.fpn import fpn_resnext50
+from models.fpn import fpn_resnext50, hdfpn_resnext50
 from models.linknet import LinkNet152, LinkNet34
 
 
@@ -33,6 +33,9 @@ def get_model(model_name: str, image_size=None) -> nn.Module:
 
     if model_name == 'fpn_resnext50':
         return fpn_resnext50()
+
+    if model_name == 'hdfpn_resnext50':
+        return hdfpn_resnext50()
 
     if model_name == 'linknet34':
         return LinkNet34()
@@ -167,7 +170,7 @@ def get_dataloaders(data_dir: str,
 
     validloader = DataLoader(validset,
                              batch_size=batch_size,
-                             num_workers=0,
+                             num_workers=num_workers,
                              pin_memory=True,
                              shuffle=False)
 
@@ -294,7 +297,7 @@ def main():
         callbacks=[
             PixelAccuracyMetric(),
             EpochJaccardMetric(),
-            ShowPolarBatchesCallback(visualize_inria_predictions, metric='loss', minimize=True),
+            ShowPolarBatchesCallback(visualize_inria_predictions, metric='accuracy', minimize=False),
             EarlyStoppingCallback(patience=5, min_delta=0.01, metric='jaccard', minimize=False),
         ],
         loaders=loaders,
