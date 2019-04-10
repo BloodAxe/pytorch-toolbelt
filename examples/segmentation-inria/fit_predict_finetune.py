@@ -218,7 +218,7 @@ def main():
     # parser.add_argument('-f', '--fold', default=None, required=True, type=int, help='Fold to train')
     #     # parser.add_argument('-fe', '--freeze-encoder', type=int, default=0, help='Freeze encoder parameters for N epochs')
     #     # parser.add_argument('-ft', '--fine-tune', action='store_true')
-    parser.add_argument('-lr', '--learning-rate', type=float, default=1e-4, help='Initial learning rate')
+    parser.add_argument('-lr', '--learning-rate', type=float, default=1e-5, help='Initial learning rate')
     parser.add_argument('-o', '--optimizer', default='SGD', help='Name of the optimizer')
     parser.add_argument('-c', '--checkpoint', type=str, default=None, help='Checkpoint filename to use as initial model weights')
     parser.add_argument('-w', '--workers', default=8, type=int, help='Num workers')
@@ -296,7 +296,7 @@ def main():
     # model training
     runner.train(
         model=model,
-        criterion=JointLoss(first=BCEWithLogitsLoss(), second=BinaryJaccardLogLoss(), first_weight=1.0, second_weight=0.5),
+        criterion=JointLoss(first=BCEWithLogitsLoss(), second=BinaryJaccardLogLoss(), first_weight=1.0, second_weight=0.25),
         optimizer=optimizer,
         scheduler=scheduler,
         callbacks=[
