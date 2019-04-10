@@ -297,7 +297,7 @@ def main():
         callbacks=[
             PixelAccuracyMetric(),
             EpochJaccardMetric(),
-            ShowPolarBatchesCallback(visualize_inria_predictions, metric='loss', minimize=True),
+            ShowPolarBatchesCallback(visualize_inria_predictions, metric='accuracy', minimize=False),
             EarlyStoppingCallback(patience=5, min_delta=0.01, metric='jaccard', minimize=False),
         ],
         loaders=loaders,
