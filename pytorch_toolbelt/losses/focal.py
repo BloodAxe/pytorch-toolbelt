@@ -1,3 +1,6 @@
+import torch
+from torch import nn
+
 from .functional import sigmoid_focal_loss
 from torch.nn.modules.loss import _Loss
 
@@ -55,3 +58,36 @@ class FocalLoss(_Loss):
 
             loss += sigmoid_focal_loss(cls_label_input, cls_label_target, gamma=self.gamma, alpha=self.alpha)
         return loss
+
+
+# Needs testing
+# class SoftmaxFocalLoss(nn.Module):
+#     def __init__(self, gamma=2, eps=1e-7):
+#         super(SoftmaxFocalLoss, self).__init__()
+#         self.gamma = gamma
+#         self.eps = eps
+#
+#     @staticmethod
+#     def _one_hot(index, classes):
+#         size = index.size() + (classes,)
+#         view = index.size() + (1,)
+#
+#         mask = torch.Tensor(*size).fill_(0)
+#         index = index.view(*view)
+#         ones = 1.
+#
+#         if isinstance(index, Variable):
+#             ones = Variable(torch.Tensor(index.size()).fill_(1))
+#             mask = Variable(mask, volatile=index.volatile)
+#
+#         return mask.scatter_(1, index, ones)
+#
+#     def forward(self, input, target):
+#         y = one_hot(target, input.size(-1))
+#         logit = F.softmax(input, dim=-1)
+#         logit = logit.clamp(self.eps, 1. - self.eps)
+#
+#         loss = -1 * y * torch.log(logit)  # cross entropy
+#         loss = loss * (1 - logit) ** self.gamma  # focal loss
+#
+#         return loss.sum()

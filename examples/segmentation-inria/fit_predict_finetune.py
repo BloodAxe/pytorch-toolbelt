@@ -15,6 +15,8 @@ from catalyst.dl.callbacks import EarlyStoppingCallback, UtilsFactory, JaccardCa
 from catalyst.dl.experiments import SupervisedRunner
 
 from pytorch_toolbelt.losses.focal import BinaryFocalLoss
+from pytorch_toolbelt.losses.jaccard import BinaryJaccardLogLoss
+from pytorch_toolbelt.losses.joint_loss import JointLoss
 from pytorch_toolbelt.utils.catalyst_utils import ShowPolarBatchesCallback, EpochJaccardMetric, PixelAccuracyMetric
 from pytorch_toolbelt.utils.dataset_utils import ImageMaskDataset, TiledImageMaskDataset
 from pytorch_toolbelt.utils.fs import auto_file, find_in_dir, id_from_fname, read_rgb_image, read_image_as_is
@@ -294,8 +296,7 @@ def main():
     # model training
     runner.train(
         model=model,
-        criterion=BCEWithLogitsLoss(),
-        # criterion=BinaryFocalLoss(),
+        criterion=JointLoss(first=BCEWithLogitsLoss(), second=BinaryJaccardLogLoss(), first_weight=1.0, second_weight=0.5),
         optimizer=optimizer,
         scheduler=scheduler,
         callbacks=[
