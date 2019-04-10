@@ -17,9 +17,8 @@ class BinaryFocalLoss(_Loss):
     def forward(self, label_input, label_target):
         """Compute focal loss for binary classification problem.
         """
-        num_classes = label_input.size(1)
         label_target = label_target.view(-1)
-        label_input = label_input.view(-1, num_classes)
+        label_input = label_input.view(-1)
 
         if self.ignore is not None:
             # Filter predictions with ignore label from loss computation
