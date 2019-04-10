@@ -210,7 +210,7 @@ class CudaTileMerger:
         self.image = torch.zeros((channels, self.image_height, self.image_width)).cuda()
         self.norm_mask = torch.zeros((1, self.image_height, self.image_width)).cuda()
 
-    def integrate_batch(self, batch, crop_coords):
+    def integrate_batch(self, batch: torch.Tensor, crop_coords):
         """
         Accumulates batch of tile predictions
         :param batch: Predicted tiles
@@ -223,6 +223,6 @@ class CudaTileMerger:
             self.image[:, batch:batch + tile_height, x:x + tile_width] += tile * self.weight
             self.norm_mask[:, batch:batch + tile_height, x:x + tile_width] += self.weight
 
-    def merge(self):
+    def merge(self) -> torch.Tensor:
         self.image /= self.norm_mask
         return self.image

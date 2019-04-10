@@ -91,7 +91,93 @@ class ShowPolarBatchesCallback(Callback):
                 logger.add_image(f"Worst Batch/{i}/epoch", tensor_from_rgb_image(image), state.step)
 
 
-class MacroF1Callback(Callback):
+class EpochJaccardMetric(Callback):
+    """
+    Jaccard metric callback which is computed across whole epoch, not per-batch.
+    """
+
+    def __init__(
+            self,
+            input_key: str = "targets",
+            output_key: str = "logits",
+            prefix: str = "jaccard",
+            eps: float = 1e-7
+    ):
+        """
+             :param input_key: input key to use for precision calculation;
+                 specifies our `y_true`.
+             :param output_key: output key to use for precision calculation;
+                 specifies our `y_pred`.
+             """
+        self.prefix = prefix
+        self.output_key = output_key
+        self.input_key = input_key
+        self.intersection = 0
+        self.union = 0
+
+    def on_loader_start(self, state):
+        self.intersection = 0
+        self.union = 0
+
+    def on_batch_end(self, state: RunnerState):
+        outputs = state.output[self.output_key].detach()
+        targets = state.input[self.input_key].detach()
+
+        # Binarize outputs as we don't want to compute soft-jaccard
+        outputs = (outputs > 0).float()
+
+        intersection = float(torch.sum(targets * outputs))
+        union = float(torch.sum(targets) + torch.sum(outputs))
+        self.intersection += intersection
+        self.union += union
+
+    def on_loader_end(self, state):
+        metric_name = self.prefix
+        eps = 1e-7
+        metric = self.intersection / (self.union - self.intersection + eps)
+        state.metrics.epoch_values[state.loader_name][metric_name] = metric
+
+        logger = _get_tensorboard_logger(state)
+        logger.add_scalar(f"{self.prefix}/epoch", metric, global_step=state.epoch)
+
+
+def pixel_accuracy(outputs, targets):
+    """
+    Computes the pixel accuracy
+    """
+    outputs = (outputs.detach() > 0).float()
+
+    correct = float(torch.sum(outputs == targets.detach()))
+    total = targets.numel()
+    return correct / total
+
+
+class PixelAccuracyMetric(MetricCallback):
+    """
+    Pixel accuracy metric callback
+    """
+
+    def __init__(
+            self,
+            input_key: str = "targets",
+            output_key: str = "logits",
+            prefix: str = "accuracy",
+    ):
+        """
+        :param input_key: input key to use for iou calculation;
+            specifies our `y_true`.
+        :param output_key: output key to use for iou calculation;
+            specifies our `y_pred`
+        """
+        super().__init__(
+            prefix=prefix,
+            metric_fn=pixel_accuracy,
+            input_key=input_key,
+            output_key=output_key,
+        )
+
+
+class EpochMacroF1Metric(Callback):
     """
     Macro F1 epoch-wise metric callback.
     """
@@ -140,6 +226,9 @@ class MacroF1Callback(Callback):
 
         metric = self.metric_fn(outputs, targets)
         state.metrics.epoch_values[state.loader_name][metric_name] = metric
+
+        logger = _get_tensorboard_logger(state)
+        logger.add_scalar(f"{self.prefix}/epoch", metric, global_step=state.epoch)
 
 
 class ConfusionMatrixCallback(Callback):

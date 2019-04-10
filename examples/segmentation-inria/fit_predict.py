@@ -12,7 +12,7 @@ import torch
 from catalyst.contrib.models import UNet
 from catalyst.dl.callbacks import EarlyStoppingCallback, UtilsFactory, JaccardCallback, PrecisionCallback
 from catalyst.dl.experiments import SupervisedRunner
-from pytorch_toolbelt.utils.catalyst_utils import ShowPolarBatchesCallback
+from pytorch_toolbelt.utils.catalyst_utils import ShowPolarBatchesCallback, EpochJaccardMetric, PixelAccuracyMetric
 from pytorch_toolbelt.utils.dataset_utils import ImageMaskDataset, TiledImageMaskDataset
 from pytorch_toolbelt.utils.fs import auto_file, find_in_dir, id_from_fname, read_rgb_image, read_image_as_is
 from pytorch_toolbelt.utils.random import set_manual_seed
@@ -52,7 +52,7 @@ def get_optimizer(optimizer_name: str, parameters, lr: float, **kwargs):
     from torch import optim as O
 
     if optimizer_name.lower() == 'sgd':
-        return O.SGD(parameters, lr, **kwargs)
+        return O.SGD(parameters, lr, momentum=0.9, weight_decay=1e-4, **kwargs)
 
     if optimizer_name.lower() == 'adam':
         return O.Adam(parameters, lr, **kwargs)
@@ -64,20 +64,32 @@ def get_dataloaders(data_dir: str,
                     batch_size=16,
                     num_workers=4,
                     fast=False,
-                    image_size=(224, 224)):
-    all_images = sorted(find_in_dir(os.path.join(data_dir, 'train', 'images')))
-    all_masks = sorted(find_in_dir(os.path.join(data_dir, 'train', 'gt')))
-    region = [id_from_fname(fname)[:6] for fname in all_images]
-    train_img, valid_img, train_mask, valid_mask = train_test_split(all_images, all_masks, random_state=1234, test_size=0.1, stratify=region)
+                    image_size=(224, 224),
+                    use_d4=True):
+    locations = ['austin', 'chicago', 'kitsap', 'tyrol-w', 'vienna']
 
-    fast_size = batch_size * 4
-    if fast and len(train_img) > fast_size:
-        train_img = train_img[:batch_size * 4]
-        train_mask = train_mask[:batch_size * 4]
+    train_data = []
+    valid_data = []
 
-    if fast and len(valid_img) > fast_size:
-        valid_img = valid_img[:batch_size * 4]
-        valid_mask = valid_mask[:batch_size * 4]
+    # For validation, we suggest to remove the first five images of every location (e.g., austin{1-5}.tif, chicago{1-5}.tif) from the training set.
+    for loc in locations:
+        for i in range(1, 6):
+            valid_data.append(f'{loc}{i}')
+        for i in range(6, 37):
+            train_data.append(f'{loc}{i}')
+
+    train_img = [os.path.join(data_dir, 'train', 'images', f'{fname}.tif') for fname in train_data]
+    valid_img = [os.path.join(data_dir, 'train', 'images', f'{fname}.tif') for fname in valid_data]
+
+    train_mask = [os.path.join(data_dir, 'train', 'gt', f'{fname}.tif') for fname in train_data]
+    valid_mask = [os.path.join(data_dir, 'train', 'gt', f'{fname}.tif') for fname in valid_data]
+
+    if fast:
+        train_img = train_img[:1]
+        train_mask = train_mask[:1]
+
+        valid_img = valid_img[:1]
+        valid_mask = valid_mask[:1]
 
     train_transform = A.Compose([
         # Make random-sized crop with scale [50%..200%] of target size 1.5 larger than target crop to have some space around for
@@ -102,8 +114,12 @@ def get_dataloaders(data_dir: str,
         A.CenterCrop(image_size[0], image_size[1]),
 
         # D4 Augmentations
-        A.Transpose(),
-        A.RandomRotate90(),
+        A.Compose([
+            A.Transpose(),
+            A.RandomRotate90(),
+        ], p=float(use_d4)),
+        # In case we don't want to use D4 augmentations, we use flips
+        A.HorizontalFlip(p=float(not use_d4)),
 
         # Spatial-preserving augmentations:
         A.OneOf([
@@ -127,9 +143,13 @@ def get_dataloaders(data_dir: str,
         # Normalize image to make use of pretrained model
         A.Normalize()
     ])
-    trainset = ImageMaskDataset(train_img, train_mask, read_rgb_image, read_inria_mask, transform=train_transform)
 
-    validset = TiledImageMaskDataset(valid_img, valid_mask, read_rgb_image, read_inria_mask, transform=A.Normalize(),
+    trainset = ImageMaskDataset(train_img, train_mask, read_rgb_image, read_inria_mask,
+                                transform=train_transform,
+                                keep_in_mem=fast)
+
+    validset = TiledImageMaskDataset(valid_img, valid_mask, read_rgb_image, read_inria_mask,
+                                     transform=A.Normalize(),
                                      # For validation we don't want tiles overlap
                                      tile_size=image_size,
                                      tile_step=image_size,
@@ -147,7 +167,7 @@ def get_dataloaders(data_dir: str,
 
     validloader = DataLoader(validset,
                              batch_size=batch_size,
-                             num_workers=num_workers,
+                             num_workers=0,
                              pin_memory=True,
                              shuffle=False)
 
@@ -228,6 +248,22 @@ def main():
     if args.checkpoint:
         checkpoint = UtilsFactory.load_checkpoint(auto_file(args.checkpoint))
         UtilsFactory.unpack_checkpoint(checkpoint, model=model)
+
+        checkpoint_epoch = checkpoint['epoch']
+        print('Loaded model weights from', args.checkpoint)
+        print('Epoch   :', checkpoint_epoch)
+        print('Metrics:', checkpoint['epoch_metrics'])
+
+        try:
+            UtilsFactory.unpack_checkpoint(checkpoint, optimizer=optimizer)
+        except Exception as e:
+            print('Failed to restore optimizer state', e)
+
+        try:
+            UtilsFactory.unpack_checkpoint(checkpoint, scheduler=scheduler)
+        except Exception as e:
+            print('Failed to restore scheduler state', e)
+
         print('Loaded model weights from', args.checkpoint)
 
     current_time = datetime.now().strftime('%b%d_%H_%M')
@@ -256,8 +292,9 @@ def main():
         optimizer=optimizer,
         scheduler=scheduler,
         callbacks=[
-            JaccardCallback(),
-            ShowPolarBatchesCallback(visualize_inria_predictions, metric='jaccard', minimize=False),
+            PixelAccuracyMetric(),
+            EpochJaccardMetric(),
+            ShowPolarBatchesCallback(visualize_inria_predictions, metric='loss', minimize=True),
             EarlyStoppingCallback(patience=5, min_delta=0.01, metric='jaccard', minimize=False),
         ],
         loaders=loaders,
@@ -269,8 +306,8 @@ def main():
     )
 
     # Training is finished. Let's run predictions using best checkpointing weights
-    best_checkpoint = UtilsFactory.load_checkpoint(auto_file('best.pth', where=log_dir))
-    UtilsFactory.unpack_checkpoint(best_checkpoint, model=model)
+    # best_checkpoint = UtilsFactory.load_checkpoint(auto_file('best.pth', where=log_dir))
+    # UtilsFactory.unpack_checkpoint(best_checkpoint, model=model)
 
 
 if __name__ == '__main__':

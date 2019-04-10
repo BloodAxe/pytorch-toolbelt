@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, List
 
 from pytorch_toolbelt.inference.tiles import ImageSlicer
 from pytorch_toolbelt.utils.torch_utils import tensor_from_rgb_image, tensor_from_mask_image
@@ -6,11 +6,11 @@ from torch.utils.data import Dataset, ConcatDataset
 
 
 class ImageMaskDataset(Dataset):
-    def __init__(self, image_filenames, target_filenames, image_loader, target_loader, transform=None, load_in_ram=False):
+    def __init__(self, image_filenames, target_filenames, image_loader, target_loader, transform=None, keep_in_mem=False):
         if len(image_filenames) != len(target_filenames):
             raise ValueError('Number of images does not corresponds to number of targets')
 
-        if load_in_ram:
+        if keep_in_mem:
             self.image_filenames = [image_loader(fname) for fname in image_filenames]
             self.target_filenames = [target_loader(fname) for fname in target_filenames]
             self.image_loader = lambda x: x
@@ -97,8 +97,8 @@ class TiledSingleImageDataset(Dataset):
 
 class TiledImageMaskDataset(ConcatDataset):
     def __init__(self,
-                 image_filenames: str,
-                 target_filenames: str,
+                 image_filenames: List[str],
+                 target_filenames: List[str],
                  image_loader: Callable,
                  target_loader: Callable,
                  **kwargs):
