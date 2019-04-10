@@ -6,6 +6,8 @@ from torch.nn.modules.loss import _Loss
 
 from .functional import soft_jaccard_score
 
+__all__ = ['BinaryJaccardLoss', 'BinaryJaccardLogLoss', 'MulticlassJaccardLoss']
+
 
 class BinaryJaccardLoss(_Loss):
     """Implementation of Jaccard loss for binary image segmentation task
@@ -24,6 +26,9 @@ class BinaryJaccardLoss(_Loss):
         :param y_true: NxHxW
         :return: scalar
         """
+        if y_true.sum() == 0:
+            return 0
+
         iou = soft_jaccard_score(y_pred, y_true, from_logits=self.from_logits, smooth=self.smooth)
         loss = (1.0 - iou)
 
@@ -35,7 +40,7 @@ class BinaryJaccardLogLoss(_Loss):
     """
 
     def __init__(self, from_logits=True, weight=None, smooth=1e-3):
-        super(BinaryJaccardLoss, self).__init__()
+        super(BinaryJaccardLogLoss, self).__init__()
         self.from_logits = from_logits
         self.weight = weight
         self.smooth = smooth
@@ -47,6 +52,9 @@ class BinaryJaccardLogLoss(_Loss):
         :param y_true: NxHxW
         :return: scalar
         """
+        if y_true.sum() == 0:
+            return 0
+
         iou = soft_jaccard_score(y_pred, y_true, from_logits=self.from_logits, smooth=self.smooth)
         loss = - torch.log(iou)
         return loss
