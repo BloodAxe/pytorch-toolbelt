@@ -2,13 +2,13 @@ import torch
 from torch import nn
 
 from .unet import UnetCentralBlock, UnetDecoderBlock
-from .fpn import FPNDecoderBlock, FPNBlock, FPNFuse
+from .fpn import FPNFuse, FPNBottleneckBlock, FPNPredictionBlock
 
 import torch.nn.functional as F
 
 
 class DecoderModule(nn.Module):
-    def __init__(self, features, strides):
+    def __init__(self):
         super().__init__()
 
     def forward(self, features):
@@ -16,8 +16,8 @@ class DecoderModule(nn.Module):
 
 
 class UNetDecoder(DecoderModule):
-    def __init__(self, features, strides, start_features: int, dilation_factors=[1, 1, 1, 1], **kwargs):
-        super().__init__(features, strides)
+    def __init__(self, features, start_features: int, dilation_factors=[1, 1, 1, 1], **kwargs):
+        super().__init__()
         decoder_features = start_features
         reversed_features = list(reversed(features))
 
@@ -49,34 +49,28 @@ class UNetDecoder(DecoderModule):
 
 
 class FPNDecoder(DecoderModule):
-    def __init__(self, features, strides, decoder_features=256, fpn_features=128, dropout=0.0, dilation=None, **kwargs):
-        super().__init__(features, strides)
-        reversed_features = list(reversed(features))
+    def __init__(self, features,
+                 fpn_features=128,
+                 bottleneck=FPNBottleneckBlock,
+                 merge_block=FPNPredictionBlock,
+                 **kwargs):
+        super().__init__()
 
-        decoder_blocks = []
-        fpn_blocks = []
-        if dilation is None:
-            dilation = [1] * len(features)
+        self.bottlenecks = nn.ModuleList([bottleneck(input_channels, fpn_features) for input_channels in features])
+        self.predictors = nn.ModuleList([merge_block(fpn_features, fpn_features) for _ in features])
 
-        for block_index, (encoder_features, decoder_dilation) in enumerate(zip(reversed_features, reversed(dilation))):
-            decoder_blocks.append(FPNDecoderBlock(encoder_features, decoder_features))
-            fpn_blocks.append(FPNBlock(decoder_features, fpn_features, dropout=dropout, dilation=decoder_dilation))
-
-        self.decoder_blocks = nn.ModuleList(decoder_blocks)
-        self.fpn_blocks = nn.ModuleList(fpn_blocks)
-        self.fpn_fuse = FPNFuse()
-        self.output_filters = [len(fpn_blocks) * fpn_features]
+        self.output_filters = [fpn_features] * len(features)
 
     def forward(self, features):
-        reversed_features = list(reversed(features))
-        decoder_outputs = []
         fpn_outputs = []
-        for block_index, decoder_block, fpn_block, encoder_output in zip(range(len(self.decoder_blocks)), self.decoder_blocks, self.fpn_blocks, reversed_features):
-            decoder = decoder_block(encoder_output, decoder_outputs[-1] if len(decoder_outputs) else None)
-            decoder_outputs.append(decoder)
 
-            fpn = fpn_block(decoder)
-            fpn_outputs.append(fpn)
+        for feature_map, bottleneck, fpn_block in zip(reversed(features),
+                                                      reversed(self.bottlenecks),
+                                                      reversed(self.predictors)):
+            feature_map = bottleneck(feature_map)
+            prev_fpn = fpn_outputs[-1] if len(fpn_outputs) else None
+            y = fpn_block(feature_map, prev_fpn)
+            fpn_outputs.append(y)
 
-        x = self.fpn_fuse(fpn_outputs)
-        return [x]
+        # Reverse list of fpn features to match with order of input features
+        return list(reversed(fpn_outputs))

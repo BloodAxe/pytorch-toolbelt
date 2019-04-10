@@ -5,12 +5,28 @@ import torch.nn.functional as F
 from .abn import ABN, ACT_RELU
 
 
+class UnetEncoderBlock(nn.Module):
+    def __init__(self, in_dec_filters, out_filters, abn_block=ABN, activation=ACT_RELU, **kwargs):
+        super().__init__()
+        self.conv1 = nn.Conv2d(in_dec_filters, out_filters, kernel_size=3, padding=1, stride=1, bias=False, **kwargs)
+        self.bn1 = abn_block(out_filters, activation=activation)
+        self.conv2 = nn.Conv2d(out_filters, out_filters, kernel_size=3, padding=1, stride=1, bias=False, **kwargs)
+        self.bn2 = abn_block(out_filters, activation=activation)
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.conv2(x)
+        x = self.bn2(x)
+        return x
+
+
 class UnetCentralBlock(nn.Module):
     def __init__(self, in_dec_filters, out_filters, abn_block=ABN, activation=ACT_RELU, **kwargs):
         super().__init__()
-        self.conv1 = nn.Conv2d(in_dec_filters, out_filters, kernel_size=3, padding=1, stride=2, **kwargs)
+        self.conv1 = nn.Conv2d(in_dec_filters, out_filters, kernel_size=3, padding=1, stride=2, bias=False, **kwargs)
         self.bn1 = abn_block(out_filters, activation=activation)
-        self.conv2 = nn.Conv2d(out_filters, out_filters, kernel_size=3, padding=1, **kwargs)
+        self.conv2 = nn.Conv2d(out_filters, out_filters, kernel_size=3, padding=1, bias=False, **kwargs)
         self.bn2 = abn_block(out_filters, activation=activation)
 
     def forward(self, x):

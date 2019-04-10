@@ -8,54 +8,40 @@ from .scse import ChannelSpatialGate2dV2
 from .abn import ABN, ACT_ELU, ACT_SELU
 
 
-class FPNDecoderBlock(nn.Module):
-    def __init__(self, encoder_features, decoder_features):
+class FPNBottleneckBlock(nn.Module):
+    def __init__(self, input_channels, output_channels):
         super().__init__()
-        self.bottleneck = nn.Conv2d(encoder_features, decoder_features, kernel_size=1)
+        self.conv = nn.Conv2d(input_channels, output_channels, kernel_size=1)
 
-    def forward(self, enc, dec=None):
-        x = self.bottleneck(enc)
-        if dec is not None:
-            x = x + F.interpolate(dec, size=enc.size()[2:], mode='bilinear', align_corners=True)
-
+    def forward(self, x):
+        x = self.conv(x)
         return x
 
 
-class FPNBlock(nn.Module):
-    def __init__(self, input_features, output_features, dropout=0.0, dilation=1):
+class FPNBottleneckBlockBN(nn.Module):
+    def __init__(self, input_channels, output_channels):
         super().__init__()
-        self.conv1 = nn.Conv2d(input_features, output_features, kernel_size=3, padding=1 * dilation, dilation=dilation, bias=False)
-        self.abn1 = ABN(output_features, output_features, activation=ACT_SELU)
-        self.conv2 = nn.Conv2d(output_features, output_features, kernel_size=3, padding=1, bias=False)
-        self.abn2 = ABN(output_features, output_features, activation=ACT_SELU)
-        self.dropout = nn.Dropout2d(dropout)
+        self.conv = nn.Conv2d(input_channels, output_channels, kernel_size=1, bias=False)
+        self.bn = nn.BatchNorm2d(output_channels)
 
     def forward(self, x):
-        x = self.conv1(x)
-        x = self.abn1(x)
-        x = self.conv2(x)
-        x = self.abn2(x)
-        x = self.dropout(x)
+        x = self.conv(x)
         return x
 
 
-class FPNBlockSCSE(nn.Module):
-    def __init__(self, input_features, output_features, dropout=0.0, dilation=1):
+class FPNPredictionBlock(nn.Module):
+    def __init__(self, input_channels, output_channels, mode='nearest'):
         super().__init__()
-        self.conv1 = nn.Conv2d(input_features, output_features, kernel_size=3, padding=1 * dilation, dilation=dilation, bias=False)
-        self.abn1 = ABN(output_features, output_features, activation=ACT_SELU)
-        self.conv2 = nn.Conv2d(output_features, output_features, kernel_size=3, padding=1, bias=False)
-        self.abn2 = ABN(output_features, output_features, activation=ACT_SELU)
-        self.scse = ChannelSpatialGate2dV2(output_features)
-        self.dropout = nn.Dropout2d(dropout)
+        self.input_channels = input_channels
+        self.output_channels = output_channels
+        self.conv = nn.Conv2d(self.input_channels, self.output_channels, kernel_size=3, padding=1)
+        self.mode = mode
 
-    def forward(self, x):
-        x = self.conv1(x)
-        x = self.abn1(x)
-        x = self.conv2(x)
-        x = self.abn2(x)
-        x = self.scse(x)
-        x = self.dropout(x)
+    def forward(self, x, y=None):
+        if y is not None:
+            x = x + F.interpolate(y, size=x.size()[2:], mode=self.mode, align_corners=True if self.mode == 'bilinear' else None)
+
+        x = self.conv(x)
         return x
 
 
