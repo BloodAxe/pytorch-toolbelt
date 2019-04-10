@@ -6,12 +6,15 @@ import os
 from datetime import datetime
 
 import albumentations as A
+import catalyst
 import cv2
 import numpy as np
 import torch
 from catalyst.contrib.models import UNet
 from catalyst.dl.callbacks import EarlyStoppingCallback, UtilsFactory, JaccardCallback, PrecisionCallback
 from catalyst.dl.experiments import SupervisedRunner
+
+from pytorch_toolbelt.losses.focal import BinaryFocalLoss
 from pytorch_toolbelt.utils.catalyst_utils import ShowPolarBatchesCallback, EpochJaccardMetric, PixelAccuracyMetric
 from pytorch_toolbelt.utils.dataset_utils import ImageMaskDataset, TiledImageMaskDataset
 from pytorch_toolbelt.utils.fs import auto_file, find_in_dir, id_from_fname, read_rgb_image, read_image_as_is
@@ -97,32 +100,32 @@ def get_dataloaders(data_dir: str,
     train_transform = A.Compose([
         # Make random-sized crop with scale [50%..200%] of target size 1.5 larger than target crop to have some space around for
         # further transforms
-        A.RandomSizedCrop((image_size[0] // 2, image_size[0] * 2), int(image_size[0] * 1.5), int(image_size[1] * 1.5)),
+        A.RandomSizedCrop((3 * image_size[0] // 4, image_size[0] * 4 // 3), int(image_size[0]), int(image_size[1])),
 
         # Apply random rotations
-        A.ShiftScaleRotate(shift_limit=0, scale_limit=0, rotate_limit=45, border_mode=cv2.BORDER_CONSTANT),
-        A.OneOf([
-            A.GridDistortion(border_mode=cv2.BORDER_CONSTANT),
-            A.ElasticTransform(border_mode=cv2.BORDER_CONSTANT),
-        ]),
+        # A.ShiftScaleRotate(shift_limit=0, scale_limit=0, rotate_limit=5, border_mode=cv2.BORDER_CONSTANT),
+        # A.OneOf([
+        #     A.GridDistortion(border_mode=cv2.BORDER_CONSTANT),
+        #     A.ElasticTransform(border_mode=cv2.BORDER_CONSTANT),
+        # ]),
 
         # Add occasion blur/sharpening
-        A.OneOf([
-            A.GaussianBlur(),
-            A.MotionBlur(),
-            A.IAASharpen()
-        ]),
+        # A.OneOf([
+        #     A.GaussianBlur(),
+        #     A.MotionBlur(),
+        #     A.IAASharpen()
+        # ]),
 
         # Crop to desired image size
-        A.CenterCrop(image_size[0], image_size[1]),
+        # A.CenterCrop(image_size[0], image_size[1]),
 
         # D4 Augmentations
-        A.Compose([
-            A.Transpose(),
-            A.RandomRotate90(),
-        ], p=float(use_d4)),
+        # A.Compose([
+        #     A.Transpose(),
+        #     A.RandomRotate90(),
+        # ], p=float(use_d4)),
         # In case we don't want to use D4 augmentations, we use flips
-        A.HorizontalFlip(p=float(not use_d4)),
+        A.HorizontalFlip(),
 
         # Spatial-preserving augmentations:
         A.OneOf([
@@ -214,7 +217,7 @@ def main():
     #     # parser.add_argument('-fe', '--freeze-encoder', type=int, default=0, help='Freeze encoder parameters for N epochs')
     #     # parser.add_argument('-ft', '--fine-tune', action='store_true')
     parser.add_argument('-lr', '--learning-rate', type=float, default=1e-4, help='Initial learning rate')
-    parser.add_argument('-o', '--optimizer', default='Adam', help='Name of the optimizer')
+    parser.add_argument('-o', '--optimizer', default='SGD', help='Name of the optimizer')
     parser.add_argument('-c', '--checkpoint', type=str, default=None, help='Checkpoint filename to use as initial model weights')
     parser.add_argument('-w', '--workers', default=8, type=int, help='Num workers')
 
@@ -257,20 +260,20 @@ def main():
         print('Epoch   :', checkpoint_epoch)
         print('Metrics:', checkpoint['epoch_metrics'])
 
-        try:
-            UtilsFactory.unpack_checkpoint(checkpoint, optimizer=optimizer)
-        except Exception as e:
-            print('Failed to restore optimizer state', e)
-
-        try:
-            UtilsFactory.unpack_checkpoint(checkpoint, scheduler=scheduler)
-        except Exception as e:
-            print('Failed to restore scheduler state', e)
+        # try:
+        #     UtilsFactory.unpack_checkpoint(checkpoint, optimizer=optimizer)
+        # except Exception as e:
+        #     print('Failed to restore optimizer state', e)
+        #
+        # try:
+        #     UtilsFactory.unpack_checkpoint(checkpoint, scheduler=scheduler)
+        # except Exception as e:
+        #     print('Failed to restore scheduler state', e)
 
         print('Loaded model weights from', args.checkpoint)
 
     current_time = datetime.now().strftime('%b%d_%H_%M')
-    prefix = f'{current_time}_{args.model}'
+    prefix = f'{current_time}_{args.model}_finetune'
     log_dir = os.path.join('runs', prefix)
     os.makedirs(log_dir, exist_ok=False)
 
@@ -292,6 +295,7 @@ def main():
     runner.train(
         model=model,
         criterion=BCEWithLogitsLoss(),
+        # criterion=BinaryFocalLoss(),
         optimizer=optimizer,
         scheduler=scheduler,
         callbacks=[
