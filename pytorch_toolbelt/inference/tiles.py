@@ -66,7 +66,7 @@ class ImageSlicer:
             'pyramid': self._pyramid
         }
 
-        self.compute_weight = weights[weight]
+        self.weight = weight if isinstance(weight, np.ndarray) else weights[weight](self.tile_size)
 
         if self.tile_step[0] < 1 or self.tile_step[0] > self.tile_size[0]:
             raise ValueError()
@@ -156,6 +156,11 @@ class ImageSlicer:
         assert tile.shape[1] == self.tile_size[1]
         return tile
 
+    @property
+    def target_shape(self):
+        target_shape = self.image_height + self.margin_bottom + self.margin_top, self.image_width + self.margin_right + self.margin_left
+        return target_shape
+
     def merge(self, tiles: List[np.ndarray], dtype=np.float32):
         if len(tiles) != len(self.crops):
             raise ValueError
@@ -166,8 +171,7 @@ class ImageSlicer:
         image = np.zeros(target_shape, dtype=np.float64)
         norm_mask = np.zeros(target_shape, dtype=np.float64)
 
-        weight = self.compute_weight(self.tile_size)
-        w = np.dstack([weight] * channels)
+        w = np.dstack([self.weight] * channels)
 
         for tile, (x, y, tile_width, tile_height) in zip(tiles, self.crops):
             # print(x, y, tile_width, tile_height, image.shape)
@@ -177,7 +181,13 @@ class ImageSlicer:
         # print(norm_mask.min(), norm_mask.max())
         norm_mask = np.clip(norm_mask, a_min=np.finfo(norm_mask.dtype).eps, a_max=None)
         normalized = np.divide(image, norm_mask).astype(dtype)
-        crop = normalized[self.margin_top:self.image_height + self.margin_top, self.margin_left:self.image_width + self.margin_left]
+        crop = self.crop_to_orignal_size(normalized)
+        return crop
+
+    def crop_to_orignal_size(self, image):
+        assert image.shape[0] == self.target_shape[0]
+        assert image.shape[1] == self.target_shape[1]
+        crop = image[self.margin_top:self.image_height + self.margin_top, self.margin_left:self.image_width + self.margin_left]
         assert crop.shape[0] == self.image_height
         assert crop.shape[1] == self.image_width
         return crop
@@ -217,12 +227,11 @@ class CudaTileMerger:
         :param crop_coords: Corresponding tile crops w.r.t to original image
         """
         if len(batch) != len(crop_coords):
-            raise ValueError
+            raise ValueError("Number of images in batch does not correspond to number of coordinates")
 
-        for tile, (x, batch, tile_width, tile_height) in zip(batch, crop_coords):
-            self.image[:, batch:batch + tile_height, x:x + tile_width] += tile * self.weight
-            self.norm_mask[:, batch:batch + tile_height, x:x + tile_width] += self.weight
+        for tile, (x, y, tile_width, tile_height) in zip(batch, crop_coords):
+            self.image[:, y:y + tile_height, x:x + tile_width] += tile * self.weight
+            self.norm_mask[:, y:y + tile_height, x:x + tile_width] += self.weight
 
     def merge(self) -> torch.Tensor:
-        self.image /= self.norm_mask
-        return self.image
+        return self.image / self.norm_mask

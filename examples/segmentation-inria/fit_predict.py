@@ -302,7 +302,8 @@ def main():
         num_epochs=num_epochs,
         verbose=True,
         main_metric='jaccard',
-        minimize_metric=False
+        minimize_metric=False,
+        state_kwargs=vars(args)
     )
 
     # Training is finished. Let's run predictions using best checkpointing weights
