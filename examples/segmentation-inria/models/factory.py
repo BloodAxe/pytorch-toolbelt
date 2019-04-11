@@ -125,7 +125,7 @@ def predict(model: nn.Module, image: np.ndarray, image_size, tta=None, normalize
 
     if tta == 'd4':
         model = TTAWrapperD4(model)
-        print('Using FlipLR TTA', model.crop_size)
+        print('Using D4 TTA')
 
     with torch.no_grad():
         data = list({'image': patch, 'coords': np.array(coords, dtype=np.int)} for (patch, coords) in zip(patches, tile_slicer.crops))
