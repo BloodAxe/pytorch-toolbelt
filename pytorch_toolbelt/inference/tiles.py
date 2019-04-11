@@ -58,8 +58,16 @@ class ImageSlicer:
         """
         self.image_height = image_shape[0]
         self.image_width = image_shape[1]
-        self.tile_size = (tile_size, tile_size) if isinstance(tile_size, int) else int(tile_size[0]), int(tile_size[1])
-        self.tile_step = (tile_step, tile_step) if isinstance(tile_step, int) else int(tile_step[0]), int(tile_step[1])
+
+        if isinstance(tile_size, tuple):
+            self.tile_size = int(tile_size[0]), int(tile_size[1])
+        else:
+            self.tile_size = int(tile_size), int(tile_size)
+
+        if isinstance(tile_step, tuple):
+            self.tile_step = int(tile_step[0]), int(tile_step[1])
+        else:
+            self.tile_step = int(tile_step), int(tile_step)
 
         weights = {
             'mean': self._mean,
