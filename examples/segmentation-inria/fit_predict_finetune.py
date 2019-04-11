@@ -162,7 +162,7 @@ def get_dataloaders(data_dir: str,
                                      tile_size=image_size,
                                      tile_step=image_size,
                                      target_shape=(5000, 5000),
-                                     keep_in_mem=True)
+                                     keep_in_mem=fast)
 
     num_train_samples = int(len(trainset) * (5000 * 5000) / (image_size[0] * image_size[1]))
 
@@ -289,7 +289,7 @@ def main():
     print('Model:', model_name)
     print('\tParameters:', count_parameters(model))
     print('\tImage size:', image_size)
-    print('Optimizer:', optimizer_name)
+    print('Optimizer:', optimizer_name, optimizer)
     print('\tLearning rate:', learning_rate)
     print('\tBatch size   :', batch_size)
 

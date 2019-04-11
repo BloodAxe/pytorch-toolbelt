@@ -117,12 +117,12 @@ class ImageSlicer:
                 self.crops.append((x, y, self.tile_size[1], self.tile_size[0]))
                 self.bbox_crops.append((x - self.margin_left, y - self.margin_top, self.tile_size[1], self.tile_size[0]))
 
-    def split(self, image, borderType=cv2.BORDER_REFLECT101, value=0):
+    def split(self, image, border_type=cv2.BORDER_CONSTANT, value=0):
         assert image.shape[0] == self.image_height
         assert image.shape[1] == self.image_width
 
         orig_shape_len = len(image.shape)
-        image = cv2.copyMakeBorder(image, self.margin_top, self.margin_bottom, self.margin_left, self.margin_right, borderType=borderType, value=value)
+        image = cv2.copyMakeBorder(image, self.margin_top, self.margin_bottom, self.margin_left, self.margin_right, borderType=border_type, value=value)
 
         # This check recovers possible lack of last dummy dimension for single-channel images
         if len(image.shape) != orig_shape_len:
@@ -138,12 +138,12 @@ class ImageSlicer:
 
         return tiles
 
-    def cut_patch(self, image: np.ndarray, slice_index, borderType=cv2.BORDER_REFLECT101, value=0):
+    def cut_patch(self, image: np.ndarray, slice_index, border_type=cv2.BORDER_CONSTANT, value=0):
         assert image.shape[0] == self.image_height
         assert image.shape[1] == self.image_width
 
         orig_shape_len = len(image.shape)
-        image = cv2.copyMakeBorder(image, self.margin_top, self.margin_bottom, self.margin_left, self.margin_right, borderType=borderType, value=value)
+        image = cv2.copyMakeBorder(image, self.margin_top, self.margin_bottom, self.margin_left, self.margin_right, borderType=border_type, value=value)
 
         # This check recovers possible lack of last dummy dimension for single-channel images
         if len(image.shape) != orig_shape_len:

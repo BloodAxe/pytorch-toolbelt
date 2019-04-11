@@ -1,13 +1,14 @@
 import argparse
 import os
+
 import cv2
 import numpy as np
 import torch
-
 from catalyst.dl.utils import UtilsFactory
-from tqdm import tqdm
-from pytorch_toolbelt.utils.fs import auto_file, find_in_dir, read_rgb_image
 from models.factory import get_model, predict
+from tqdm import tqdm
+
+from pytorch_toolbelt.utils.fs import auto_file, find_in_dir, read_rgb_image
 
 
 def main():
@@ -22,8 +23,10 @@ def main():
     data_dir = args.data_dir
     checkpoint_file = auto_file(args.checkpoint)
     run_dir = os.path.dirname(os.path.dirname(checkpoint_file))
-    out_dir = os.path.join(run_dir, 'submit')
+    out_dir = os.path.join(run_dir, 'evaluation')
     os.makedirs(out_dir, exist_ok=True)
+
+    model = get_model(args.model)
 
     checkpoint = UtilsFactory.load_checkpoint(checkpoint_file)
     checkpoint_epoch = checkpoint['epoch']
@@ -32,16 +35,15 @@ def main():
     print('Metrics (Train):', 'IoU:', checkpoint['epoch_metrics']['train']['jaccard'], 'Acc:', checkpoint['epoch_metrics']['train']['accuracy'])
     print('Metrics (Valid):', 'IoU:', checkpoint['epoch_metrics']['valid']['jaccard'], 'Acc:', checkpoint['epoch_metrics']['valid']['accuracy'])
 
-    model = get_model(args.model)
     UtilsFactory.unpack_checkpoint(checkpoint, model=model)
 
     model = model.cuda().eval()
 
-    test_images = find_in_dir(os.path.join(data_dir, 'test', 'images'))
-    for fname in tqdm(test_images, total=len(test_images)):
+    train_images = find_in_dir(os.path.join(data_dir, 'train', 'images'))
+    for fname in tqdm(train_images, total=len(train_images)):
         image = read_rgb_image(fname)
         mask = predict(model, image, tta=args.tta, image_size=(512, 512), batch_size=args.batch_size, activation='sigmoid')
-        mask = ((mask > 0.5) * 255).astype(np.uint8)
+        mask = (mask * 255).astype(np.uint8)
         name = os.path.join(out_dir, os.path.basename(fname))
         cv2.imwrite(name, mask)
 
