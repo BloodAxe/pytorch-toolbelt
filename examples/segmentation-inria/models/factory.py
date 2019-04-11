@@ -110,9 +110,8 @@ def predict(model: nn.Module, image: np.ndarray, image_size, tta=None, normalize
     model.eval()
     tile_step = (image_size[0] // 2, image_size[1] // 2)
 
-    w = np.ones(image_size, dtype=np.float32)
-    tile_slicer = ImageSlicer(image.shape, image_size, tile_step, weight=w)
-    tile_merger = CudaTileMerger(tile_slicer.target_shape, 1, w)
+    tile_slicer = ImageSlicer(image.shape, image_size, tile_step, weight='pyramid')
+    tile_merger = CudaTileMerger(tile_slicer.target_shape, 1, tile_slicer.weight)
     patches = tile_slicer.split(image)
 
     transform = A.Compose([
@@ -126,7 +125,7 @@ def predict(model: nn.Module, image: np.ndarray, image_size, tta=None, normalize
 
     if tta == 'd4':
         model = TTAWrapperD4(model)
-        print('Using FlipLR TTA', model.crop_size)
+        print('Using D4 TTA')
 
     with torch.no_grad():
         data = list({'image': patch, 'coords': np.array(coords, dtype=np.int)} for (patch, coords) in zip(patches, tile_slicer.crops))
@@ -152,7 +151,7 @@ def predict(model: nn.Module, image: np.ndarray, image_size, tta=None, normalize
 def __compute_ious(args):
     thresholds = np.arange(0, 256)
     gt, pred = args
-    gt = cv2.imread(gt) > 0 # Make binary {0,1}
+    gt = cv2.imread(gt) > 0  # Make binary {0,1}
     pred = cv2.imread(pred)
 
     pred_i = np.zeros_like(gt)
