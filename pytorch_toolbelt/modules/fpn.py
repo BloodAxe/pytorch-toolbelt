@@ -53,7 +53,7 @@ class FPNFuse(nn.Module):
 
     def forward(self, features):
         layers = []
-        dst_size = features[-1].size()[-2:]
+        dst_size = features[0].size()[-2:]
 
         for f in features:
             layers.append(F.interpolate(f, size=dst_size, mode=self.mode, align_corners=self.align_corners))

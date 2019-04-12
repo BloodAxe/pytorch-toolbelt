@@ -19,7 +19,21 @@ class SegmentationModel(nn.Module):
         self.encoder = encoder
         self.decoder = decoder
 
-        self.logits = nn.Conv2d(self.decoder.output_filters[-1], num_classes, kernel_size=1)
+        self.fpn_fuse = FPNFuse()
+
+        # Final Classifier
+        output_features = sum(self.decoder.output_filters)
+        self.finaldrop1 = nn.Dropout2d(p=0.5)
+
+        self.finaldeconv1 = nn.ConvTranspose2d(output_features, output_features // 2, kernel_size=2, stride=2)
+        self.finalrelu1 = nn.LeakyReLU(inplace=True)
+        self.finalconv1 = nn.Conv2d(output_features // 2, output_features // 2, 3, padding=1)
+
+        self.finaldeconv2 = nn.ConvTranspose2d(output_features // 2, output_features // 4, kernel_size=2, stride=2)
+        self.finalrelu2 = nn.LeakyReLU(inplace=True)
+        self.finalconv2 = nn.Conv2d(output_features // 4, output_features // 4, 3, padding=1)
+
+        self.logits = nn.Conv2d(output_features // 4, num_classes, kernel_size=1)
 
     def forward(self, x):
         x, pad = pad_tensor(x, 32)
@@ -27,12 +41,22 @@ class SegmentationModel(nn.Module):
         enc_features = self.encoder(x)
         dec_features = self.decoder(enc_features)
 
-        features = dec_features[-1]
-        logits = self.logits(features)
+        features = self.fpn_fuse(dec_features)
 
-        logits = F.interpolate(logits, size=(x.size(2), x.size(3)), mode='bilinear', align_corners=True)
-        logits = unpad_tensor(logits, pad)
-        return logits
+        # Final Classification
+        features = self.finaldrop1(features)  # Added dropout
+
+        features = self.finaldeconv1(features)
+        features = self.finalrelu1(features)
+        features = self.finalconv1(features)
+
+        features = self.finaldeconv2(features)
+        features = self.finalrelu2(features)
+        features = self.finalconv2(features)
+
+        features = self.logits(features)
+        features = unpad_tensor(features, pad)
+        return features
 
     def predict(self, x):
         logits = self.forward(x)

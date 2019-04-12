@@ -9,22 +9,17 @@ import albumentations as A
 import cv2
 import numpy as np
 import torch
-from catalyst.dl.callbacks import EarlyStoppingCallback, UtilsFactory, JaccardCallback, PrecisionCallback
+from catalyst.dl.callbacks import EarlyStoppingCallback, UtilsFactory, OneCycleLR
 from catalyst.dl.experiments import SupervisedRunner
+from torch.backends import cudnn
+from torch.optim import Adam
+from torch.utils.data import DataLoader, WeightedRandomSampler
 
-from pytorch_toolbelt.losses.focal import BinaryFocalLoss
 from pytorch_toolbelt.utils.catalyst_utils import ShowPolarBatchesCallback, EpochJaccardMetric, PixelAccuracyMetric
-from pytorch_toolbelt.utils.dataset_utils import ImageMaskDataset, TiledImageMaskDataset
+from pytorch_toolbelt.utils.dataset_utils import ImageMaskDataset, TiledImageMaskDataset, TiledSingleImageDataset
 from pytorch_toolbelt.utils.fs import auto_file, read_rgb_image, read_image_as_is
 from pytorch_toolbelt.utils.random import set_manual_seed
 from pytorch_toolbelt.utils.torch_utils import maybe_cuda, rgb_image_from_tensor, to_numpy, count_parameters
-from sklearn.model_selection import train_test_split
-from torch import nn
-from torch.backends import cudnn
-from torch.nn import BCEWithLogitsLoss
-from torch.optim import Adam
-from torch.utils.data import DataLoader, WeightedRandomSampler
-from models.linknet import LinkNet152, LinkNet34
 
 from models.factory import get_model, get_loss, get_optimizer
 
@@ -57,13 +52,6 @@ def get_dataloaders(data_dir: str,
 
     train_mask = [os.path.join(data_dir, 'train', 'gt', f'{fname}.tif') for fname in train_data]
     valid_mask = [os.path.join(data_dir, 'train', 'gt', f'{fname}.tif') for fname in valid_data]
-
-    if fast:
-        train_img = train_img[:1]
-        train_mask = train_mask[:1]
-
-        valid_img = valid_img[:1]
-        valid_mask = valid_mask[:1]
 
     train_transform = A.Compose([
         # Make random-sized crop with scale [50%..200%] of target size 1.5 larger than target crop to have some space around for
@@ -118,26 +106,44 @@ def get_dataloaders(data_dir: str,
         A.Normalize()
     ])
 
-    trainset = ImageMaskDataset(train_img, train_mask, read_rgb_image, read_inria_mask,
-                                transform=train_transform,
-                                keep_in_mem=fast)
+    if fast:
+        trainset = TiledSingleImageDataset(train_img[0], train_mask[0], read_rgb_image, read_inria_mask,
+                                           transform=train_transform,
+                                           tile_size=(int(image_size[0] * 2), int(image_size[1] * 2)),
+                                           tile_step=image_size,
+                                           keep_in_mem=True)
 
-    validset = TiledImageMaskDataset(valid_img, valid_mask, read_rgb_image, read_inria_mask,
-                                     transform=A.Normalize(),
-                                     # For validation we don't want tiles overlap
-                                     tile_size=image_size,
-                                     tile_step=image_size,
-                                     target_shape=(5000, 5000),
-                                     keep_in_mem=fast)
+        validset = TiledSingleImageDataset(valid_img[0], valid_mask[0], read_rgb_image, read_inria_mask,
+                                           transform=A.Normalize(),
+                                           # For validation we don't want tiles overlap
+                                           tile_size=image_size,
+                                           tile_step=image_size,
+                                           target_shape=(5000, 5000),
+                                           keep_in_mem=True)
+        train_sampler = None
+    else:
+        trainset = ImageMaskDataset(train_img, train_mask, read_rgb_image, read_inria_mask,
+                                    transform=train_transform,
+                                    keep_in_mem=False)
 
-    num_train_samples = int(len(trainset) * (5000 * 5000) / (image_size[0] * image_size[1]))
+        validset = TiledImageMaskDataset(valid_img, valid_mask, read_rgb_image, read_inria_mask,
+                                         transform=A.Normalize(),
+                                         # For validation we don't want tiles overlap
+                                         tile_size=image_size,
+                                         tile_step=image_size,
+                                         target_shape=(5000, 5000),
+                                         keep_in_mem=False)
+
+        num_train_samples = int(len(trainset) * (5000 * 5000) / (image_size[0] * image_size[1]))
+        train_sampler = WeightedRandomSampler(np.ones(len(trainset)), num_train_samples)
 
     trainloader = DataLoader(trainset,
                              batch_size=batch_size,
                              num_workers=num_workers,
                              pin_memory=True,
                              drop_last=True,
-                             sampler=WeightedRandomSampler(np.ones(len(trainset)), num_train_samples))
+                             shuffle=train_sampler is None,
+                             sampler=train_sampler)
 
     validloader = DataLoader(validset,
                              batch_size=batch_size,
@@ -150,7 +156,7 @@ def get_dataloaders(data_dir: str,
 
 def visualize_inria_predictions(input: dict, output: dict, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)):
     images = []
-    for image, target, logits in zip(input['features'], input['targets'], output['logits']):
+    for image, target, image_id, logits in zip(input['features'], input['targets'], input['image_id'], output['logits']):
         image = rgb_image_from_tensor(image, mean, std)
         target = to_numpy(target).squeeze(0)
         logits = to_numpy(logits).squeeze(0)
@@ -163,10 +169,9 @@ def visualize_inria_predictions(input: dict, output: dict, mean=(0.485, 0.456, 0
         overlay[true_mask & ~pred_mask] = np.array([250, 0, 0], dtype=overlay.dtype)  # Misses painted with red
         overlay[~true_mask & pred_mask] = np.array([250, 250, 0], dtype=overlay.dtype)  # False alarm painted with yellow
 
-        # overlay[logits > 0] += np.array([255, 0, 0], dtype=overlay.dtype)
-        # overlay[target > 0] += np.array([0, 255, 0], dtype=overlay.dtype)
-
         overlay = cv2.addWeighted(image, 0.5, overlay, 0.5, 0, dtype=cv2.CV_8U)
+        cv2.putText(overlay, str(image_id), (10, 15), cv2.FONT_HERSHEY_PLAIN, 1, (250, 250, 250))
+
         images.append(overlay)
     return images
 
@@ -267,8 +272,13 @@ def main():
         model=model,
         criterion=criterion,
         optimizer=optimizer,
-        scheduler=scheduler,
+        # scheduler=scheduler,
         callbacks=[
+            OneCycleLR(
+                cycle_len=num_epochs,
+                div_factor=10,
+                increase_fraction=0.3,
+                momentum_range=(0.95, 0.85)),
             PixelAccuracyMetric(),
             EpochJaccardMetric(),
             ShowPolarBatchesCallback(visualize_inria_predictions, metric='accuracy', minimize=False),

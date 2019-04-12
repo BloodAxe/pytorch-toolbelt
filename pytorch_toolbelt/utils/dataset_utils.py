@@ -1,6 +1,7 @@
 from typing import Callable, List
 
 from pytorch_toolbelt.inference.tiles import ImageSlicer
+from pytorch_toolbelt.utils.fs import id_from_fname
 from pytorch_toolbelt.utils.torch_utils import tensor_from_rgb_image, tensor_from_mask_image
 from torch.utils.data import Dataset, ConcatDataset
 
@@ -10,30 +11,33 @@ class ImageMaskDataset(Dataset):
         if len(image_filenames) != len(target_filenames):
             raise ValueError('Number of images does not corresponds to number of targets')
 
+        self.image_ids = [id_from_fname(fname) for fname in image_filenames]
+
         if keep_in_mem:
-            self.image_filenames = [image_loader(fname) for fname in image_filenames]
-            self.target_filenames = [target_loader(fname) for fname in target_filenames]
-            self.image_loader = lambda x: x
-            self.target_loader = lambda x: x
+            self.images = [image_loader(fname) for fname in image_filenames]
+            self.masks = [target_loader(fname) for fname in target_filenames]
+            self.get_image = lambda x: x
+            self.get_loader = lambda x: x
         else:
-            self.image_filenames = image_filenames
-            self.target_filenames = target_filenames
-            self.image_loader = image_loader
-            self.target_loader = target_loader
+            self.images = image_filenames
+            self.masks = target_filenames
+            self.get_image = image_loader
+            self.get_loader = target_loader
 
         self.transform = transform
 
     def __len__(self):
-        return len(self.image_filenames)
+        return len(self.images)
 
     def __getitem__(self, index):
-        image = self.image_loader(self.image_filenames[index])
-        mask = self.target_loader(self.target_filenames[index])
+        image = self.get_image(self.images[index])
+        mask = self.get_loader(self.masks[index])
 
         data = self.transform(image=image, mask=mask)
 
         return {'features': tensor_from_rgb_image(data['image']),
-                'targets': tensor_from_mask_image(data['mask']).float()}
+                'targets': tensor_from_mask_image(data['mask']).float(),
+                'image_id': self.image_ids[index]}
 
 
 class TiledSingleImageDataset(Dataset):
@@ -68,6 +72,7 @@ class TiledSingleImageDataset(Dataset):
 
         self.slicer = ImageSlicer(target_shape, tile_size, tile_step, image_margin)
         self.transform = transform
+        self.image_ids = [id_from_fname(image_fname) + f' [{crop[0]};{crop[1]};{crop[2]};{crop[3]};]' for crop in self.slicer.crops]
 
     def _get_image(self, index):
         if self.image is None:
@@ -92,7 +97,8 @@ class TiledSingleImageDataset(Dataset):
         data = self.transform(image=image, mask=mask)
 
         return {'features': tensor_from_rgb_image(data['image']),
-                'targets': tensor_from_mask_image(data['mask']).float()}
+                'targets': tensor_from_mask_image(data['mask']).float(),
+                'image_id': self.image_ids[index]}
 
 
 class TiledImageMaskDataset(ConcatDataset):

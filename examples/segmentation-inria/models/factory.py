@@ -27,7 +27,7 @@ from .unet import UNet
 
 def get_model(model_name: str, image_size=None) -> nn.Module:
     if model_name == 'unet':
-        return UNet()
+        return UNet(upsample=False)
 
     if model_name == 'fpn_resnext50':
         return fpn_resnext50()
@@ -48,7 +48,7 @@ def get_optimizer(optimizer_name: str, parameters, lr: float, **kwargs):
     from torch import optim as O
 
     if optimizer_name.lower() == 'sgd':
-        return O.SGD(parameters, lr, momentum=0.9, weight_decay=1e-4, **kwargs)
+        return O.SGD(parameters, lr, momentum=0.9, nesterov=True, **kwargs)
 
     if optimizer_name.lower() == 'adam':
         return O.Adam(parameters, lr, **kwargs)
