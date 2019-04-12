@@ -19,8 +19,7 @@ __all__ = ['BinaryLovaszLoss', 'LovaszLoss']
 
 
 def _lovasz_grad(gt_sorted):
-    """
-    Computes gradient of the Lovasz extension w.r.t sorted errors
+    """Compute gradient of the Lovasz extension w.r.t sorted errors
     See Alg. 1 in paper
     """
     p = len(gt_sorted)
@@ -36,10 +35,10 @@ def _lovasz_grad(gt_sorted):
 def _lovasz_hinge(logits, labels, per_image=True, ignore=None):
     """
     Binary Lovasz hinge loss
-      logits: [B, H, W] Variable, logits at each pixel (between -\infty and +\infty)
-      labels: [B, H, W] Tensor, binary ground truth masks (0 or 1)
-      per_image: compute the loss per image instead of per batch
-      ignore: void class id
+        logits: [B, H, W] Variable, logits at each pixel (between -infinity and +infinity)
+        labels: [B, H, W] Tensor, binary ground truth masks (0 or 1)
+        per_image: compute the loss per image instead of per batch
+        ignore: void class id
     """
     if per_image:
         loss = mean(_lovasz_hinge_flat(*_flatten_binary_scores(log.unsqueeze(0), lab.unsqueeze(0), ignore))
@@ -50,11 +49,11 @@ def _lovasz_hinge(logits, labels, per_image=True, ignore=None):
 
 
 def _lovasz_hinge_flat(logits, labels):
-    """
-    Binary Lovasz hinge loss
-      logits: [P] Variable, logits at each prediction (between -\infty and +\infty)
-      labels: [P] Tensor, binary ground truth labels (0 or 1)
-      ignore: label to ignore
+    """Binary Lovasz hinge loss
+    Args:
+        logits: [P] Variable, logits at each prediction (between -iinfinity and +iinfinity)
+        labels: [P] Tensor, binary ground truth labels (0 or 1)
+        ignore: label to ignore
     """
     if len(labels) == 0:
         # only void pixels, the gradients should be 0
@@ -70,8 +69,7 @@ def _lovasz_hinge_flat(logits, labels):
 
 
 def _flatten_binary_scores(scores, labels, ignore=None):
-    """
-    Flattens predictions in the batch (binary case)
+    """Flattens predictions in the batch (binary case)
     Remove labels equal to 'ignore'
     """
     scores = scores.view(-1)
@@ -88,8 +86,7 @@ def _flatten_binary_scores(scores, labels, ignore=None):
 
 
 def _lovasz_softmax(probas, labels, classes='present', per_image=False, ignore=None):
-    """
-    Multi-class Lovasz-Softmax loss
+    """Multi-class Lovasz-Softmax loss
       probas: [B, C, H, W] Variable, class probabilities at each prediction (between 0 and 1).
               Interpreted as binary (sigmoid) output with outputs of size [B, H, W].
       labels: [B, H, W] Tensor, ground truth labels (between 0 and C - 1)
@@ -106,11 +103,11 @@ def _lovasz_softmax(probas, labels, classes='present', per_image=False, ignore=N
 
 
 def _lovasz_softmax_flat(probas, labels, classes='present'):
-    """
-    Multi-class Lovasz-Softmax loss
-      probas: [P, C] Variable, class probabilities at each prediction (between 0 and 1)
-      labels: [P] Tensor, ground truth labels (between 0 and C - 1)
-      classes: 'all' for all, 'present' for classes present in labels, or a list of classes to average.
+    """Multi-class Lovasz-Softmax loss
+    Args:
+        probas: [P, C] Variable, class probabilities at each prediction (between 0 and 1)
+        labels: [P] Tensor, ground truth labels (between 0 and C - 1)
+        classes: 'all' for all, 'present' for classes present in labels, or a list of classes to average.
     """
     if probas.numel() == 0:
         # only void pixels, the gradients should be 0
@@ -137,8 +134,7 @@ def _lovasz_softmax_flat(probas, labels, classes='present'):
 
 
 def _flatten_probas(probas, labels, ignore=None):
-    """
-    Flattens predictions in the batch
+    """Flattens predictions in the batch
     """
     if probas.dim() == 3:
         # assumes output of a sigmoid layer
@@ -161,8 +157,7 @@ def isnan(x):
 
 
 def mean(l, ignore_nan=False, empty=0):
-    """
-    nanmean compatible with generators.
+    """Nanmean compatible with generators.
     """
     l = iter(l)
     if ignore_nan:

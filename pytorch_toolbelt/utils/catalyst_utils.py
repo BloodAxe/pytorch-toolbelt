@@ -96,19 +96,11 @@ class EpochJaccardMetric(Callback):
     Jaccard metric callback which is computed across whole epoch, not per-batch.
     """
 
-    def __init__(
-            self,
-            input_key: str = "targets",
-            output_key: str = "logits",
-            prefix: str = "jaccard",
-            eps: float = 1e-7
-    ):
+    def __init__(self, input_key: str = "targets", output_key: str = "logits", prefix: str = "jaccard"):
         """
-             :param input_key: input key to use for precision calculation;
-                 specifies our `y_true`.
-             :param output_key: output key to use for precision calculation;
-                 specifies our `y_pred`.
-             """
+        :param input_key: input key to use for precision calculation; specifies our `y_true`.
+        :param output_key: output key to use for precision calculation; specifies our `y_pred`.
+        """
         self.prefix = prefix
         self.output_key = output_key
         self.input_key = input_key
@@ -142,8 +134,7 @@ class EpochJaccardMetric(Callback):
 
 
 def pixel_accuracy(outputs, targets):
-    """
-    Computes the pixel accuracy
+    """Compute the pixel accuracy
     """
     outputs = (outputs.detach() > 0).float()
 
@@ -153,8 +144,7 @@ def pixel_accuracy(outputs, targets):
 
 
 class PixelAccuracyMetric(MetricCallback):
-    """
-    Pixel accuracy metric callback
+    """Pixel accuracy metric callback
     """
 
     def __init__(
@@ -178,8 +168,7 @@ class PixelAccuracyMetric(MetricCallback):
 
 
 class EpochMacroF1Metric(Callback):
-    """
-    Macro F1 epoch-wise metric callback.
+    """Macro F1 epoch-wise metric callback.
     """
 
     def __init__(
@@ -287,3 +276,56 @@ class ConfusionMatrixCallback(Callback):
 
         logger = _get_tensorboard_logger(state)
         logger.add_image(f'{self.prefix}/epoch', fig, global_step=state.step)
+
+
+class MacroF1Callback(Callback):
+    """Macro F1 epoch-wise metric callback.
+    """
+
+    def __init__(
+            self,
+            input_key: str = "targets",
+            output_key: str = "logits",
+            prefix: str = "macro_f1"
+    ):
+        """
+        :param input_key: input key to use for precision calculation;
+            specifies our `y_true`.
+        :param output_key: output key to use for precision calculation;
+            specifies our `y_pred`.
+        """
+        self.metric_fn = lambda outputs, targets: f1_score(targets, outputs, average='macro')
+        self.prefix = prefix
+        self.output_key = output_key
+        self.input_key = input_key
+        self.outputs = []
+        self.targets = []
+
+    def on_batch_end(self, state: RunnerState):
+        outputs = to_numpy(state.output[self.output_key])
+        targets = to_numpy(state.input[self.input_key])
+        num_classes = outputs.shape[1]
+
+        outputs = [np.eye(num_classes)[y] for y in np.argmax(outputs, axis=1)]
+        targets = [np.eye(num_classes)[y] for y in targets]
+
+        self.outputs.extend(outputs)
+        self.targets.extend(targets)
+
+        # metric = self.metric_fn(self.targets, self.outputs)
+        # state.metrics.add_batch_value(name=self.prefix, value=metric)
+
+    def on_loader_start(self, state):
+        self.outputs = []
+        self.targets = []
+
+    def on_loader_end(self, state):
+        metric_name = self.prefix
+        targets = np.array(self.targets)
+        outputs = np.array(self.outputs)
+
+        metric = self.metric_fn(outputs, targets)
+        state.metrics.epoch_values[state.loader_name][metric_name] = metric
+
+        logger = _get_tensorboard_logger(state)
+        logger.add_scalar(f'{self.prefix}/epoch', metric, global_step=state.step)

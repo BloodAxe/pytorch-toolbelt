@@ -59,12 +59,14 @@ class ImageSlicer:
         self.image_height = image_shape[0]
         self.image_width = image_shape[1]
 
-        if isinstance(tile_size, tuple):
+        if isinstance(tile_size, (tuple, list)):
+            assert len(tile_size) == 2
             self.tile_size = int(tile_size[0]), int(tile_size[1])
         else:
             self.tile_size = int(tile_size), int(tile_size)
 
-        if isinstance(tile_step, tuple):
+        if isinstance(tile_step, (tuple, list)):
+            assert len(tile_step) == 2
             self.tile_step = int(tile_step[0]), int(tile_step[1])
         else:
             self.tile_step = int(tile_step), int(tile_step)
