@@ -52,12 +52,12 @@ class FPNDecoder(DecoderModule):
     def __init__(self, features,
                  fpn_features=128,
                  bottleneck=FPNBottleneckBlock,
-                 merge_block=FPNPredictionBlock,
+                 prediction=FPNPredictionBlock,
                  **kwargs):
         super().__init__()
 
         self.bottlenecks = nn.ModuleList([bottleneck(input_channels, fpn_features) for input_channels in features])
-        self.predictors = nn.ModuleList([merge_block(fpn_features, fpn_features) for _ in features])
+        self.predictors = nn.ModuleList([prediction(fpn_features, fpn_features) for _ in features])
 
         self.output_filters = [fpn_features] * len(features)
 
