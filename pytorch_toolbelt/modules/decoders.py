@@ -48,28 +48,63 @@ class UNetDecoder(DecoderModule):
         return decoder_outputs
 
 
-class FPNDecoder(DecoderModule):
+class FPNDecoder(nn.Module):
     def __init__(self, features,
-                 fpn_features=128,
+                 prediction_block: nn.Module,
                  bottleneck=FPNBottleneckBlock,
-                 prediction=FPNPredictionBlock,
-                 **kwargs):
+                 fpn_features=128,
+                 prediction_features=128,
+                 mode='bilinear', align_corners=True):
         super().__init__()
 
-        self.bottlenecks = nn.ModuleList([bottleneck(input_channels, fpn_features) for input_channels in features])
-        self.predictors = nn.ModuleList([prediction(fpn_features, fpn_features) for _ in features])
+        if isinstance(fpn_features, list) and len(fpn_features) != len(features):
+            raise ValueError()
 
-        self.output_filters = [fpn_features] * len(features)
+        if isinstance(prediction_features, list) and len(prediction_features) != len(features):
+            raise ValueError()
+
+        if not isinstance(fpn_features, list):
+            fpn_features = [int(fpn_features)] * len(features)
+
+        if not isinstance(prediction_features, list):
+            prediction_features = [int(prediction_features)] * len(features)
+
+        bottlenecks = [bottleneck(input_channels, output_channels) for input_channels, output_channels in zip(features, fpn_features)]
+        predictors = [prediction_block(input_channels, output_channels) for input_channels, output_channels in zip(fpn_features, prediction_features)]
+
+        self.bottlenecks = nn.ModuleList(bottlenecks)
+        self.predictors = nn.ModuleList(predictors)
+        self.interpolation_mode = mode
+        self.align_corners = align_corners
+        self.output_filters = prediction_features
+
+    def _interpolate_add(self, bottleneck, prev_layer_bottleneck=None):
+        """Compute bottleneck + Upsample(prev_layer_bottleneck)
+
+        :param bottleneck:
+        :param prev_layer_bottleneck:
+        :return:
+        """
+        if prev_layer_bottleneck is not None:
+            prev_layer_bottleneck = F.interpolate(prev_layer_bottleneck,
+                                                  size=(bottleneck.size(2), bottleneck.size(3)),
+                                                  mode=self.interpolation_mode,
+                                                  align_corners=self.align_corners)
+            bottleneck = prev_layer_bottleneck + bottleneck
+
+        return bottleneck
 
     def forward(self, features):
         fpn_outputs = []
+        prev_fpn = None
+        for feature_map, bottleneck_block, prediction_block in zip(reversed(features),
+                                                                   reversed(self.bottlenecks),
+                                                                   reversed(self.predictors)):
+            curr_fpn = bottleneck_block(feature_map)
+            curr_fpn = self._interpolate_add(curr_fpn, prev_fpn)
 
-        for feature_map, bottleneck, fpn_block in zip(reversed(features),
-                                                      reversed(self.bottlenecks),
-                                                      reversed(self.predictors)):
-            feature_map = bottleneck(feature_map)
-            prev_fpn = fpn_outputs[-1] if len(fpn_outputs) else None
-            y = fpn_block(feature_map, prev_fpn)
+            y = prediction_block(curr_fpn)
+            prev_fpn = curr_fpn
             fpn_outputs.append(y)
 
         # Reverse list of fpn features to match with order of input features
