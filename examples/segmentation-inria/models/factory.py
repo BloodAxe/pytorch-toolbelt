@@ -45,13 +45,13 @@ def get_model(model_name: str, image_size=None) -> nn.Module:
 
 
 def get_optimizer(optimizer_name: str, parameters, lr: float, **kwargs):
-    from torch import optim as O
+    from torch.optim import SGD, Adam
 
     if optimizer_name.lower() == 'sgd':
-        return O.SGD(parameters, lr, momentum=0.9, nesterov=True, **kwargs)
+        return SGD(parameters, lr, momentum=0.9, nesterov=True, **kwargs)
 
     if optimizer_name.lower() == 'adam':
-        return O.Adam(parameters, lr, **kwargs)
+        return Adam(parameters, lr, **kwargs)
 
     raise ValueError("Unsupported optimizer name " + optimizer_name)
 

@@ -6,66 +6,29 @@ import os
 from datetime import datetime
 
 import albumentations as A
-import catalyst
 import cv2
 import numpy as np
 import torch
-from catalyst.contrib.models import UNet
-from catalyst.dl.callbacks import EarlyStoppingCallback, UtilsFactory, JaccardCallback, PrecisionCallback
+from catalyst.dl.callbacks import EarlyStoppingCallback, UtilsFactory
 from catalyst.dl.experiments import SupervisedRunner
-
-from pytorch_toolbelt.losses.focal import BinaryFocalLoss
 from pytorch_toolbelt.losses.jaccard import BinaryJaccardLogLoss
 from pytorch_toolbelt.losses.joint_loss import JointLoss
 from pytorch_toolbelt.utils.catalyst_utils import ShowPolarBatchesCallback, EpochJaccardMetric, PixelAccuracyMetric
 from pytorch_toolbelt.utils.dataset_utils import ImageMaskDataset, TiledImageMaskDataset
-from pytorch_toolbelt.utils.fs import auto_file, find_in_dir, id_from_fname, read_rgb_image, read_image_as_is
+from pytorch_toolbelt.utils.fs import auto_file, read_rgb_image, read_image_as_is
 from pytorch_toolbelt.utils.random import set_manual_seed
 from pytorch_toolbelt.utils.torch_utils import maybe_cuda, rgb_image_from_tensor, to_numpy, count_parameters
-from sklearn.model_selection import train_test_split
-from torch import nn
 from torch.backends import cudnn
 from torch.nn import BCEWithLogitsLoss
 from torch.optim import Adam
 from torch.utils.data import DataLoader, WeightedRandomSampler
-from models.fpn import fpn_resnext50, hdfpn_resnext50
-from models.linknet import LinkNet152, LinkNet34
 
-
-def get_model(model_name: str, image_size=None) -> nn.Module:
-    if model_name == 'unet':
-        return UNet()
-
-    if model_name == 'fpn_resnext50':
-        return fpn_resnext50()
-
-    if model_name == 'hdfpn_resnext50':
-        return hdfpn_resnext50()
-
-    if model_name == 'linknet34':
-        return LinkNet34()
-
-    if model_name == 'linknet152':
-        return LinkNet152()
-
-    raise ValueError("Unsupported model name " + model_name)
+from models.factory import get_model, get_loss, get_optimizer
 
 
 def read_inria_mask(fname):
     mask = read_image_as_is(fname)
     return (mask > 0).astype(np.uint8)
-
-
-def get_optimizer(optimizer_name: str, parameters, lr: float, **kwargs):
-    from torch import optim as O
-
-    if optimizer_name.lower() == 'sgd':
-        return O.SGD(parameters, lr, momentum=0.9, weight_decay=1e-4, **kwargs)
-
-    if optimizer_name.lower() == 'adam':
-        return O.Adam(parameters, lr, **kwargs)
-
-    raise ValueError("Unsupported optimizer name " + optimizer_name)
 
 
 def get_dataloaders(data_dir: str,

@@ -33,10 +33,10 @@ def test_tiles_split_merge_cuda():
 
     merger = CudaTileMerger(tiler.target_shape, 3, tiler.weight)
     for tile, coord in zip(tiles, tiler.crops):
-        batch = tensor_from_rgb_image(tile).unsqueeze(0).cuda()
+        batch = tensor_from_rgb_image(tile).unsqueeze(0).float().cuda()
         merger.integrate_batch(batch, [coord])
 
-    merged = np.moveaxis(to_numpy(merger.merge()), 0, -1)
+    merged = np.moveaxis(to_numpy(merger.merge()), 0, -1).astype(np.uint8)
     merged = tiler.crop_to_orignal_size(merged)
 
     np.testing.assert_equal(merged, image)

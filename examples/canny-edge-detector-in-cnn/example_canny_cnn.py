@@ -165,7 +165,7 @@ def visualize_canny_predictions(input, output, mean=(0.485, 0.456, 0.406), std=(
 
 
 def main():
-    images_dir = 'c:\datasets\ILSVRC2013_DET_val'
+    images_dir = 'c:\\datasets\\ILSVRC2013_DET_val'
 
     canny_cnn = maybe_cuda(CannyModel())
     optimizer = Adam(canny_cnn.parameters(), lr=1e-4)

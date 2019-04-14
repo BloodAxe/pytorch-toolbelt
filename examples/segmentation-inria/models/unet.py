@@ -4,7 +4,8 @@ import torch.nn.functional as F
 
 
 class double_conv(nn.Module):
-    '''(conv => BN => ReLU) * 2'''
+    """Construct a double (conv => BN => ReLU) module.
+    """
 
     def __init__(self, in_ch, out_ch):
         super(double_conv, self).__init__()

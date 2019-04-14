@@ -87,12 +87,13 @@ def _flatten_binary_scores(scores, labels, ignore=None):
 
 def _lovasz_softmax(probas, labels, classes='present', per_image=False, ignore=None):
     """Multi-class Lovasz-Softmax loss
-      probas: [B, C, H, W] Variable, class probabilities at each prediction (between 0 and 1).
-              Interpreted as binary (sigmoid) output with outputs of size [B, H, W].
-      labels: [B, H, W] Tensor, ground truth labels (between 0 and C - 1)
-      classes: 'all' for all, 'present' for classes present in labels, or a list of classes to average.
-      per_image: compute the loss per image instead of per batch
-      ignore: void class labels
+    Args:
+        @param probas: [B, C, H, W] Variable, class probabilities at each prediction (between 0 and 1).
+        Interpreted as binary (sigmoid) output with outputs of size [B, H, W].
+        @param labels: [B, H, W] Tensor, ground truth labels (between 0 and C - 1)
+        @param classes: 'all' for all, 'present' for classes present in labels, or a list of classes to average.
+        @param per_image: compute the loss per image instead of per batch
+        @param ignore: void class labels
     """
     if per_image:
         loss = mean(_lovasz_softmax_flat(*_flatten_probas(prob.unsqueeze(0), lab.unsqueeze(0), ignore), classes=classes)
@@ -105,9 +106,9 @@ def _lovasz_softmax(probas, labels, classes='present', per_image=False, ignore=N
 def _lovasz_softmax_flat(probas, labels, classes='present'):
     """Multi-class Lovasz-Softmax loss
     Args:
-        probas: [P, C] Variable, class probabilities at each prediction (between 0 and 1)
-        labels: [P] Tensor, ground truth labels (between 0 and C - 1)
-        classes: 'all' for all, 'present' for classes present in labels, or a list of classes to average.
+        @param probas: [P, C] Variable, class probabilities at each prediction (between 0 and 1)
+        @param labels: [P] Tensor, ground truth labels (between 0 and C - 1)
+        @param classes: 'all' for all, 'present' for classes present in labels, or a list of classes to average.
     """
     if probas.numel() == 0:
         # only void pixels, the gradients should be 0
@@ -117,7 +118,7 @@ def _lovasz_softmax_flat(probas, labels, classes='present'):
     class_to_sum = list(range(C)) if classes in ['all', 'present'] else classes
     for c in class_to_sum:
         fg = (labels == c).float()  # foreground for class c
-        if (classes is 'present' and fg.sum() == 0):
+        if classes == 'present' and fg.sum() == 0:
             continue
         if C == 1:
             if len(classes) > 1:
@@ -156,20 +157,20 @@ def isnan(x):
     return x != x
 
 
-def mean(l, ignore_nan=False, empty=0):
+def mean(values, ignore_nan=False, empty=0):
     """Nanmean compatible with generators.
     """
-    l = iter(l)
+    values = iter(values)
     if ignore_nan:
-        l = ifilterfalse(isnan, l)
+        values = ifilterfalse(isnan, values)
     try:
         n = 1
-        acc = next(l)
+        acc = next(values)
     except StopIteration:
         if empty == 'raise':
             raise ValueError('Empty mean')
         return empty
-    for n, v in enumerate(l, 2):
+    for n, v in enumerate(values, 2):
         acc += v
     if n == 1:
         return acc

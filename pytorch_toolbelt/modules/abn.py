@@ -9,13 +9,14 @@ ACT_ELU = "elu"
 ACT_NONE = "none"
 ACT_SELU = "selu"
 
+
 class ABN(nn.Module):
     """Activated Batch Normalization
     This gathers a `BatchNorm2d` and an activation function in a single module
     """
 
     def __init__(self, num_features, eps=1e-5, momentum=0.1, affine=True, activation="leaky_relu", slope=0.01):
-        """Creates an Activated Batch Normalization module
+        """Create an Activated Batch Normalization module
         Parameters
         ----------
         num_features : int

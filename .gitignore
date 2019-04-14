@@ -17,3 +17,4 @@ var/
 .mypy_cache/
 .vscode
 .idea/
+.pytest_cache/
