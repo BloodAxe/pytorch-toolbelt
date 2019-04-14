@@ -64,7 +64,10 @@ def read_rgb_image(fname: str) -> np.ndarray:
     :return: A numpy array with a loaded image in RGB format
     """
     import PIL
-    image = np.asarray(PIL.Image.open(fname))
+    im = PIL.Image.open(fname)
+    if im.mode != 'RGB':
+        im = im.convert('RGB')
+    image = np.asarray(im)
     return image
 
 
