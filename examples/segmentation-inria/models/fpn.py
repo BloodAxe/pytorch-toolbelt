@@ -142,6 +142,18 @@ def fpn_resnext50(num_classes=1, num_channels=3):
     return SegmentationModel(encoder, decoder, num_classes)
 
 
+def fpn_senet154(num_classes=1, num_channels=3):
+    assert num_channels == 3
+    encoder = E.SENet154Encoder()
+    decoder = D.FPNDecoder(features=encoder.output_filters,
+                           bottleneck=FPNBottleneckBlockBN,
+                           prediction=UnetEncoderBlock,
+                           strides=encoder.output_strides,
+                           fpn_features=256, dropout=0.2)
+
+    return SegmentationModel(encoder, decoder, num_classes)
+
+
 def hdfpn_resnext50(num_classes=1, num_channels=3):
     assert num_channels == 3
     encoder = E.SEResNeXt50Encoder()
@@ -171,6 +183,20 @@ def test_hires_fpn_resnext50():
     from pytorch_toolbelt.utils.torch_utils import count_parameters
 
     net = hdfpn_resnext50().eval()
+    img = torch.rand((1, 3, 512, 512))
+    print(count_parameters(net))
+    print(count_parameters(net.encoder))
+    print(count_parameters(net.decoder))
+    print(count_parameters(net.logits))
+    out = net(img)
+    print(out.size())
+
+
+@torch.no_grad()
+def test_fpn_senet154():
+    from pytorch_toolbelt.utils.torch_utils import count_parameters
+
+    net = fpn_senet154().eval()
     img = torch.rand((1, 3, 512, 512))
     print(count_parameters(net))
     print(count_parameters(net.encoder))
