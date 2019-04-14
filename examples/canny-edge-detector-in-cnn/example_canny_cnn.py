@@ -17,6 +17,7 @@ from torch.utils.data import DataLoader, Dataset
 
 from pytorch_toolbelt.utils.fs import find_images_in_dir, read_rgb_image
 from pytorch_toolbelt.utils.torch_utils import maybe_cuda, tensor_from_rgb_image, rgb_image_from_tensor, to_numpy
+from pytorch_toolbelt.utils.catalyst_utils import EpochJaccardMetric, ShowPolarBatchesCallback
 
 
 def canny_edges(image):
@@ -83,12 +84,12 @@ class PolarGradients(nn.Module):
 class CannyModel(nn.Module):
     def __init__(self, input_channels=3, features=16):
         super().__init__()
-        self.polar_grad = PolarGradients(input_channels)
+        # self.polar_grad = PolarGradients(input_channels)
         self.conv1 = conv_bn_relu(input_channels, features)
         self.conv2 = conv_bn_relu(features, features)
 
-        self.conv3 = conv_bn_relu(features * 2 + 2, features)
-        self.conv4 = conv_bn_relu(features * 2 + 2, features)
+        self.conv3 = conv_bn_relu(features * 2, features)
+        self.conv4 = conv_bn_relu(features * 2, features)
 
         self.pool1 = PoolUnpool(features)
         self.pool2 = PoolUnpool(features)
@@ -96,16 +97,16 @@ class CannyModel(nn.Module):
         self.final = nn.Conv2d(features, 1, kernel_size=1)
 
     def forward(self, x):
-        pg = self.polar_grad(x)
+        # pg = self.polar_grad(x)
         x = self.conv1(x)
         x = self.conv2(x)
 
         p1 = self.pool1(x)
-        x = torch.cat([x, p1, pg], dim=1)
+        x = torch.cat([x, p1], dim=1)
         x = self.conv3(x)
 
         p2 = self.pool2(x)
-        x = torch.cat([x, p2, pg], dim=1)
+        x = torch.cat([x, p2], dim=1)
         x = self.conv4(x)
 
         x = self.final(x)
@@ -136,95 +137,15 @@ class EdgesDataset(Dataset):
         return len(self.images)
 
     def __getitem__(self, index):
-        image = read_rgb_image(self.images[index])
+        image = cv2.imread(self.images[index], cv2.IMREAD_COLOR)
+
         data = self.transform(image=image)
         data['mask'] = canny_edges(data['image'])
         data = self.normalize(**data)
         data['image'] = tensor_from_rgb_image(data['image'])
         data['mask'] = torch.from_numpy(data['mask']).float().unsqueeze(0)
-        
+
         return {'features': data['image'], 'targets': data['mask']}
-
-
-class ShowPolarBatchesCallback(Callback):
-    def __init__(
-            self,
-            visualize_batch,
-            metric: str = "loss",
-            minimize: bool = True,
-            min_delta: float = 1e-6,
-    ):
-        self.best_score = None
-        self.best_input = None
-        self.best_output = None
-
-        self.worst_score = None
-        self.worst_input = None
-        self.worst_output = None
-
-        self.target_metric = metric
-        self.num_bad_epochs = 0
-        self.is_better = None
-        self.visualize_batch = visualize_batch
-
-        if minimize:
-            self.is_better = lambda score, best: score <= (best - min_delta)
-            self.is_worse = lambda score, best: score <= (best - min_delta)
-        else:
-            self.is_better = lambda score, best: score >= (best - min_delta)
-            self.is_worse = lambda score, best: score <= (best - min_delta)
-
-    def to_cpu(self, data):
-        if isinstance(data, dict):
-            return dict((key, self.to_cpu(value)) for (key, value) in data.items())
-        if isinstance(data, torch.Tensor):
-            return data.detach().cpu()
-        if isinstance(data, list):
-            return [self.to_cpu(value) for value in data]
-
-        raise ValueError("Unsupported type", type(data))
-
-    def _log_image(self, loggers, mode: str, image, name, step: int, suffix=""):
-        for logger in loggers:
-            if isinstance(logger, TensorboardLogger):
-                logger.loggers[mode].add_image(f"{name}{suffix}", tensor_from_rgb_image(image), step)
-
-    def on_loader_start(self, state):
-        self.best_score = None
-        self.best_input = None
-        self.best_output = None
-
-        self.worst_score = None
-        self.worst_input = None
-        self.worst_output = None
-
-    def on_batch_end(self, state: RunnerState):
-        value = state.metrics.batch_values[self.target_metric]
-
-        if self.best_score is None or self.is_better(value, self.best_score):
-            self.best_score = value
-            self.best_input = self.to_cpu(state.input)
-            self.best_output = self.to_cpu(state.output)
-
-        if self.worst_score is None or self.is_worse(value, self.worst_score):
-            self.worst_score = value
-            self.worst_input = self.to_cpu(state.input)
-            self.worst_output = self.to_cpu(state.output)
-
-    def on_loader_end(self, state: RunnerState) -> None:
-        mode = state.loader_name
-
-        if self.best_score is not None:
-            best_samples = self.visualize_batch(self.best_input, self.best_output)
-            for i, image in enumerate(best_samples):
-                self._log_image(state.loggers, mode, image, f"Best Batch/{i}", state.step, suffix="/epoch")
-                # cv2.imshow("Best sample " + str(i), cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
-
-        if self.worst_score is not None:
-            worst_samples = self.visualize_batch(self.worst_input, self.worst_output)
-            for i, image in enumerate(worst_samples):
-                self._log_image(state.loggers, mode, image, f"Worst Batch/{i}", state.step, suffix="/epoch")
-                # cv2.imshow("Worst sample " + str(i), cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
 
 
 def visualize_canny_predictions(input, output, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)):
@@ -244,21 +165,19 @@ def visualize_canny_predictions(input, output, mean=(0.485, 0.456, 0.406), std=(
 
 
 def main():
-    images_dir = 'd:\datasets\mirflickr'
+    images_dir = 'c:\datasets\ILSVRC2013_DET_val'
 
     canny_cnn = maybe_cuda(CannyModel())
-    optimizer = Adam(canny_cnn.parameters(), lr=1e-5)
+    optimizer = Adam(canny_cnn.parameters(), lr=1e-4)
 
     images = find_images_in_dir(images_dir)
     train_images, valid_images = train_test_split(images, test_size=0.1, random_state=1234)
 
-    num_workers = 8
+    num_workers = 6
     num_epochs = 100
-    batch_size = 128
+    batch_size = 16
 
     if False:
-        num_workers = 0
-        batch_size = 32
         train_images = train_images[:batch_size * 4]
         valid_images = valid_images[:batch_size * 4]
 
