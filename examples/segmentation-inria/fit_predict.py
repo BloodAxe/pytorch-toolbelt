@@ -189,7 +189,7 @@ def main():
     # parser.add_argument('-f', '--fold', default=None, required=True, type=int, help='Fold to train')
     #     # parser.add_argument('-fe', '--freeze-encoder', type=int, default=0, help='Freeze encoder parameters for N epochs')
     #     # parser.add_argument('-ft', '--fine-tune', action='store_true')
-    parser.add_argument('-lr', '--learning-rate', type=float, default=1e-4, help='Initial learning rate')
+    parser.add_argument('-lr', '--learning-rate', type=float, default=1e-3, help='Initial learning rate')
     parser.add_argument('-l', '--criterion', type=str, default='bce', help='Criterion')
     parser.add_argument('-o', '--optimizer', default='Adam', help='Name of the optimizer')
     parser.add_argument('-c', '--checkpoint', type=str, default=None, help='Checkpoint filename to use as initial model weights')
@@ -221,7 +221,7 @@ def main():
     loaders["train"] = train_loader
     loaders["valid"] = valid_loader
 
-    # scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[10, 20, 40], gamma=0.3)
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[10, 20, 40], gamma=0.3)
 
     # model runner
     runner = SupervisedRunner()
@@ -272,13 +272,13 @@ def main():
         model=model,
         criterion=criterion,
         optimizer=optimizer,
-        # scheduler=scheduler,
+        scheduler=scheduler,
         callbacks=[
-            OneCycleLR(
-                cycle_len=num_epochs,
-                div_factor=10,
-                increase_fraction=0.3,
-                momentum_range=(0.95, 0.85)),
+            # OneCycleLR(
+            #     cycle_len=num_epochs,
+            #     div_factor=10,
+            #     increase_fraction=0.3,
+            #     momentum_range=(0.95, 0.85)),
             PixelAccuracyMetric(),
             EpochJaccardMetric(),
             ShowPolarBatchesCallback(visualize_inria_predictions, metric='accuracy', minimize=False),
