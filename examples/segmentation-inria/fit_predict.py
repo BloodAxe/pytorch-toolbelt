@@ -43,7 +43,7 @@ def get_dataloaders(data_dir: str,
     # For validation, we suggest to remove the first five images of every location (e.g., austin{1-5}.tif, chicago{1-5}.tif) from the training set.
     if fast:
         for loc in locations:
-            valid_data.append(f'{loc}0')
+            valid_data.append(f'{loc}1')
             train_data.append(f'{loc}6')
     else:
         for loc in locations:
@@ -124,7 +124,9 @@ def get_dataloaders(data_dir: str,
                                            tile_size=image_size,
                                            tile_step=image_size,
                                            keep_in_mem=True)
-        train_sampler = None
+
+        num_train_samples = int(len(trainset) * (5000 * 5000) / (image_size[0] * image_size[1]))
+        train_sampler = WeightedRandomSampler(np.ones(len(trainset)), num_train_samples)
     else:
         trainset = ImageMaskDataset(train_img, train_mask, read_rgb_image, read_inria_mask,
                                     transform=train_transform,
@@ -151,7 +153,7 @@ def get_dataloaders(data_dir: str,
 
     validloader = DataLoader(validset,
                              batch_size=batch_size,
-                             num_workers=num_workers,
+                             num_workers=0 if fast else num_workers,
                              pin_memory=True,
                              shuffle=False)
 
@@ -257,6 +259,7 @@ def main():
     os.makedirs(log_dir, exist_ok=False)
 
     print('Train session:', prefix)
+    print('\tFast mode  :', args.fast)
     print('\tEpochs     :', num_epochs)
     print('\tWorkers    :', num_workers)
     print('\tData dir   :', data_dir)
@@ -286,7 +289,7 @@ def main():
             PixelAccuracyMetric(),
             EpochJaccardMetric(),
             ShowPolarBatchesCallback(visualize_inria_predictions, metric='accuracy', minimize=False),
-            EarlyStoppingCallback(patience=5, min_delta=0.01, metric='jaccard', minimize=False),
+            # EarlyStoppingCallback(patience=5, min_delta=0.01, metric='jaccard', minimize=False),
         ],
         loaders=loaders,
         logdir=log_dir,

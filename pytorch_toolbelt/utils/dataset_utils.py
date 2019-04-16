@@ -66,27 +66,33 @@ class TiledSingleImageDataset(Dataset):
 
             target_shape = image.shape
 
-            if keep_in_mem:
-                self.image = image
-                self.mask = mask
-
         self.slicer = ImageSlicer(target_shape, tile_size, tile_step, image_margin)
+
+        if keep_in_mem:
+            self.images = self.slicer.split(image)
+            self.masks = self.slicer.split(mask)
+        else:
+            self.images = None
+            self.masks = None
+
         self.transform = transform
         self.image_ids = [id_from_fname(image_fname) + f' [{crop[0]};{crop[1]};{crop[2]};{crop[3]};]' for crop in self.slicer.crops]
 
     def _get_image(self, index):
-        if self.image is None:
+        if self.images is None:
             image = self.image_loader(self.image_fname)
+            image = self.slicer.cut_patch(image, index)
         else:
-            image = self.image
-        return self.slicer.cut_patch(image, index)
+            image = self.images[index]
+        return image
 
     def _get_mask(self, index):
-        if self.mask is None:
+        if self.masks is None:
             mask = self.mask_loader(self.mask_fname)
+            mask = self.slicer.cut_patch(mask, index)
         else:
-            mask = self.mask
-        return self.slicer.cut_patch(mask, index)
+            mask = self.masks[index]
+        return mask
 
     def __len__(self):
         return len(self.slicer.crops)
