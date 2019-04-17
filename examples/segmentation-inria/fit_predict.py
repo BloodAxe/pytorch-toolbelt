@@ -41,11 +41,16 @@ def get_dataloaders(data_dir: str,
     valid_data = []
 
     # For validation, we suggest to remove the first five images of every location (e.g., austin{1-5}.tif, chicago{1-5}.tif) from the training set.
-    for loc in locations:
-        for i in range(1, 6):
-            valid_data.append(f'{loc}{i}')
-        for i in range(6, 37):
-            train_data.append(f'{loc}{i}')
+    if fast:
+        for loc in locations:
+            valid_data.append(f'{loc}1')
+            train_data.append(f'{loc}6')
+    else:
+        for loc in locations:
+            for i in range(1, 6):
+                valid_data.append(f'{loc}{i}')
+            for i in range(6, 37):
+                train_data.append(f'{loc}{i}')
 
     train_img = [os.path.join(data_dir, 'train', 'images', f'{fname}.tif') for fname in train_data]
     valid_img = [os.path.join(data_dir, 'train', 'images', f'{fname}.tif') for fname in valid_data]
@@ -56,7 +61,7 @@ def get_dataloaders(data_dir: str,
     train_transform = A.Compose([
         # Make random-sized crop with scale [50%..200%] of target size 1.5 larger than target crop to have some space around for
         # further transforms
-        A.RandomSizedCrop((image_size[0] // 2, image_size[0] * 2), int(image_size[0] * 1.5), int(image_size[1] * 1.5)),
+        A.RandomSizedCrop((image_size[0] // 2, image_size[1] * 2), int(image_size[0] * 1.5), int(image_size[1] * 1.5)),
 
         # Apply random rotations
         A.ShiftScaleRotate(shift_limit=0, scale_limit=0, rotate_limit=45, border_mode=cv2.BORDER_CONSTANT),
@@ -118,9 +123,10 @@ def get_dataloaders(data_dir: str,
                                            # For validation we don't want tiles overlap
                                            tile_size=image_size,
                                            tile_step=image_size,
-                                           target_shape=(5000, 5000),
                                            keep_in_mem=True)
-        train_sampler = None
+
+        num_train_samples = int(len(trainset) * (5000 * 5000) / (image_size[0] * image_size[1]))
+        train_sampler = WeightedRandomSampler(np.ones(len(trainset)), num_train_samples)
     else:
         trainset = ImageMaskDataset(train_img, train_mask, read_rgb_image, read_inria_mask,
                                     transform=train_transform,
@@ -147,7 +153,7 @@ def get_dataloaders(data_dir: str,
 
     validloader = DataLoader(validset,
                              batch_size=batch_size,
-                             num_workers=num_workers,
+                             num_workers=0 if fast else num_workers,
                              pin_memory=True,
                              shuffle=False)
 
@@ -189,7 +195,7 @@ def main():
     # parser.add_argument('-f', '--fold', default=None, required=True, type=int, help='Fold to train')
     #     # parser.add_argument('-fe', '--freeze-encoder', type=int, default=0, help='Freeze encoder parameters for N epochs')
     #     # parser.add_argument('-ft', '--fine-tune', action='store_true')
-    parser.add_argument('-lr', '--learning-rate', type=float, default=1e-4, help='Initial learning rate')
+    parser.add_argument('-lr', '--learning-rate', type=float, default=1e-3, help='Initial learning rate')
     parser.add_argument('-l', '--criterion', type=str, default='bce', help='Criterion')
     parser.add_argument('-o', '--optimizer', default='Adam', help='Name of the optimizer')
     parser.add_argument('-c', '--checkpoint', type=str, default=None, help='Checkpoint filename to use as initial model weights')
@@ -221,7 +227,7 @@ def main():
     loaders["train"] = train_loader
     loaders["valid"] = valid_loader
 
-    # scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[10, 20, 40], gamma=0.3)
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[10, 20, 40], gamma=0.3)
 
     # model runner
     runner = SupervisedRunner()
@@ -253,6 +259,7 @@ def main():
     os.makedirs(log_dir, exist_ok=False)
 
     print('Train session:', prefix)
+    print('\tFast mode  :', args.fast)
     print('\tEpochs     :', num_epochs)
     print('\tWorkers    :', num_workers)
     print('\tData dir   :', data_dir)
@@ -272,17 +279,17 @@ def main():
         model=model,
         criterion=criterion,
         optimizer=optimizer,
-        # scheduler=scheduler,
+        scheduler=scheduler,
         callbacks=[
-            OneCycleLR(
-                cycle_len=num_epochs,
-                div_factor=10,
-                increase_fraction=0.3,
-                momentum_range=(0.95, 0.85)),
+            # OneCycleLR(
+            #     cycle_len=num_epochs,
+            #     div_factor=10,
+            #     increase_fraction=0.3,
+            #     momentum_range=(0.95, 0.85)),
             PixelAccuracyMetric(),
             EpochJaccardMetric(),
             ShowPolarBatchesCallback(visualize_inria_predictions, metric='accuracy', minimize=False),
-            EarlyStoppingCallback(patience=5, min_delta=0.01, metric='jaccard', minimize=False),
+            # EarlyStoppingCallback(patience=5, min_delta=0.01, metric='jaccard', minimize=False),
         ],
         loaders=loaders,
         logdir=log_dir,

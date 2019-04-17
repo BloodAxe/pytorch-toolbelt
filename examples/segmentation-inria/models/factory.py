@@ -1,3 +1,4 @@
+from functools import partial
 from multiprocessing.pool import Pool
 from typing import List, Dict
 
@@ -20,28 +21,22 @@ from pytorch_toolbelt.utils.torch_utils import tensor_from_rgb_image, to_numpy
 import numpy as np
 import albumentations as A
 
-from .fpn import fpn_resnext50, hdfpn_resnext50
+from .fpn import fpn128_resnext50, fpn256_resnext50, fpn128_resnet34
 from .linknet import LinkNet152, LinkNet34
 from .unet import UNet
 
 
 def get_model(model_name: str, image_size=None) -> nn.Module:
-    if model_name == 'unet':
-        return UNet(upsample=False)
+    registry = {
+        'unet': partial(UNet, upsample=False),
+        'linknet34': LinkNet34,
+        'linknet152': LinkNet152,
+        'fpn128_resnet34': fpn128_resnet34,
+        'fpn128_resnext50': fpn128_resnext50,
+        'fpn256_resnext50': fpn256_resnext50
+    }
 
-    if model_name == 'fpn_resnext50':
-        return fpn_resnext50()
-
-    if model_name == 'hdfpn_resnext50':
-        return hdfpn_resnext50()
-
-    if model_name == 'linknet34':
-        return LinkNet34()
-
-    if model_name == 'linknet152':
-        return LinkNet152()
-
-    raise ValueError("Unsupported model name " + model_name)
+    return registry[model_name.lower()]()
 
 
 def get_optimizer(optimizer_name: str, parameters, lr: float, **kwargs):
