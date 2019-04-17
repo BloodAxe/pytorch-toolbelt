@@ -6,6 +6,7 @@ from pytorch_toolbelt.modules import encoders as E
 from pytorch_toolbelt.modules import decoders as D
 from pytorch_toolbelt.modules.abn import ACT_SELU
 from pytorch_toolbelt.modules.fpn import FPNFuse, FPNBottleneckBlockBN
+from pytorch_toolbelt.utils.torch_utils import count_parameters
 from torch import nn
 from torch.nn import functional as F
 
@@ -59,46 +60,36 @@ class SegmentationModel(nn.Module):
 
 
 class HiResSegmentationModel(nn.Module):
-    def __init__(self, encoder: E.EncoderModule, decoder: D.DecoderModule, num_classes: int):
+    def __init__(self, encoder: E.EncoderModule, num_classes: int, fpn_features: int):
         super().__init__()
 
         self.encoder = encoder
-        self.decoder = decoder
+        self.layer0 = UnetEncoderBlock(3, 32, stride=1)
+        self.layer1 = UnetEncoderBlock(32, 64, stride=2)
+
+        # hard-coded assumption that encoder has first layer with stride of 4
+        self.decoder = D.FPNDecoder(features=[32, 64] + encoder.output_filters,
+                                    prediction_block=UnetEncoderBlock,
+                                    bottleneck=FPNBottleneckBlockBN,
+                                    fpn_features=fpn_features)
         self.fpn_fuse = FPNFuse()
 
         output_features = sum(self.decoder.output_filters)
 
-        self.finaldrop1 = nn.Dropout2d(p=0.5)
-
-        self.finaldeconv1 = nn.ConvTranspose2d(output_features, output_features // 2, kernel_size=2, stride=2)
-        self.finalrelu1 = nn.LeakyReLU(inplace=True)
-        self.finalconv1 = nn.Conv2d(output_features // 2, output_features // 2, 3, padding=1)
-
-        self.finaldeconv2 = nn.ConvTranspose2d(output_features // 2, output_features // 4, kernel_size=2, stride=2)
-        self.finalrelu2 = nn.LeakyReLU(inplace=True)
-        self.finalconv2 = nn.Conv2d(output_features // 4, output_features // 4, 3, padding=1)
-
-        self.logits = nn.Conv2d(output_features // 4, num_classes, kernel_size=1)
+        self.dropout = nn.Dropout2d(0.5, inplace=True)
+        self.logits = nn.Conv2d(output_features, num_classes, kernel_size=1)
 
     def forward(self, x):
         x, pad = pad_tensor(x, 32)
 
+        layer0 = self.layer0(x)
+        layer1 = self.layer1(layer0)
         enc_features = self.encoder(x)
-        dec_features = self.decoder(enc_features)
+        dec_features = self.decoder([layer0, layer1] + enc_features)
 
         features = self.fpn_fuse(dec_features)
 
-        # Final Classification
-        features = self.finaldrop1(features)  # Added dropout
-
-        features = self.finaldeconv1(features)
-        features = self.finalrelu1(features)
-        features = self.finalconv1(features)
-
-        features = self.finaldeconv2(features)
-        features = self.finalrelu2(features)
-        features = self.finalconv2(features)
-
+        features = self.dropout(features)
         features = self.logits(features)
         features = unpad_tensor(features, pad)
         return features
@@ -148,6 +139,19 @@ def fpn256_resnext50(num_classes=1, num_channels=3):
 
     return SegmentationModel(encoder, decoder, num_classes)
 
+
+def hd_fpn_resnext50(num_classes=1, num_channels=3, fpn_features=128):
+    assert num_channels == 3
+    encoder = E.SEResNeXt50Encoder()
+    return HiResSegmentationModel(encoder, num_classes, fpn_features)
+
+
+def test_hd_fpn_resnext50():
+    net = hd_fpn_resnext50(1, 3, 128).eval()
+    image = torch.rand((1, 3, 512, 512))
+    out = net(image)
+    print(count_parameters(net))
+    print(out.size())
 #
 # def fpn_senet154(num_classes=1, num_channels=3):
 #     assert num_channels == 3
