@@ -44,7 +44,7 @@ def torch_transpose2(x: Tensor):
     return x.transpose(3, 2)
 
 
-def pad_tensor(image_tensor: Tensor, pad_size: int = 32):
+def pad_image_tensor(image_tensor: Tensor, pad_size: int = 32):
     """Pad input tensor to make it's height and width dividable by @pad_size
 
     :param image_tensor: Input tensor of shape NCHW
