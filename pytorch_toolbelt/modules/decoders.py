@@ -54,7 +54,22 @@ class FPNDecoder(nn.Module):
                  bottleneck=FPNBottleneckBlock,
                  fpn_features=128,
                  prediction_features=128,
-                 mode='bilinear', align_corners=True):
+                 mode='bilinear',
+                 align_corners=True,
+                 upsample_scale=None):
+        """
+
+        :param features:
+        :param prediction_block:
+        :param bottleneck:
+        :param fpn_features:
+        :param prediction_features:
+        :param mode:
+        :param align_corners:
+        :param upsample_scale: Scale factor for use during upsampling.
+        By default it's None which infers targets size automatically.
+        However, CoreML does not support this OP, so for CoreML-friendly models you may use fixed scale.
+        """
         super().__init__()
 
         if isinstance(fpn_features, list) and len(fpn_features) != len(features):
@@ -77,6 +92,7 @@ class FPNDecoder(nn.Module):
         self.interpolation_mode = mode
         self.align_corners = align_corners
         self.output_filters = prediction_features
+        self.upsample_scale = upsample_scale
 
     def _interpolate_add(self, bottleneck, prev_layer_bottleneck=None):
         """Compute bottleneck + Upsample(prev_layer_bottleneck)
@@ -86,10 +102,17 @@ class FPNDecoder(nn.Module):
         :return:
         """
         if prev_layer_bottleneck is not None:
-            prev_layer_bottleneck = F.interpolate(prev_layer_bottleneck,
-                                                  size=(bottleneck.size(2), bottleneck.size(3)),
-                                                  mode=self.interpolation_mode,
-                                                  align_corners=self.align_corners)
+            if self.upsample_scale is not None:
+                prev_layer_bottleneck = F.interpolate(prev_layer_bottleneck,
+                                                      scale_factor=self.upsample_scale,
+                                                      mode=self.interpolation_mode,
+                                                      align_corners=self.align_corners)
+            else:
+                prev_layer_bottleneck = F.interpolate(prev_layer_bottleneck,
+                                                      size=(bottleneck.size(2), bottleneck.size(3)),
+                                                      mode=self.interpolation_mode,
+                                                      align_corners=self.align_corners)
+
             bottleneck = prev_layer_bottleneck + bottleneck
 
         return bottleneck
