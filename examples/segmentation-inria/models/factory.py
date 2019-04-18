@@ -24,7 +24,7 @@ from pytorch_toolbelt.utils.torch_utils import tensor_from_rgb_image, to_numpy, 
 import numpy as np
 import albumentations as A
 
-from .fpn import fpn128_resnext50, fpn256_resnext50, fpn128_resnet34
+from .fpn import fpn128_resnext50, fpn256_resnext50, fpn128_resnet34, hd_fpn_resnext50
 from .linknet import LinkNet152, LinkNet34
 from .unet import UNet
 
@@ -36,7 +36,9 @@ def get_model(model_name: str, image_size=None) -> nn.Module:
         'linknet152': LinkNet152,
         'fpn128_resnet34': fpn128_resnet34,
         'fpn128_resnext50': fpn128_resnext50,
-        'fpn256_resnext50': fpn256_resnext50
+        'fpn256_resnext50': fpn256_resnext50,
+        'fpn128_resnext50_hd': partial(hd_fpn_resnext50, fpn_features=128),
+        'fpn256_resnext50_hd': partial(hd_fpn_resnext50, fpn_features=128),
     }
 
     return registry[model_name.lower()]()
