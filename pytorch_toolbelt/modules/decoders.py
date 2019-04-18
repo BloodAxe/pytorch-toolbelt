@@ -14,6 +14,10 @@ class DecoderModule(nn.Module):
     def forward(self, features):
         raise NotImplementedError
 
+    def set_trainable(self, trainable):
+        for param in self.parameters():
+            param.requires_grad = bool(trainable)
+
 
 class UNetDecoder(DecoderModule):
     def __init__(self, features, start_features: int, dilation_factors=[1, 1, 1, 1], **kwargs):
@@ -48,7 +52,7 @@ class UNetDecoder(DecoderModule):
         return decoder_outputs
 
 
-class FPNDecoder(nn.Module):
+class FPNDecoder(DecoderModule):
     def __init__(self, features,
                  prediction_block: nn.Module,
                  bottleneck=FPNBottleneckBlock,
