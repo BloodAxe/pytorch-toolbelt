@@ -6,24 +6,11 @@ from pytorch_toolbelt.modules import encoders as E
 from pytorch_toolbelt.modules import decoders as D
 from pytorch_toolbelt.modules.abn import ACT_SELU
 from pytorch_toolbelt.modules.fpn import FPNFuse, FPNBottleneckBlockBN
+from pytorch_toolbelt.utils.torch_utils import count_parameters
 from torch import nn
 from torch.nn import functional as F
 
 from pytorch_toolbelt.modules.unet import UnetCentralBlock, UnetDecoderBlock, UnetEncoderBlock
-
-
-class DoubleConvRelu(nn.Module):
-    def __init__(self, in_dec_filters: int, out_filters: int):
-        super().__init__()
-        self.conv1 = nn.Conv2d(in_dec_filters, out_filters, kernel_size=3, padding=1, stride=1)
-        self.conv2 = nn.Conv2d(out_filters, out_filters, kernel_size=3, padding=1, stride=1)
-
-    def forward(self, x):
-        x = self.conv1(x)
-        x = F.relu(x, inplace=True)
-        x = self.conv2(x)
-        x = F.relu(x, inplace=True)
-        return x
 
 
 class SegmentationModel(nn.Module):
@@ -58,47 +45,98 @@ class SegmentationModel(nn.Module):
         self.encoder.set_trainable(enabled)
 
 
+class DoubleConvRelu(nn.Module):
+    def __init__(self, in_dec_filters: int, out_filters: int):
+        super().__init__()
+        self.conv1 = nn.Conv2d(in_dec_filters, out_filters, kernel_size=3, padding=1, stride=1)
+        self.conv2 = nn.Conv2d(out_filters, out_filters, kernel_size=3, padding=1, stride=1)
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = F.relu(x, inplace=True)
+        x = self.conv2(x)
+        x = F.relu(x, inplace=True)
+        return x
+
+
+class DoubleConvSelu(nn.Module):
+    def __init__(self, in_dec_filters: int, out_filters: int):
+        super().__init__()
+        self.conv1 = nn.Conv2d(in_dec_filters, out_filters, kernel_size=3, padding=1, stride=1)
+        self.conv2 = nn.Conv2d(out_filters, out_filters, kernel_size=3, padding=1, stride=1)
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = F.selu(x, inplace=True)
+        x = self.conv2(x)
+        x = F.selu(x, inplace=True)
+        return x
+
+
+class ConvSelu(nn.Module):
+    def __init__(self, in_dec_filters: int, out_filters: int):
+        super().__init__()
+        self.conv = nn.Conv2d(in_dec_filters, out_filters, kernel_size=3, padding=1, stride=1)
+
+    def forward(self, x):
+        x = self.conv(x)
+        x = F.selu(x, inplace=True)
+        return x
+
+
+class ConvBNRelu(nn.Module):
+    def __init__(self, in_dec_filters: int, out_filters: int):
+        super().__init__()
+        self.conv = nn.Conv2d(in_dec_filters, out_filters, kernel_size=3, padding=1, stride=1)
+        self.bn = nn.BatchNorm2d(out_filters)
+
+    def forward(self, x):
+        x = self.conv(x)
+        x = self.bn(x)
+        x = F.relu(x, inplace=True)
+        return x
+
+
 class HiResSegmentationModel(nn.Module):
-    def __init__(self, encoder: E.EncoderModule, decoder: D.DecoderModule, num_classes: int):
+    def __init__(self, encoder: E.EncoderModule, num_classes: int, fpn_features: int):
         super().__init__()
 
         self.encoder = encoder
-        self.decoder = decoder
+
+        # hard-coded assumption that encoder has first layer with stride of 4
+        self.decoder = D.FPNDecoder(features=encoder.output_filters[1:],
+                                    prediction_block=DoubleConvRelu,
+                                    bottleneck=FPNBottleneckBlockBN,
+                                    fpn_features=fpn_features)
         self.fpn_fuse = FPNFuse()
-
         output_features = sum(self.decoder.output_filters)
+        self.reduce = ConvBNRelu(output_features, fpn_features * 2)
 
-        self.finaldrop1 = nn.Dropout2d(p=0.5)
+        self.smooth1 = DoubleConvRelu(fpn_features * 2 + encoder.output_filters[0], fpn_features)
+        self.smooth2 = DoubleConvRelu(fpn_features, fpn_features // 2)
 
-        self.finaldeconv1 = nn.ConvTranspose2d(output_features, output_features // 2, kernel_size=2, stride=2)
-        self.finalrelu1 = nn.LeakyReLU(inplace=True)
-        self.finalconv1 = nn.Conv2d(output_features // 2, output_features // 2, 3, padding=1)
-
-        self.finaldeconv2 = nn.ConvTranspose2d(output_features // 2, output_features // 4, kernel_size=2, stride=2)
-        self.finalrelu2 = nn.LeakyReLU(inplace=True)
-        self.finalconv2 = nn.Conv2d(output_features // 4, output_features // 4, 3, padding=1)
-
-        self.logits = nn.Conv2d(output_features // 4, num_classes, kernel_size=1)
+        self.dropout = nn.Dropout2d(0.5, inplace=False)
+        self.logits = nn.Conv2d(fpn_features // 2, num_classes, kernel_size=1)
 
     def forward(self, x):
         x, pad = pad_tensor(x, 32)
 
         enc_features = self.encoder(x)
-        dec_features = self.decoder(enc_features)
+        dec_features = self.decoder(enc_features[1:])
+        layer0 = enc_features[0]
 
         features = self.fpn_fuse(dec_features)
+        features = self.reduce(features)
 
-        # Final Classification
-        features = self.finaldrop1(features)  # Added dropout
+        features = F.interpolate(features, scale_factor=2, mode='bilinear', align_corners=True)
 
-        features = self.finaldeconv1(features)
-        features = self.finalrelu1(features)
-        features = self.finalconv1(features)
+        features = torch.cat([features, layer0], dim=1)
+        features = self.smooth1(features)
 
-        features = self.finaldeconv2(features)
-        features = self.finalrelu2(features)
-        features = self.finalconv2(features)
+        features = F.interpolate(features, scale_factor=2, mode='bilinear', align_corners=True)
+        features = self.smooth2(features)
 
+        features = self.dropout(features)
         features = self.logits(features)
         features = unpad_tensor(features, pad)
         return features
@@ -148,6 +186,19 @@ def fpn256_resnext50(num_classes=1, num_channels=3):
 
     return SegmentationModel(encoder, decoder, num_classes)
 
+
+def hd_fpn_resnext50(num_classes=1, num_channels=3, fpn_features=128):
+    assert num_channels == 3
+    encoder = E.SEResNeXt50Encoder(layers=[0, 1, 2, 3, 4])
+    return HiResSegmentationModel(encoder, num_classes, fpn_features)
+
+
+def test_hd_fpn_resnext50():
+    net = hd_fpn_resnext50(1, 3, 128).eval()
+    image = torch.rand((1, 3, 512, 512))
+    out = net(image)
+    print(count_parameters(net))
+    print(out.size())
 #
 # def fpn_senet154(num_classes=1, num_channels=3):
 #     assert num_channels == 3

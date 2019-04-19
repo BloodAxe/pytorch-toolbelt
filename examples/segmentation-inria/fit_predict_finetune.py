@@ -5,167 +5,18 @@ import collections
 import os
 from datetime import datetime
 
-import albumentations as A
-import cv2
-import numpy as np
 import torch
-from catalyst.dl.callbacks import EarlyStoppingCallback, UtilsFactory
+from catalyst.dl.callbacks import UtilsFactory, OneCycleLR
 from catalyst.dl.experiments import SupervisedRunner
-from pytorch_toolbelt.losses.jaccard import BinaryJaccardLogLoss
-from pytorch_toolbelt.losses.joint_loss import JointLoss
-from pytorch_toolbelt.utils.catalyst_utils import ShowPolarBatchesCallback, EpochJaccardMetric, PixelAccuracyMetric
-from pytorch_toolbelt.utils.dataset_utils import ImageMaskDataset, TiledImageMaskDataset
-from pytorch_toolbelt.utils.fs import auto_file, read_rgb_image, read_image_as_is
-from pytorch_toolbelt.utils.random import set_manual_seed
-from pytorch_toolbelt.utils.torch_utils import maybe_cuda, rgb_image_from_tensor, to_numpy, count_parameters
 from torch.backends import cudnn
-from torch.nn import BCEWithLogitsLoss
-from torch.optim import Adam
-from torch.utils.data import DataLoader, WeightedRandomSampler
 
-from models.factory import get_model, get_loss, get_optimizer
+from pytorch_toolbelt.optimization.functional import get_lr_decay_parameters
+from pytorch_toolbelt.utils.catalyst_utils import ShowPolarBatchesCallback, EpochJaccardMetric, PixelAccuracyMetric
+from pytorch_toolbelt.utils.fs import auto_file
+from pytorch_toolbelt.utils.random import set_manual_seed
+from pytorch_toolbelt.utils.torch_utils import maybe_cuda, count_parameters
 
-
-def read_inria_mask(fname):
-    mask = read_image_as_is(fname)
-    return (mask > 0).astype(np.uint8)
-
-
-def get_dataloaders(data_dir: str,
-                    batch_size=16,
-                    num_workers=4,
-                    fast=False,
-                    image_size=(224, 224),
-                    use_d4=True):
-    locations = ['austin', 'chicago', 'kitsap', 'tyrol-w', 'vienna']
-
-    train_data = []
-    valid_data = []
-
-    # For validation, we suggest to remove the first five images of every location (e.g., austin{1-5}.tif, chicago{1-5}.tif) from the training set.
-    for loc in locations:
-        for i in range(1, 6):
-            valid_data.append(f'{loc}{i}')
-        for i in range(6, 37):
-            train_data.append(f'{loc}{i}')
-
-    train_img = [os.path.join(data_dir, 'train', 'images', f'{fname}.tif') for fname in train_data]
-    valid_img = [os.path.join(data_dir, 'train', 'images', f'{fname}.tif') for fname in valid_data]
-
-    train_mask = [os.path.join(data_dir, 'train', 'gt', f'{fname}.tif') for fname in train_data]
-    valid_mask = [os.path.join(data_dir, 'train', 'gt', f'{fname}.tif') for fname in valid_data]
-
-    if fast:
-        train_img = train_img[:1]
-        train_mask = train_mask[:1]
-
-        valid_img = valid_img[:1]
-        valid_mask = valid_mask[:1]
-
-    train_transform = A.Compose([
-        # Make random-sized crop with scale [50%..200%] of target size 1.5 larger than target crop to have some space around for
-        # further transforms
-        A.RandomSizedCrop((3 * image_size[0] // 4, image_size[0] * 4 // 3), int(image_size[0]), int(image_size[1])),
-
-        # Apply random rotations
-        # A.ShiftScaleRotate(shift_limit=0, scale_limit=0, rotate_limit=5, border_mode=cv2.BORDER_CONSTANT),
-        # A.OneOf([
-        #     A.GridDistortion(border_mode=cv2.BORDER_CONSTANT),
-        #     A.ElasticTransform(border_mode=cv2.BORDER_CONSTANT),
-        # ]),
-
-        # Add occasion blur/sharpening
-        # A.OneOf([
-        #     A.GaussianBlur(),
-        #     A.MotionBlur(),
-        #     A.IAASharpen()
-        # ]),
-
-        # Crop to desired image size
-        # A.CenterCrop(image_size[0], image_size[1]),
-
-        # D4 Augmentations
-        # A.Compose([
-        #     A.Transpose(),
-        #     A.RandomRotate90(),
-        # ], p=float(use_d4)),
-        # In case we don't want to use D4 augmentations, we use flips
-        A.HorizontalFlip(),
-
-        # Spatial-preserving augmentations:
-        A.OneOf([
-            A.Cutout(),
-            A.GaussNoise(),
-        ]),
-        A.OneOf([
-            A.RandomBrightnessContrast(),
-            A.CLAHE(),
-            A.HueSaturationValue(),
-            A.RGBShift(),
-            A.RandomGamma()
-        ]),
-        # Weather effects
-        # A.OneOf([
-        #     A.RandomFog(),
-        #     A.RandomRain(),
-        #     A.RandomSunFlare()
-        # ]),
-
-        # Normalize image to make use of pretrained model
-        A.Normalize()
-    ])
-
-    trainset = ImageMaskDataset(train_img, train_mask, read_rgb_image, read_inria_mask,
-                                transform=train_transform,
-                                keep_in_mem=fast)
-
-    validset = TiledImageMaskDataset(valid_img, valid_mask, read_rgb_image, read_inria_mask,
-                                     transform=A.Normalize(),
-                                     # For validation we don't want tiles overlap
-                                     tile_size=image_size,
-                                     tile_step=image_size,
-                                     target_shape=(5000, 5000),
-                                     keep_in_mem=fast)
-
-    num_train_samples = int(len(trainset) * (5000 * 5000) / (image_size[0] * image_size[1]))
-
-    trainloader = DataLoader(trainset,
-                             batch_size=batch_size,
-                             num_workers=num_workers,
-                             pin_memory=True,
-                             drop_last=True,
-                             sampler=WeightedRandomSampler(np.ones(len(trainset)), num_train_samples))
-
-    validloader = DataLoader(validset,
-                             batch_size=batch_size,
-                             num_workers=num_workers,
-                             pin_memory=True,
-                             shuffle=False)
-
-    return trainloader, validloader
-
-
-def visualize_inria_predictions(input: dict, output: dict, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)):
-    images = []
-    for image, target, logits in zip(input['features'], input['targets'], output['logits']):
-        image = rgb_image_from_tensor(image, mean, std)
-        target = to_numpy(target).squeeze(0)
-        logits = to_numpy(logits).squeeze(0)
-
-        overlay = np.zeros_like(image)
-        true_mask = target > 0
-        pred_mask = logits > 0
-
-        overlay[true_mask & pred_mask] = np.array([0, 250, 0], dtype=overlay.dtype)  # Correct predictions (Hits) painted with green
-        overlay[true_mask & ~pred_mask] = np.array([250, 0, 0], dtype=overlay.dtype)  # Misses painted with red
-        overlay[~true_mask & pred_mask] = np.array([250, 250, 0], dtype=overlay.dtype)  # False alarm painted with yellow
-
-        # overlay[logits > 0] += np.array([255, 0, 0], dtype=overlay.dtype)
-        # overlay[target > 0] += np.array([0, 255, 0], dtype=overlay.dtype)
-
-        overlay = cv2.addWeighted(image, 0.5, overlay, 0.5, 0, dtype=cv2.CV_8U)
-        images.append(overlay)
-    return images
+from models.factory import get_model, get_loss, get_optimizer, get_dataloaders, visualize_inria_predictions
 
 
 def main():
@@ -176,12 +27,13 @@ def main():
     parser.add_argument('-dd', '--data-dir', type=str, required=True, help='Data directory for INRIA sattelite dataset')
     parser.add_argument('-m', '--model', type=str, default='unet', help='')
     parser.add_argument('-b', '--batch-size', type=int, default=8, help='Batch Size during training, e.g. -b 64')
-    parser.add_argument('-e', '--epochs', type=int, default=150, help='Epoch to run')
+    parser.add_argument('-e', '--epochs', type=int, default=50, help='Epoch to run')
     parser.add_argument('-es', '--early-stopping', type=int, default=None, help='Maximum number of epochs without improvement')
     # parser.add_argument('-f', '--fold', default=None, required=True, type=int, help='Fold to train')
     #     # parser.add_argument('-fe', '--freeze-encoder', type=int, default=0, help='Freeze encoder parameters for N epochs')
     #     # parser.add_argument('-ft', '--fine-tune', action='store_true')
-    parser.add_argument('-lr', '--learning-rate', type=float, default=1e-5, help='Initial learning rate')
+    parser.add_argument('-lr', '--learning-rate', type=float, default=1e-3, help='Initial learning rate')
+    parser.add_argument('-l', '--criterion', type=str, default='bce', help='Criterion')
     parser.add_argument('-o', '--optimizer', default='SGD', help='Name of the optimizer')
     parser.add_argument('-c', '--checkpoint', type=str, default=None, help='Checkpoint filename to use as initial model weights')
     parser.add_argument('-w', '--workers', default=8, type=int, help='Num workers')
@@ -205,13 +57,24 @@ def main():
                                                  fast=args.fast)
 
     model = maybe_cuda(get_model(model_name, image_size=image_size))
-    optimizer = get_optimizer(optimizer_name, model.parameters(), learning_rate)
+    criterion = get_loss(args.criterion)
+
+    parameters = get_lr_decay_parameters(model.named_parameters(), learning_rate, {
+        'encoder.layer0': 0.1,
+        'encoder.layer1': 0.2,
+        'encoder.layer2': 0.3,
+        'encoder.layer3': 0.4,
+        'encoder.layer4': 0.5,
+        'decoder': 0.75
+    })
+
+    optimizer = get_optimizer(optimizer_name, parameters, learning_rate)
 
     loaders = collections.OrderedDict()
     loaders["train"] = train_loader
     loaders["valid"] = valid_loader
 
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[10, 20, 40], gamma=0.3)
+    # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.3, patience=5)
 
     # model runner
     runner = SupervisedRunner()
@@ -243,6 +106,7 @@ def main():
     os.makedirs(log_dir, exist_ok=False)
 
     print('Train session:', prefix)
+    print('\tFast mode  :', args.fast)
     print('\tEpochs     :', num_epochs)
     print('\tWorkers    :', num_workers)
     print('\tData dir   :', data_dir)
@@ -252,21 +116,26 @@ def main():
     print('Model:', model_name)
     print('\tParameters:', count_parameters(model))
     print('\tImage size:', image_size)
-    print('Optimizer:', optimizer_name, optimizer)
+    print('Optimizer:', optimizer_name)
     print('\tLearning rate:', learning_rate)
     print('\tBatch size   :', batch_size)
+    print('\tCriterion    :', args.criterion)
 
     # model training
     runner.train(
         model=model,
-        criterion=JointLoss(first=BCEWithLogitsLoss(), second=BinaryJaccardLogLoss(), first_weight=1.0, second_weight=0.25),
+        criterion=criterion,
         optimizer=optimizer,
-        scheduler=scheduler,
+        # scheduler=scheduler,
         callbacks=[
+            OneCycleLR(
+                cycle_len=num_epochs,
+                div_factor=10,
+                increase_fraction=0.3,
+                momentum_range=(0.95, 0.85)),
             PixelAccuracyMetric(),
             EpochJaccardMetric(),
             ShowPolarBatchesCallback(visualize_inria_predictions, metric='accuracy', minimize=False),
-            EarlyStoppingCallback(patience=5, min_delta=0.01, metric='jaccard', minimize=False),
         ],
         loaders=loaders,
         logdir=log_dir,

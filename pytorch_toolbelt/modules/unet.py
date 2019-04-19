@@ -6,11 +6,11 @@ from .abn import ABN, ACT_RELU
 
 
 class UnetEncoderBlock(nn.Module):
-    def __init__(self, in_dec_filters, out_filters, abn_block=ABN, activation=ACT_RELU, **kwargs):
+    def __init__(self, in_dec_filters, out_filters, abn_block=ABN, activation=ACT_RELU, stride=1, **kwargs):
         super().__init__()
         self.conv1 = nn.Conv2d(in_dec_filters, out_filters, kernel_size=3, padding=1, stride=1, bias=False, **kwargs)
         self.bn1 = abn_block(out_filters, activation=activation)
-        self.conv2 = nn.Conv2d(out_filters, out_filters, kernel_size=3, padding=1, stride=1, bias=False, **kwargs)
+        self.conv2 = nn.Conv2d(out_filters, out_filters, kernel_size=3, padding=1, stride=stride, bias=False, **kwargs)
         self.bn2 = abn_block(out_filters, activation=activation)
 
     def forward(self, x):
