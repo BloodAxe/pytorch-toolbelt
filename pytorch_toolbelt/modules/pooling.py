@@ -31,10 +31,9 @@ class GWAP(nn.Module):
     Global Weighted Average Pooling from paper "Global Weighted Average Pooling Bridges Pixel-level Localization and Image-level Classification"
     """
 
-    def __init__(self, features, num_classes):
+    def __init__(self, features):
         super().__init__()
         self.conv = nn.Conv2d(features, 1, kernel_size=1, bias=True)
-        self.logits = nn.Linear(features, num_classes)
 
     def fscore(self, x):
         m = self.conv(x)
@@ -49,9 +48,8 @@ class GWAP(nn.Module):
         x = self.fscore(x)
         x = self.norm(x)
         x = x * input_x
-        x = x.sum(dim=[2, 3])
-        logits = self.logits(x)
-        return logits
+        x = x.sum(dim=[2, 3], keepdim=True)
+        return x
 
 
 class RMSPool(nn.Module):
