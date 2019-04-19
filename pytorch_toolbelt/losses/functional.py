@@ -29,7 +29,7 @@ def sigmoid_focal_loss(input: torch.Tensor,
 
         https://github.com/open-mmlab/mmdetection/blob/master/mmdet/core/loss/losses.py
     """
-    target = target.float()
+    target = target.type(input.type())
 
     logpt = -F.binary_cross_entropy_with_logits(input, target, reduction='none')
     pt = torch.exp(logpt)
