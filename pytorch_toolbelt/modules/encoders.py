@@ -59,9 +59,10 @@ class ResnetEncoder(EncoderModule):
         self.layer0 = nn.Sequential(OrderedDict([
             ('conv1', resnet.conv1),
             ('bn1', resnet.bn1),
-            ('relu', resnet.relu),
-            ('maxpool', resnet.maxpool)
+            ('relu', resnet.relu)
         ]))
+        self.maxpool = resnet.maxpool
+
         self.layer1 = resnet.layer1
         self.layer2 = resnet.layer2
         self.layer3 = resnet.layer3
@@ -71,30 +72,45 @@ class ResnetEncoder(EncoderModule):
     def encoder_layers(self):
         return [self.layer0, self.layer1, self.layer2, self.layer3, self.layer4]
 
+    def forward(self, x):
+        input = x
+        output_features = []
+        for layer in self.encoder_layers:
+            output = layer(input)
+            output_features.append(output)
+
+            if layer == self.layer0:
+                # Fist maxpool operator is not a part of layer0 because we want that layer0 output to have stride of 2
+                output = self.maxpool(output)
+            input = output
+
+        # Return only features that were requested
+        return _take(output_features, self._layers)
+
 
 class Resnet18Encoder(ResnetEncoder):
     def __init__(self, pretrained=True, layers=[1, 2, 3, 4]):
-        super().__init__(resnet18(pretrained=pretrained), [64, 64, 128, 256, 512], [4, 4, 8, 16, 32], layers)
+        super().__init__(resnet18(pretrained=pretrained), [64, 64, 128, 256, 512], [2, 4, 8, 16, 32], layers)
 
 
 class Resnet34Encoder(ResnetEncoder):
     def __init__(self, pretrained=True, layers=[1, 2, 3, 4]):
-        super().__init__(resnet34(pretrained=pretrained), [64, 64, 128, 256, 512], [4, 4, 8, 16, 32], layers)
+        super().__init__(resnet34(pretrained=pretrained), [64, 64, 128, 256, 512], [2, 4, 8, 16, 32], layers)
 
 
 class Resnet50Encoder(ResnetEncoder):
     def __init__(self, pretrained=True, layers=[1, 2, 3, 4]):
-        super().__init__(resnet50(pretrained=pretrained), [64, 256, 512, 1024, 2048], [4, 4, 8, 16, 32], layers)
+        super().__init__(resnet50(pretrained=pretrained), [64, 256, 512, 1024, 2048], [2, 4, 8, 16, 32], layers)
 
 
 class Resnet101Encoder(ResnetEncoder):
     def __init__(self, pretrained=True, layers=[1, 2, 3, 4]):
-        super().__init__(resnet101(pretrained=pretrained), [64, 256, 512, 1024, 2048], [4, 4, 8, 16, 32], layers)
+        super().__init__(resnet101(pretrained=pretrained), [64, 256, 512, 1024, 2048], [2, 4, 8, 16, 32], layers)
 
 
 class Resnet152Encoder(ResnetEncoder):
     def __init__(self, pretrained=True, layers=[1, 2, 3, 4]):
-        super().__init__(resnet152(pretrained=pretrained), [64, 256, 512, 1024, 2048], [4, 4, 8, 16, 32], layers)
+        super().__init__(resnet152(pretrained=pretrained), [64, 256, 512, 1024, 2048], [2, 4, 8, 16, 32], layers)
 
 
 class SEResnetEncoder(EncoderModule):
@@ -104,6 +120,9 @@ class SEResnetEncoder(EncoderModule):
 
     def __init__(self, seresnet: SENet, channels, strides, layers=[1, 2, 3, 4]):
         super().__init__(channels, strides, layers)
+
+        self.maxpool = seresnet.layer0.pool
+        del seresnet.layer0.pool
 
         self.layer0 = seresnet.layer0
         self.layer1 = seresnet.layer1
@@ -126,41 +145,56 @@ class SEResnetEncoder(EncoderModule):
     def output_filters(self):
         return self._output_filters
 
+    def forward(self, x):
+        input = x
+        output_features = []
+        for layer in self.encoder_layers:
+            output = layer(input)
+            output_features.append(output)
+
+            if layer == self.layer0:
+                # Fist maxpool operator is not a part of layer0 because we want that layer0 output to have stride of 2
+                output = self.maxpool(output)
+            input = output
+
+        # Return only features that were requested
+        return _take(output_features, self._layers)
+
 
 class SEResnet50Encoder(SEResnetEncoder):
     def __init__(self, pretrained=True, layers=[1, 2, 3, 4]):
         encoder = se_resnet50(pretrained='imagenet' if pretrained else None)
-        super().__init__(encoder, [64, 256, 512, 1024, 2048], [4, 4, 8, 16, 32], layers)
+        super().__init__(encoder, [64, 256, 512, 1024, 2048], [2, 4, 8, 16, 32], layers)
 
 
 class SEResnet101Encoder(SEResnetEncoder):
     def __init__(self, pretrained=True, layers=[1, 2, 3, 4]):
         encoder = se_resnet101(pretrained='imagenet' if pretrained else None)
-        super().__init__(encoder, [64, 256, 512, 1024, 2048], [4, 4, 8, 16, 32], layers)
+        super().__init__(encoder, [64, 256, 512, 1024, 2048], [2, 4, 8, 16, 32], layers)
 
 
 class SEResnet152Encoder(SEResnetEncoder):
     def __init__(self, pretrained=True, layers=[1, 2, 3, 4]):
         encoder = se_resnet152(pretrained='imagenet' if pretrained else None)
-        super().__init__(encoder, [64, 256, 512, 1024, 2048], [4, 4, 8, 16, 32], layers)
+        super().__init__(encoder, [64, 256, 512, 1024, 2048], [2, 4, 8, 16, 32], layers)
 
 
 class SENet154Encoder(SEResnetEncoder):
     def __init__(self, pretrained=True, layers=[1, 2, 3, 4]):
         encoder = senet154(pretrained='imagenet' if pretrained else None)
-        super().__init__(encoder, [64, 256, 512, 1024, 2048], [4, 4, 8, 16, 32], layers)
+        super().__init__(encoder, [64, 256, 512, 1024, 2048], [2, 4, 8, 16, 32], layers)
 
 
 class SEResNeXt50Encoder(SEResnetEncoder):
     def __init__(self, pretrained=True, layers=[1, 2, 3, 4]):
         encoder = se_resnext50_32x4d(pretrained='imagenet' if pretrained else None)
-        super().__init__(encoder, [64, 256, 512, 1024, 2048], [4, 4, 8, 16, 32], layers)
+        super().__init__(encoder, [64, 256, 512, 1024, 2048], [2, 4, 8, 16, 32], layers)
 
 
 class SEResNeXt101Encoder(SEResnetEncoder):
     def __init__(self, pretrained=True, layers=[1, 2, 3, 4]):
         encoder = se_resnext101_32x4d(pretrained='imagenet' if pretrained else None)
-        super().__init__(encoder, [64, 256, 512, 1024, 2048], [4, 4, 8, 16, 32], layers)
+        super().__init__(encoder, [64, 256, 512, 1024, 2048], [2, 4, 8, 16, 32], layers)
 
 
 class SqueezenetEncoder(EncoderModule):
