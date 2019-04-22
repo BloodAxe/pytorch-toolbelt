@@ -29,3 +29,8 @@ install:
 script:
   - if [[ "$TEST_MODE" != "DOCS" ]]; then pytest; fi
   - if [[ "$TEST_MODE" != "DOCS" ]]; then flake8; fi
+
+deploy:
+  provider: pypi
+  user: "BloodAxe"
+  password: "$PYPI_TOKEN"
