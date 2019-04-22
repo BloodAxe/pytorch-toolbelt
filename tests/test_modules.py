@@ -18,10 +18,6 @@ def test_resnet18_encoder():
     [E.SqueezenetEncoder, {'layers': [0, 1, 2, 3]}],
     [E.MobilenetV2Encoder, {'layers': [0, 1, 2, 3, 4, 5, 6, 7]}],
     [E.Resnet18Encoder, {'layers': [0, 1, 2, 3, 4]}],
-    [E.Resnet34Encoder, {}],
-    [E.Resnet50Encoder, {}],
-    [E.SEResNeXt50Encoder, {'layers': [0, 1, 2, 3, 4]}],
-    [E.SEResnet50Encoder, {}],
 ])
 def test_encoders(encoder: E.EncoderModule, encoder_params):
     with torch.no_grad():
@@ -41,6 +37,10 @@ def test_encoders(encoder: E.EncoderModule, encoder_params):
 
 
 @pytest.mark.parametrize(['encoder', 'encoder_params'], [
+    [E.Resnet34Encoder, {}],
+    [E.Resnet50Encoder, {}],
+    [E.SEResNeXt50Encoder, {'layers': [0, 1, 2, 3, 4]}],
+    [E.SEResnet50Encoder, {}],
     [E.Resnet152Encoder, {}],
     [E.Resnet101Encoder, {}],
     [E.SEResnet152Encoder, {}],
