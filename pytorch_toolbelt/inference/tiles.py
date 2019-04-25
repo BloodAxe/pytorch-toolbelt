@@ -119,13 +119,16 @@ class ImageSlicer:
             self.margin_top = image_margin
             self.margin_bottom = image_margin
 
-        self.crops = []
-        self.bbox_crops = []
+        crops = []
+        bbox_crops = []
 
         for y in range(0, self.image_height + self.margin_top + self.margin_bottom - self.tile_size[0] + 1, self.tile_step[0]):
             for x in range(0, self.image_width + self.margin_left + self.margin_right - self.tile_size[1] + 1, self.tile_step[1]):
-                self.crops.append((x, y, self.tile_size[1], self.tile_size[0]))
-                self.bbox_crops.append((x - self.margin_left, y - self.margin_top, self.tile_size[1], self.tile_size[0]))
+                crops.append((x, y, self.tile_size[1], self.tile_size[0]))
+                bbox_crops.append((x - self.margin_left, y - self.margin_top, self.tile_size[1], self.tile_size[0]))
+
+        self.crops = np.array(crops)
+        self.bbox_crops = np.array(bbox_crops)
 
     def split(self, image, border_type=cv2.BORDER_CONSTANT, value=0):
         assert image.shape[0] == self.image_height
