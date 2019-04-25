@@ -12,7 +12,7 @@ from torch.nn import functional as F
 from tqdm import tqdm
 
 from pytorch_toolbelt.inference.tiles import CudaTileMerger, ImageSlicer
-from pytorch_toolbelt.inference.tta import tta_fliplr_image2mask, tta_d4_image2mask
+from pytorch_toolbelt.inference.tta import fliplr_image2mask, d4_image2mask
 from pytorch_toolbelt.losses.focal import BinaryFocalLoss
 from pytorch_toolbelt.losses.jaccard import BinaryJaccardLogLoss
 from pytorch_toolbelt.losses.lovasz import BinaryLovaszLoss
@@ -94,7 +94,7 @@ class TTAWrapperFlipLR(nn.Module):
         self.model = model
 
     def forward(self, x):
-        return tta_d4_image2mask(self.model, x)
+        return d4_image2mask(self.model, x)
 
 
 class TTAWrapperD4(nn.Module):
@@ -103,7 +103,7 @@ class TTAWrapperD4(nn.Module):
         self.model = model
 
     def forward(self, x):
-        return tta_fliplr_image2mask(self.model, x)
+        return fliplr_image2mask(self.model, x)
 
 
 def predict(model: nn.Module, image: np.ndarray, image_size, tta=None, normalize=A.Normalize(), batch_size=1, activation='sigmoid') -> np.ndarray:

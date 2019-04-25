@@ -1,5 +1,6 @@
 def get_lr_decay_parameters(parameters, learning_rate, groups: dict):
-    custom_lr_parameters = dict((group_name, {'params': [], 'lr': learning_rate * lr_factor}) for (group_name, lr_factor) in groups.items())
+    custom_lr_parameters = dict((group_name, {'params': [], 'lr': learning_rate * lr_factor})
+                                for (group_name, lr_factor) in groups.items())
     custom_lr_parameters['default'] = {'params': [], 'lr': learning_rate}
 
     for parameter_name, parameter in parameters:

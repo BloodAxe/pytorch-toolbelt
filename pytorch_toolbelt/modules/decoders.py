@@ -54,7 +54,7 @@ class UNetDecoder(DecoderModule):
 
 class FPNDecoder(DecoderModule):
     def __init__(self, features,
-                 prediction_block: nn.Module,
+                 prediction_block=FPNPredictionBlock,
                  bottleneck=FPNBottleneckBlock,
                  fpn_features=128,
                  prediction_features=128,
