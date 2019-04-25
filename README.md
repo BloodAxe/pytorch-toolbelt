@@ -13,6 +13,15 @@ A `pytorch-toolbelt` is a Python library with a set of bells and whistles for Py
 * Every-day common routines (fix/restore random seed, filesystem utils, metrics)
 * Fancy losses: Focal, Lovasz, Jaccard and Dice losses, Wing Loss
 
+# Why
+
+Honest answer is "I needed a convenient way to re-use code for my Kaggle career". 
+During 2018 I achieved a [Kaggle Master](https://www.kaggle.com/bloodaxe) badge and this been a long path. 
+Very often I found myself re-using most of the old pipelines over and over again. 
+At some point it crystallized into this repository. 
+
+This lib is not meant to replace catalyst / ignite / fast.ai. Instead it's designed to complement them.
+
 # Installation
 
 `pip install pytorch_toolbelt`
