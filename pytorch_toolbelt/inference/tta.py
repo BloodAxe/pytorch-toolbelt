@@ -3,13 +3,17 @@
 Despite this is called test-time augmentation, these method can be used at training time as well since all
 transformation written in PyTorch and respect gradients flow.
 """
+from functools import partial
 from typing import Tuple
 
 from torch import Tensor, nn
 from . import functional as F
 
+__all__ = ['d4_image2label', 'd4_image2mask', 'fivecrop_image2label', 'fliplr_image2mask',
+           'fliplr_image2label', 'TTAWrapper']
 
-def tta_fliplr_image2label(model: nn.Module, image: Tensor) -> Tensor:
+
+def fliplr_image2label(model: nn.Module, image: Tensor) -> Tensor:
     """Test-time augmentation for image classification that averages predictions
     for input image and vertically flipped one.
 
@@ -22,7 +26,7 @@ def tta_fliplr_image2label(model: nn.Module, image: Tensor) -> Tensor:
     return output * one_over_2
 
 
-def tta_fivecrop_image2label(model: nn.Module, image: Tensor, crop_size: Tuple) -> Tensor:
+def fivecrop_image2label(model: nn.Module, image: Tensor, crop_size: Tuple) -> Tensor:
     """Test-time augmentation for image classification that takes five crops out of input tensor (4 on corners and central)
     and averages predictions from them.
 
@@ -66,7 +70,7 @@ def tta_fivecrop_image2label(model: nn.Module, image: Tensor, crop_size: Tuple) 
     return output * one_over_5
 
 
-def tta_fliplr_image2mask(model: nn.Module, image: Tensor) -> Tensor:
+def fliplr_image2mask(model: nn.Module, image: Tensor) -> Tensor:
     """Test-time augmentation for image segmentation that averages predictions
     for input image and vertically flipped one.
 
@@ -81,7 +85,7 @@ def tta_fliplr_image2mask(model: nn.Module, image: Tensor) -> Tensor:
     return output * one_over_2
 
 
-def tta_d4_image2label(model: nn.Module, image: Tensor) -> Tensor:
+def d4_image2label(model: nn.Module, image: Tensor) -> Tensor:
     """Test-time augmentation for image classification that averages predictions
     of all D4 augmentations applied to input image.
 
@@ -105,7 +109,7 @@ def tta_d4_image2label(model: nn.Module, image: Tensor) -> Tensor:
     return output * one_over_8
 
 
-def tta_d4_image2mask(model: nn.Module, image: Tensor) -> Tensor:
+def d4_image2mask(model: nn.Module, image: Tensor) -> Tensor:
     """Test-time augmentation for image classification that averages predictions
     of all D4 augmentations applied to input image.
 
@@ -129,3 +133,13 @@ def tta_d4_image2mask(model: nn.Module, image: Tensor) -> Tensor:
 
     one_over_8 = float(1.0 / 8.0)
     return output * one_over_8
+
+
+class TTAWrapper(nn.Module):
+    def __init__(self, model, tta_function, **kwargs):
+        super().__init__()
+        self.model = model
+        self.tta = partial(tta_function, **kwargs)
+
+    def forward(self, *input):
+        return self.tta(self.model, *input)
