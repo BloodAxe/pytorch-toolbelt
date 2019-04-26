@@ -9,6 +9,17 @@ import numpy as np
 from torch import nn
 
 
+def freeze_bn(module: nn.Module):
+    """Freezes BatchNorm
+    """
+    if isinstance(module, (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d)):
+        module.track_running_stats = False
+
+    for m in module.modules():
+        if isinstance(module, (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d)):
+            module.track_running_stats = False
+
+
 def logit(x: torch.Tensor, eps=1e-5):
     x = torch.clamp(x.float(), eps, 1.0 - eps)
     return torch.log(x / (1.0 - x))

@@ -21,7 +21,7 @@ def fliplr_image2label(model: nn.Module, image: Tensor) -> Tensor:
     :param image:
     :return:
     """
-    output = model(image) + model(F.torch_fliplp(image))
+    output = model(image) + model(F.torch_fliplr(image))
     one_over_2 = float(1.0 / 2.0)
     return output * one_over_2
 
@@ -30,10 +30,10 @@ def fivecrop_image2label(model: nn.Module, image: Tensor, crop_size: Tuple) -> T
     """Test-time augmentation for image classification that takes five crops out of input tensor (4 on corners and central)
     and averages predictions from them.
 
-    :param model:
-    :param image:
-    :param crop_size:
-    :return:
+    :param model: Classification model
+    :param image: Input image tensor
+    :param crop_size: Crop size. Must be smaller than image size
+    :return: Averaged logits
     """
     image_height, image_width = int(image.size(2)), int(image.size(3))
     crop_height, crop_width = crop_size
@@ -70,6 +70,55 @@ def fivecrop_image2label(model: nn.Module, image: Tensor, crop_size: Tuple) -> T
     return output * one_over_5
 
 
+def tencrop_image2label(model: nn.Module, image: Tensor, crop_size: Tuple) -> Tensor:
+    """Test-time augmentation for image classification that takes five crops out of input tensor (4 on corners and central)
+    and averages predictions from them and from their horisontally-flipped versions (10-Crop TTA).
+
+    :param model: Classification model
+    :param image: Input image tensor
+    :param crop_size: Crop size. Must be smaller than image size
+    :return: Averaged logits
+    """
+    image_height, image_width = int(image.size(2)), int(image.size(3))
+    crop_height, crop_width = crop_size
+
+    assert crop_height <= image_height
+    assert crop_width <= image_width
+
+    bottom_crop_start = image_height - crop_height
+    right_crop_start = image_width - crop_width
+    crop_tl = image[..., :crop_height, :crop_width]
+    crop_tr = image[..., :crop_height, right_crop_start:]
+    crop_bl = image[..., bottom_crop_start:, :crop_width]
+    crop_br = image[..., bottom_crop_start:, right_crop_start:]
+
+    assert crop_tl.size(2) == crop_height
+    assert crop_tr.size(2) == crop_height
+    assert crop_bl.size(2) == crop_height
+    assert crop_br.size(2) == crop_height
+
+    assert crop_tl.size(3) == crop_width
+    assert crop_tr.size(3) == crop_width
+    assert crop_bl.size(3) == crop_width
+    assert crop_br.size(3) == crop_width
+
+    center_crop_y = (image_height - crop_height) // 2
+    center_crop_x = (image_width - crop_width) // 2
+
+    crop_cc = image[..., center_crop_y:center_crop_y + crop_height, center_crop_x:center_crop_x + crop_width]
+    assert crop_cc.size(2) == crop_height
+    assert crop_cc.size(3) == crop_width
+
+    output = model(crop_tl) + model(F.torch_fliplr(crop_tl)) + \
+             model(crop_tr) + model(F.torch_fliplr(crop_tr)) + \
+             model(crop_bl) + model(F.torch_fliplr(crop_bl)) + \
+             model(crop_br) + model(F.torch_fliplr(crop_br)) + \
+             model(crop_cc) + model(F.torch_fliplr(crop_cc))
+
+    one_over_10 = float(1.0 / 10.0)
+    return output * one_over_10
+
+
 def fliplr_image2mask(model: nn.Module, image: Tensor) -> Tensor:
     """Test-time augmentation for image segmentation that averages predictions
     for input image and vertically flipped one.
@@ -80,7 +129,7 @@ def fliplr_image2mask(model: nn.Module, image: Tensor) -> Tensor:
     :param image: Model input.
     :return: Arithmetically averaged predictions
     """
-    output = model(image) + F.torch_fliplp(model(F.torch_fliplp(image)))
+    output = model(image) + F.torch_fliplr(model(F.torch_fliplr(image)))
     one_over_2 = float(1.0 / 2.0)
     return output * one_over_2
 
@@ -129,7 +178,7 @@ def d4_image2mask(model: nn.Module, image: Tensor) -> Tensor:
 
     for aug, deaug in zip([F.torch_none, F.torch_rot90, F.torch_rot180, F.torch_rot270], [F.torch_none, F.torch_rot270, F.torch_rot180, F.torch_rot90]):
         x = deaug(model(aug(image)))
-        output = output + x
+        output = output + F.torch_transpose(x)
 
     one_over_8 = float(1.0 / 8.0)
     return output * one_over_8
