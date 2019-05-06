@@ -15,17 +15,13 @@ def test_sigmoid_focal_loss():
 
 
 def test_reduced_focal_loss():
-    input_bad = torch.Tensor([-1]).float()
-    input_good = torch.Tensor([10]).float()
-    target = torch.Tensor([1])
+    input_good = torch.Tensor([10, -10, 10]).float()
+    input_bad = torch.Tensor([-1, 2, 0]).float()
+    target = torch.Tensor([1, 0, 1])
 
-    focal_loss_val = F.sigmoid_focal_loss(input_good, target)
-    reduced_loss_val = F.reduced_focal_loss(input_good, target)
-    assert reduced_loss_val < focal_loss_val
-
-    focal_loss_val = F.sigmoid_focal_loss(input_bad, target)
-    reduced_loss_val = F.reduced_focal_loss(input_bad, target)
-    assert reduced_loss_val == focal_loss_val
+    loss_good = F.reduced_focal_loss(input_good, target)
+    loss_bad = F.reduced_focal_loss(input_bad, target)
+    assert loss_good < loss_bad
 
 
 def test_soft_jaccard_score():

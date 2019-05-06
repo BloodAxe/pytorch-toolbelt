@@ -18,7 +18,7 @@ class IdentityResidualBlock(nn.Module):
                  groups=1,
                  norm_act=ABN,
                  dropout=None):
-        """Configurable identity-mapping residual block
+        """Identity-mapping residual block
         Parameters
         ----------
         in_channels : int
@@ -97,6 +97,7 @@ class WiderResNet(nn.Module):
                  norm_act=ABN,
                  classes=0):
         """Wider ResNet with pre-activation (identity mapping) blocks
+
         Parameters
         ----------
         structure : list of int
@@ -168,8 +169,9 @@ class WiderResNetA2(nn.Module):
                  norm_act=ABN,
                  classes=0,
                  dilation=False):
-        """Wider ResNet with pre-activation (identity mapping) blocks
+        """Wider ResNet with pre-activation (identity mapping) blocks.
         This variant uses down-sampling by max-pooling in the first two blocks and by strided convolution in the others.
+
         Parameters
         ----------
         structure : list of int
