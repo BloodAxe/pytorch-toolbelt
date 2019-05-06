@@ -24,9 +24,9 @@ class BinaryFocalLoss(_Loss):
         self.gamma = gamma
         self.ignore = ignore
         if reduced:
-            self.focal_loss = partial(reduced_focal_loss, gamma=gamma, alpha=alpha, reduction=reduction)
+            self.focal_loss = partial(reduced_focal_loss, gamma=gamma, threshold=threshold, reduction=reduction)
         else:
-            self.focal_loss = partial(sigmoid_focal_loss, gamma=gamma, threshold=threshold, reduction=reduction)
+            self.focal_loss = partial(sigmoid_focal_loss, gamma=gamma, alpha=alpha, reduction=reduction)
 
     def forward(self, label_input, label_target):
         """Compute focal loss for binary classification problem.
