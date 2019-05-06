@@ -47,6 +47,12 @@ def test_encoders(encoder: E.EncoderModule, encoder_params):
     [E.SEResNeXt101Encoder, {}],
     [E.SEResnet101Encoder, {}],
     [E.SENet154Encoder, {}],
+    [E.WiderResnet16Encoder, {}],
+    [E.WiderResnet20Encoder, {}],
+    [E.WiderResnet38Encoder, {}],
+    [E.WiderResnet16A2Encoder, {}],
+    [E.WiderResnet20A2Encoder, {}],
+    [E.WiderResnet38A2Encoder, {}],
 ])
 def test_encoders_cuda_only(encoder: E.EncoderModule, encoder_params):
     if not torch.cuda.is_available():
