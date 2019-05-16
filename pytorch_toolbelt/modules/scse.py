@@ -6,6 +6,12 @@ Original paper: https://arxiv.org/abs/1803.02579
 from torch import nn, Tensor
 from torch.nn import functional as F
 
+__all__ = ['ChannelGate2d',
+           'SpatialGate2d',
+           'ChannelSpatialGate2d',
+           'SpatialGate2dV2',
+           'ChannelSpatialGate2dV2']
+
 
 class ChannelGate2d(nn.Module):
     """
