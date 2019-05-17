@@ -7,6 +7,8 @@ from torch.nn import functional as F
 from .scse import ChannelSpatialGate2dV2
 from .abn import ABN, ACT_ELU, ACT_SELU
 
+__all__ = ['FPNBottleneckBlock', 'FPNBottleneckBlockBN', 'FPNPredictionBlock', 'FPNFuse', 'FPNFuseSum', 'UpsampleAdd', 'UpsampleAddSmooth']
+
 
 class FPNBottleneckBlock(nn.Module):
     def __init__(self, input_channels, output_channels):
@@ -40,6 +42,60 @@ class FPNPredictionBlock(nn.Module):
     def forward(self, x, y=None):
         if y is not None:
             x = x + F.interpolate(y, size=x.size()[2:], mode=self.mode, align_corners=True if self.mode == 'bilinear' else None)
+
+        x = self.conv(x)
+        return x
+
+
+class UpsampleAdd(nn.Module):
+    def __init__(self, filters: int, upsample_scale=None, mode='nearest', align_corners=None):
+        super().__init__()
+        self.mode = mode
+        self.upsample_scale = upsample_scale
+        self.align_corners = align_corners
+
+    def forward(self, x, y=None):
+        if y is not None:
+
+            if self.upsample_scale is not None:
+                y = F.interpolate(y,
+                                  scale_factor=self.upsample_scale,
+                                  mode=self.interpolation_mode,
+                                  align_corners=self.align_corners)
+            else:
+                y = F.interpolate(y,
+                                  size=(x.size(2), x.size(3)),
+                                  mode=self.interpolation_mode,
+                                  align_corners=self.align_corners)
+
+            x = x + y
+
+        return x
+
+
+class UpsampleAddSmooth(nn.Module):
+    def __init__(self, filters: int, upsample_scale=None, mode='nearest', align_corners=None):
+        super().__init__()
+        self.mode = mode
+        self.upsample_scale = upsample_scale
+        self.align_corners = align_corners
+        self.conv = nn.Conv2d(filters, filters, kernel_size=3, padding=1)
+
+    def forward(self, x, y=None):
+        if y is not None:
+
+            if self.upsample_scale is not None:
+                y = F.interpolate(y,
+                                  scale_factor=self.upsample_scale,
+                                  mode=self.interpolation_mode,
+                                  align_corners=self.align_corners)
+            else:
+                y = F.interpolate(y,
+                                  size=(x.size(2), x.size(3)),
+                                  mode=self.interpolation_mode,
+                                  align_corners=self.align_corners)
+
+            x = x + y
 
         x = self.conv(x)
         return x
