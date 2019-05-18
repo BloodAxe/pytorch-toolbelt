@@ -50,7 +50,7 @@ class FPNPredictionBlock(nn.Module):
 class UpsampleAdd(nn.Module):
     def __init__(self, filters: int, upsample_scale=None, mode='nearest', align_corners=None):
         super().__init__()
-        self.mode = mode
+        self.interpolation_mode = mode
         self.upsample_scale = upsample_scale
         self.align_corners = align_corners
 
@@ -76,10 +76,13 @@ class UpsampleAdd(nn.Module):
 class UpsampleAddSmooth(nn.Module):
     def __init__(self, filters: int, upsample_scale=None, mode='nearest', align_corners=None):
         super().__init__()
-        self.mode = mode
+        self.interpolation_mode = mode
         self.upsample_scale = upsample_scale
         self.align_corners = align_corners
-        self.conv = nn.Conv2d(filters, filters, kernel_size=3, padding=1)
+        self.conv = nn.Conv2d(filters, filters,
+                              kernel_size=5,
+                              padding=2,
+                              groups=filters)
 
     def forward(self, x, y=None):
         if y is not None:
@@ -97,7 +100,7 @@ class UpsampleAddSmooth(nn.Module):
 
             x = x + y
 
-        x = self.conv(x)
+        x = self.conv(x) + x
         return x
 
 
