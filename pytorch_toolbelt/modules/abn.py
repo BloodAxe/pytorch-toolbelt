@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as functional
 
+__all__ = ['ACT_RELU', 'ACT_ELU', 'ACT_SELU', 'ACT_NONE', 'ACT_LEAKY_RELU', 'ABN']
+
 # Activation names
 ACT_RELU = "relu"
 ACT_LEAKY_RELU = "leaky_relu"

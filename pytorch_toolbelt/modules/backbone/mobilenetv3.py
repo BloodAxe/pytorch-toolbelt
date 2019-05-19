@@ -7,6 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from pytorch_toolbelt.modules.dropblock import DropBlockScheduled, DropBlock2D
+from pytorch_toolbelt.modules import Identity
 
 
 def swish(x):
@@ -60,6 +61,8 @@ def _make_divisible(v, divisor, min_value=None):
 
 # https://github.com/jonnedtc/Squeeze-Excitation-PyTorch/blob/master/networks.py
 class SqEx(nn.Module):
+    """Squeeze-Excitation block, implemented in ONNX & CoreML friendly way
+    """
 
     def __init__(self, n_features, reduction=4):
         super(SqEx, self).__init__()
@@ -67,17 +70,15 @@ class SqEx(nn.Module):
         if n_features % reduction != 0:
             raise ValueError('n_features must be divisible by reduction (default = 4)')
 
-        self.linear1 = nn.Linear(n_features, n_features // reduction, bias=True)
+        self.linear1 = nn.Conv2d(n_features, n_features // reduction, kernel_size=1, bias=True)
         self.nonlin1 = nn.ReLU(inplace=True)
-        self.linear2 = nn.Linear(n_features // reduction, n_features, bias=True)
+        self.linear2 = nn.Conv2d(n_features // reduction, n_features, kernel_size=1, bias=True)
         self.nonlin2 = HardSigmoid(inplace=True)
 
     def forward(self, x):
-        y = F.avg_pool2d(x, kernel_size=x.size()[2:4])
-        y = y.permute(0, 2, 3, 1)
+        y = F.adaptive_avg_pool2d(x, output_size=1)
         y = self.nonlin1(self.linear1(y))
         y = self.nonlin2(self.linear2(y))
-        y = y.permute(0, 3, 1, 2)
         y = x * y
         return y
 
@@ -99,7 +100,7 @@ class LinearBottleneck(nn.Module):
                                       stop_value=drop_prob, nr_steps=num_steps, start_step=start_step)
         self.act2 = activation(**act_params)
 
-        self.se = SqEx(expplanes) if SE else lambda x: x
+        self.se = SqEx(expplanes) if SE else Identity()
 
         self.conv3 = nn.Conv2d(expplanes, outplanes, kernel_size=1, bias=False)
         self.bn3 = nn.BatchNorm2d(outplanes)

@@ -2,7 +2,7 @@ import torch
 from torch import nn
 
 from .unet import UnetCentralBlock, UnetDecoderBlock
-from .fpn import FPNFuse, FPNBottleneckBlock, FPNPredictionBlock
+from .fpn import FPNFuse, FPNBottleneckBlock, FPNPredictionBlock, UpsampleAdd, UpsampleAddSmooth
 
 import torch.nn.functional as F
 
@@ -54,8 +54,9 @@ class UNetDecoder(DecoderModule):
 
 class FPNDecoder(DecoderModule):
     def __init__(self, features,
-                 prediction_block=FPNPredictionBlock,
                  bottleneck=FPNBottleneckBlock,
+                 upsample_add_block=UpsampleAddSmooth,
+                 prediction_block=FPNPredictionBlock,
                  fpn_features=128,
                  prediction_features=128,
                  mode='bilinear',
@@ -88,49 +89,33 @@ class FPNDecoder(DecoderModule):
         if not isinstance(prediction_features, list):
             prediction_features = [int(prediction_features)] * len(features)
 
-        bottlenecks = [bottleneck(input_channels, output_channels) for input_channels, output_channels in zip(features, fpn_features)]
-        predictors = [prediction_block(input_channels, output_channels) for input_channels, output_channels in zip(fpn_features, prediction_features)]
+        bottlenecks = [bottleneck(input_channels, output_channels)
+                       for input_channels, output_channels in zip(features, fpn_features)]
+
+        integrators = [upsample_add_block(output_channels,
+                                          upsample_scale=upsample_scale,
+                                          mode=mode,
+                                          align_corners=align_corners) for output_channels in fpn_features]
+        predictors = [prediction_block(input_channels, output_channels)
+                      for input_channels, output_channels in zip(fpn_features, prediction_features)]
 
         self.bottlenecks = nn.ModuleList(bottlenecks)
+        self.integrators = nn.ModuleList(integrators)
         self.predictors = nn.ModuleList(predictors)
-        self.interpolation_mode = mode
-        self.align_corners = align_corners
+
         self.output_filters = prediction_features
-        self.upsample_scale = upsample_scale
-
-    def _interpolate_add(self, bottleneck, prev_layer_bottleneck=None):
-        """Compute bottleneck + Upsample(prev_layer_bottleneck)
-
-        :param bottleneck:
-        :param prev_layer_bottleneck:
-        :return:
-        """
-        if prev_layer_bottleneck is not None:
-            if self.upsample_scale is not None:
-                prev_layer_bottleneck = F.interpolate(prev_layer_bottleneck,
-                                                      scale_factor=self.upsample_scale,
-                                                      mode=self.interpolation_mode,
-                                                      align_corners=self.align_corners)
-            else:
-                prev_layer_bottleneck = F.interpolate(prev_layer_bottleneck,
-                                                      size=(bottleneck.size(2), bottleneck.size(3)),
-                                                      mode=self.interpolation_mode,
-                                                      align_corners=self.align_corners)
-
-            bottleneck = prev_layer_bottleneck + bottleneck
-
-        return bottleneck
 
     def forward(self, features):
         fpn_outputs = []
         prev_fpn = None
-        for feature_map, bottleneck_block, prediction_block in zip(reversed(features),
-                                                                   reversed(self.bottlenecks),
-                                                                   reversed(self.predictors)):
-            curr_fpn = bottleneck_block(feature_map)
-            curr_fpn = self._interpolate_add(curr_fpn, prev_fpn)
+        for feature_map, bottleneck_module, upsample_add, output_module in zip(reversed(features),
+                                                                               reversed(self.bottlenecks),
+                                                                               reversed(self.integrators),
+                                                                               reversed(self.predictors)):
+            curr_fpn = bottleneck_module(feature_map)
+            curr_fpn = upsample_add(curr_fpn, prev_fpn)
 
-            y = prediction_block(curr_fpn)
+            y = output_module(curr_fpn)
             prev_fpn = curr_fpn
             fpn_outputs.append(y)
 
