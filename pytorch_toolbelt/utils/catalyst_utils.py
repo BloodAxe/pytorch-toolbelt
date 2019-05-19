@@ -129,9 +129,6 @@ class EpochJaccardMetric(Callback):
         metric = self.intersection / (self.union - self.intersection + eps)
         state.metrics.epoch_values[state.loader_name][metric_name] = metric
 
-        logger = _get_tensorboard_logger(state)
-        logger.add_scalar(f"{self.prefix}/epoch", metric, global_step=state.epoch)
-
 
 def pixel_accuracy(outputs, targets):
     """Compute the pixel accuracy
@@ -216,9 +213,6 @@ class EpochMacroF1Metric(Callback):
         metric = self.metric_fn(outputs, targets)
         state.metrics.epoch_values[state.loader_name][metric_name] = metric
 
-        logger = _get_tensorboard_logger(state)
-        logger.add_scalar(f"{self.prefix}/epoch", metric, global_step=state.epoch)
-
 
 class ConfusionMatrixCallback(Callback):
     """
@@ -271,7 +265,7 @@ class ConfusionMatrixCallback(Callback):
         num_classes = len(class_names)
         cm = confusion_matrix(outputs, targets, labels=range(num_classes))
 
-        fig = plot_confusion_matrix(cm, class_names=class_names, normalize=True, noshow=True)
+        fig = plot_confusion_matrix(cm, figsize=(6 + num_classes // 4, 6 + num_classes // 4), class_names=class_names, normalize=True, noshow=True)
         fig = render_figure_to_tensor(fig)
 
         logger = _get_tensorboard_logger(state)
@@ -326,6 +320,3 @@ class MacroF1Callback(Callback):
 
         metric = self.metric_fn(outputs, targets)
         state.metrics.epoch_values[state.loader_name][metric_name] = metric
-
-        logger = _get_tensorboard_logger(state)
-        logger.add_scalar(f'{self.prefix}/epoch', metric, global_step=state.step)

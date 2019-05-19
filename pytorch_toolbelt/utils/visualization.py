@@ -7,6 +7,7 @@ from pytorch_toolbelt.utils.torch_utils import tensor_from_rgb_image
 
 
 def plot_confusion_matrix(cm, class_names,
+                          figsize=(16, 16),
                           normalize=False,
                           title='Confusion matrix',
                           fname=None,
@@ -23,10 +24,9 @@ def plot_confusion_matrix(cm, class_names,
     if normalize:
         cm = cm.astype(np.float32) / cm.sum(axis=1)[:, np.newaxis]
 
-    f = plt.figure(figsize=(16, 16))
+    f = plt.figure(figsize=figsize)
     plt.title(title)
     plt.imshow(cm, interpolation='nearest', cmap=cmap)
-    plt.colorbar()
 
     tick_marks = np.arange(len(class_names))
     plt.xticks(tick_marks, class_names, rotation=45, ha='right')

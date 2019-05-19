@@ -7,6 +7,8 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
+__all__ = ['HyperColumn']
+
 
 class HyperColumn(nn.Module):
     def __init__(self, mode='bilinear', align_corners=True):
