@@ -265,7 +265,7 @@ class ConfusionMatrixCallback(Callback):
         num_classes = len(class_names)
         cm = confusion_matrix(outputs, targets, labels=range(num_classes))
 
-        fig = plot_confusion_matrix(cm, figsize=(6 + num_classes // 4, 6 + num_classes // 4), class_names=class_names, normalize=True, noshow=True)
+        fig = plot_confusion_matrix(cm, figsize=(6 + num_classes // 3, 6 + num_classes // 3), class_names=class_names, normalize=True, noshow=True)
         fig = render_figure_to_tensor(fig)
 
         logger = _get_tensorboard_logger(state)
