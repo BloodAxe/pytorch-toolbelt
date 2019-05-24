@@ -6,43 +6,15 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from pytorch_toolbelt.modules.dropblock import DropBlockScheduled, DropBlock2D
-from pytorch_toolbelt.modules import Identity
-
-
-def swish(x):
-    return x * x.sigmoid()
-
-
-def hard_sigmoid(x, inplace=False):
-    return F.relu6(x + 3, inplace) / 6
-
-
-def hard_swish(x, inplace=False):
-    return x * hard_sigmoid(x, inplace)
-
-
-class HardSigmoid(nn.Module):
-    def __init__(self, inplace=False):
-        super(HardSigmoid, self).__init__()
-        self.inplace = inplace
-
-    def forward(self, x):
-        return hard_sigmoid(x, inplace=self.inplace)
-
-
-class HardSwish(nn.Module):
-    def __init__(self, inplace=False):
-        super(HardSwish, self).__init__()
-        self.inplace = inplace
-
-    def forward(self, x):
-        return hard_swish(x, inplace=self.inplace)
+# from pytorch_toolbelt.modules.dropblock import DropBlockScheduled, DropBlock2D
+from pytorch_toolbelt.modules.activations import HardSwish, HardSigmoid
+from pytorch_toolbelt.modules.identity import Identity
 
 
 def _make_divisible(v, divisor, min_value=None):
     """
-    Ensure that all layers have a channel number that is divisible by 8
+    This function is taken from the original tf repo.
+    It ensures that all layers have a channel number that is divisible by 8
     It can be seen here:
     https://github.com/tensorflow/models/blob/master/research/slim/nets/mobilenet/mobilenet.py
     :param v:
@@ -59,11 +31,15 @@ def _make_divisible(v, divisor, min_value=None):
     return new_v
 
 
-# https://github.com/jonnedtc/Squeeze-Excitation-PyTorch/blob/master/networks.py
 class SqEx(nn.Module):
-    """Squeeze-Excitation block, implemented in ONNX & CoreML friendly way
-    """
+    """Squeeze-Excitation block
 
+    Modifications:
+        Implemented in ONNX & CoreML friendly way
+
+     Original implementation:
+        https://github.com/jonnedtc/Squeeze-Excitation-PyTorch/blob/master/networks.py
+    """
     def __init__(self, n_features, reduction=4):
         super(SqEx, self).__init__()
 
@@ -89,24 +65,26 @@ class LinearBottleneck(nn.Module):
         super(LinearBottleneck, self).__init__()
         self.conv1 = nn.Conv2d(inplanes, expplanes, kernel_size=1, bias=False)
         self.bn1 = nn.BatchNorm2d(expplanes)
-        self.db1 = DropBlockScheduled(DropBlock2D(drop_prob=drop_prob, block_size=7), start_value=0.,
-                                      stop_value=drop_prob, nr_steps=num_steps, start_step=start_step)
-        # TODO: first doesn't have act?
+        self.db1 = nn.Dropout2d(drop_prob)
+        # self.db1 = DropBlockScheduled(DropBlock2D(drop_prob=drop_prob, block_size=7), start_value=0.,
+        #                               stop_value=drop_prob, nr_steps=num_steps, start_step=start_step)
+        self.act1 = activation(**act_params)  # first does have act according to MobileNetV2
 
         self.conv2 = nn.Conv2d(expplanes, expplanes, kernel_size=k, stride=stride, padding=k // 2, bias=False,
                                groups=expplanes)
         self.bn2 = nn.BatchNorm2d(expplanes)
-        self.db2 = DropBlockScheduled(DropBlock2D(drop_prob=drop_prob, block_size=7), start_value=0.,
-                                      stop_value=drop_prob, nr_steps=num_steps, start_step=start_step)
+        self.db2 = nn.Dropout2d(drop_prob)
+        # self.db2 = DropBlockScheduled(DropBlock2D(drop_prob=drop_prob, block_size=7), start_value=0.,
+        #                               stop_value=drop_prob, nr_steps=num_steps, start_step=start_step)
         self.act2 = activation(**act_params)
 
         self.se = SqEx(expplanes) if SE else Identity()
 
         self.conv3 = nn.Conv2d(expplanes, outplanes, kernel_size=1, bias=False)
         self.bn3 = nn.BatchNorm2d(outplanes)
-        self.db3 = DropBlockScheduled(DropBlock2D(drop_prob=drop_prob, block_size=7), start_value=0.,
-                                      stop_value=drop_prob, nr_steps=num_steps, start_step=start_step)
-        self.act3 = activation(**act_params)
+        self.db3 = nn.Dropout2d(drop_prob)
+        # self.db3 = DropBlockScheduled(DropBlock2D(drop_prob=drop_prob, block_size=7), start_value=0.,
+        #                               stop_value=drop_prob, nr_steps=num_steps, start_step=start_step)
 
         self.stride = stride
         self.expplanes = expplanes
@@ -119,6 +97,7 @@ class LinearBottleneck(nn.Module):
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.db1(out)
+        out = self.act1(out)
 
         out = self.conv2(out)
         out = self.bn2(out)
@@ -130,10 +109,9 @@ class LinearBottleneck(nn.Module):
         out = self.conv3(out)
         out = self.bn3(out)
         out = self.db3(out)
-        out = self.act3(out)
 
         if self.stride == 1 and self.inplanes == self.outplanes:  # TODO: or add 1x1?
-            out = out + residual  # No inplace if there is in-place activation before
+            out += residual  # No inplace if there is in-place activation before
 
         return out
 
@@ -187,7 +165,6 @@ class LastBlockSmall(nn.Module):
         self.avgpool = nn.AdaptiveAvgPool2d(1)
 
         self.conv2 = nn.Conv2d(expplanes1, expplanes2, kernel_size=1, stride=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(expplanes2)
         self.act2 = HardSwish(inplace=True)
 
         self.dropout = nn.Dropout(p=0.2, inplace=True)
@@ -207,7 +184,6 @@ class LastBlockSmall(nn.Module):
         out = self.avgpool(out)
 
         out = self.conv2(out)
-        out = self.bn2(out)
         out = self.act2(out)
 
         # flatten for input to fully-connected layer
@@ -246,16 +222,16 @@ class MobileNetV3(nn.Module):
             [80, 184, 80, 1, 3, drop_prob, False, HardSwish],  # -> 14x14
             [80, 480, 112, 1, 3, drop_prob, True, HardSwish],  # -> 14x14
             [112, 672, 112, 1, 3, drop_prob, True, HardSwish],  # -> 14x14
-            [112, 672, 160, 1, 5, drop_prob, True, HardSwish],  # -> 14x14
-            [160, 672, 160, 2, 5, drop_prob, True, HardSwish],  # -> 7x7  #TODO
+            [112, 672, 160, 2, 5, drop_prob, True, HardSwish],  # -> 7x7
+            [160, 672, 160, 1, 5, drop_prob, True, HardSwish],  # -> 7x7
             [160, 960, 160, 1, 5, drop_prob, True, HardSwish],  # -> 7x7
         ]
         self.bottlenecks_setting_small = [
             # in, exp, out, s, k,         dp,    se,      act
-            [16, 64, 24, 2, 3, 0, True, nn.ReLU],  # -> 56x56 #TODO
-            [24, 72, 24, 2, 3, 0, False, nn.ReLU],  # -> 28x28
-            [24, 88, 40, 1, 3, 0, False, nn.ReLU],  # -> 28x28
-            [40, 96, 40, 2, 5, 0, True, HardSwish],  # -> 14x14 #TODO
+            [16, 64, 16, 2, 3, 0, True, nn.ReLU],  # -> 56x56
+            [16, 72, 24, 2, 3, 0, False, nn.ReLU],  # -> 28x28
+            [24, 88, 24, 1, 3, 0, False, nn.ReLU],  # -> 28x28
+            [24, 96, 40, 2, 5, 0, True, HardSwish],  # -> 14x14
             [40, 240, 40, 1, 5, drop_prob, True, HardSwish],  # -> 14x14
             [40, 240, 40, 1, 5, drop_prob, True, HardSwish],  # -> 14x14
             [40, 120, 48, 1, 5, drop_prob, True, HardSwish],  # -> 14x14
@@ -290,7 +266,6 @@ class MobileNetV3(nn.Module):
 
     def _make_bottlenecks(self):
         layers = []
-
         modules = OrderedDict()
         stage_name = "Bottleneck"
 
