@@ -13,8 +13,8 @@ from pytorch_toolbelt.modules.identity import Identity
 
 def _make_divisible(v, divisor, min_value=None):
     """
-    This function is taken from the original tf repo.
-    It ensures that all layers have a channel number that is divisible by 8
+    Ensure that all layers have a channel number that is divisible by 8
+
     It can be seen here:
     https://github.com/tensorflow/models/blob/master/research/slim/nets/mobilenet/mobilenet.py
     :param v:
@@ -32,14 +32,10 @@ def _make_divisible(v, divisor, min_value=None):
 
 
 class SqEx(nn.Module):
-    """Squeeze-Excitation block
-
-    Modifications:
-        Implemented in ONNX & CoreML friendly way
-
-     Original implementation:
-        https://github.com/jonnedtc/Squeeze-Excitation-PyTorch/blob/master/networks.py
+    """Squeeze-Excitation block. Implemented in ONNX & CoreML friendly way.
+    Original implementation: https://github.com/jonnedtc/Squeeze-Excitation-PyTorch/blob/master/networks.py
     """
+
     def __init__(self, n_features, reduction=4):
         super(SqEx, self).__init__()
 
