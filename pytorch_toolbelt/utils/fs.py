@@ -53,7 +53,7 @@ def auto_file(filename: str, where: str = '.') -> str:
         raise FileNotFoundError('Given file could not be found with recursive search:' + filename)
 
     if len(files) > 1:
-        raise FileNotFoundError('More than one file matches given filename. Please specify it explicitly:' + filename)
+        raise FileNotFoundError('More than one file matches given filename. Please specify it explicitly:\n' + '\n'.join(files))
 
     return files[0]
 
