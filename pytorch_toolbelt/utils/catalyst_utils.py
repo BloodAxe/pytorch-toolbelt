@@ -48,11 +48,6 @@ class ShowPolarBatchesCallback(Callback):
             return data
         raise ValueError("Unsupported type", type(data))
 
-    def _log_image(self, loggers, mode: str, image, name, step: int, suffix=""):
-        for logger in loggers:
-            if isinstance(logger, TensorboardLogger):
-                logger.loggers[mode].add_image(f"{name}{suffix}", tensor_from_rgb_image(image), step)
-
     def on_loader_start(self, state):
         self.best_score = None
         self.best_input = None
@@ -83,12 +78,12 @@ class ShowPolarBatchesCallback(Callback):
         if self.best_score is not None:
             best_samples = self.visualize_batch(self.best_input, self.best_output)
             for i, image in enumerate(best_samples):
-                logger.add_image(f"Best Batch/{i}/epoch", tensor_from_rgb_image(image), state.step)
+                logger.add_image(f"{self.target_metric}/best/{i}", tensor_from_rgb_image(image), state.step)
 
         if self.worst_score is not None:
             worst_samples = self.visualize_batch(self.worst_input, self.worst_output)
             for i, image in enumerate(worst_samples):
-                logger.add_image(f"Worst Batch/{i}/epoch", tensor_from_rgb_image(image), state.step)
+                logger.add_image(f"{self.target_metric}/worst/{i}", tensor_from_rgb_image(image), state.step)
 
 
 class EpochJaccardMetric(Callback):
