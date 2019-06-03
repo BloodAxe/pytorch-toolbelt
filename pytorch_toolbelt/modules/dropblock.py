@@ -41,14 +41,13 @@ class DropBlock2D(nn.Module):
             mask = (torch.rand(x.shape[0], *x.shape[2:]) < gamma).to(x)
 
             # compute block mask
-            block_mask = self._compute_block_mask(mask)
+            block_mask, keeped = self._compute_block_mask(mask)
 
             # apply block mask
             out = x * block_mask[:, None, :, :]
 
             # scale output
-            out = out * block_mask.numel() / block_mask.sum()
-
+            out = out * (block_mask.numel() / keeped).to(out)
             return out
 
     def _compute_block_mask(self, mask):
@@ -60,9 +59,10 @@ class DropBlock2D(nn.Module):
         if self.block_size % 2 == 0:
             block_mask = block_mask[:, :, :-1, :-1]
 
+        keeped = block_mask.numel() - block_mask.sum().to(torch.float32)  # prevent overflow in float16
         block_mask = 1 - block_mask.squeeze(1)
 
-        return block_mask
+        return block_mask, keeped
 
     def _compute_gamma(self, x):
         return self.drop_prob / (self.block_size ** 2)
@@ -146,7 +146,7 @@ class DropBlockScheduled(nn.Module):
 
     def step(self):
         idx = self.i.item()
-        if idx > self.start_step and idx < self.start_step + self.nr_steps:
+        if self.start_step < idx < self.start_step + self.nr_steps:
             self.dropblock.drop_prob += self.step_size
 
         self.i += 1
