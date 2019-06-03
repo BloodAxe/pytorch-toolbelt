@@ -280,9 +280,9 @@ class SqueezenetEncoder(EncoderModule):
 
 
 class MobilenetV2Encoder(EncoderModule):
-    def __init__(self, layers=[2, 3, 5, 7]):
+    def __init__(self, layers=[2, 3, 5, 7], activation='relu6'):
         super().__init__([32, 16, 24, 32, 64, 96, 160, 320], [2, 2, 4, 8, 16, 16, 32, 32], layers)
-        encoder = MobileNetV2()
+        encoder = MobileNetV2(activation=activation)
 
         self.layer0 = encoder.layer0
         self.layer1 = encoder.layer1
