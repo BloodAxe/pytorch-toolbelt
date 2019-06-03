@@ -19,7 +19,7 @@ def plot_confusion_matrix(cm, class_names,
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
 
-    cmap = plt.cm.Blues
+    cmap = plt.cm.Oranges
 
     if normalize:
         cm = cm.astype(np.float32) / cm.sum(axis=1)[:, np.newaxis]

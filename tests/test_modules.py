@@ -17,6 +17,7 @@ def test_resnet18_encoder():
 @pytest.mark.parametrize(['encoder', 'encoder_params'], [
     [E.SqueezenetEncoder, {'layers': [0, 1, 2, 3]}],
     [E.MobilenetV2Encoder, {'layers': [0, 1, 2, 3, 4, 5, 6, 7]}],
+    [E.MobilenetV2Encoder, {'layers': [3, 5, 7], 'activation': 'elu'}],
     [E.MobilenetV3Encoder, {'small': False}],
     [E.MobilenetV3Encoder, {'small': True}],
     [E.Resnet18Encoder, {'layers': [0, 1, 2, 3, 4]}],
