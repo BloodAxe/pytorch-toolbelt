@@ -25,6 +25,14 @@ class HardSigmoid(nn.Module):
         return hard_sigmoid(x, inplace=self.inplace)
 
 
+class Swish(nn.Module):
+    def __init__(self, inplace=False):
+        super(Swish, self).__init__()
+
+    def forward(self, x):
+        return swish(x)
+
+
 class HardSwish(nn.Module):
     def __init__(self, inplace=False):
         super(HardSwish, self).__init__()
