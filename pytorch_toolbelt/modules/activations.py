@@ -70,6 +70,9 @@ def get_activation_module(activation_name: str, **kwargs) -> nn.Module:
     if activation_name.lower() == 'hard_sigmoid':
         return partial(HardSigmoid, **kwargs)
 
+    if activation_name.lower() == 'swish':
+        return partial(Swish, **kwargs)
+
     if activation_name.lower() == 'hard_swish':
         return partial(HardSwish, **kwargs)
 
