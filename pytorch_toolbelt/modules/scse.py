@@ -36,7 +36,7 @@ class SpatialGate2d(nn.Module):
 
     def __init__(self, channels, reduction=None, squeeze_channels=None):
         """
-        Module constructor
+        Instantiate module
 
         :param channels: Number of input channels
         :param reduction: Reduction factor
