@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from copy import deepcopy
 
 import math
@@ -123,14 +124,15 @@ class MBConvBlock(nn.Module):
         self.id_skip = block_args.id_skip  # skip connection and drop connect
         self.expand_ratio = block_args.expand_ratio
 
-        self.act = get_activation_module(block_args.activation)
+        activation_module = get_activation_module(block_args.activation)
+        self.act = activation_module(inplace=True)
 
         # Expansion phase
         inp = block_args.input_filters  # number of input channels
         oup = block_args.input_filters * block_args.expand_ratio  # number of output channels
 
         if block_args.expand_ratio != 1:
-            self.expand_conv = Conv2dSamePadding(in_channels=inp, out_channels=oup, kernel_size=1, bias=False)
+            self.expand_conv = nn.Conv2d(in_channels=inp, out_channels=oup, kernel_size=1, bias=False)
             self.bn0 = nn.BatchNorm2d(num_features=oup, momentum=bn_mom, eps=bn_eps)
 
         # Depthwise convolution phase
@@ -148,12 +150,12 @@ class MBConvBlock(nn.Module):
         # Squeeze and Excitation layer, if desired
         if self.has_se:
             num_squeezed_channels = max(1, int(self._block_args.input_filters * self._block_args.se_ratio))
-            self.se_reduce = Conv2dSamePadding(in_channels=oup, out_channels=num_squeezed_channels, kernel_size=1)
-            self.se_expand = Conv2dSamePadding(in_channels=num_squeezed_channels, out_channels=oup, kernel_size=1)
+            self.se_reduce = nn.Conv2d(in_channels=oup, out_channels=num_squeezed_channels, kernel_size=1)
+            self.se_expand = nn.Conv2d(in_channels=num_squeezed_channels, out_channels=oup, kernel_size=1)
 
         # Output phase
         final_oup = self._block_args.output_filters
-        self.project_conv = Conv2dSamePadding(in_channels=oup, out_channels=final_oup, kernel_size=1, bias=False)
+        self.project_conv = nn.Conv2d(in_channels=oup, out_channels=final_oup, kernel_size=1, bias=False)
         self.bn2 = nn.BatchNorm2d(num_features=final_oup, momentum=bn_mom, eps=bn_eps)
 
         self.input_filters = block_args.input_filters
@@ -228,17 +230,23 @@ class EfficientNet(nn.Module):
         bn_eps = first_block_args.batch_norm_epsilon
 
         # Stem
-        self.conv0 = Conv2dSamePadding(in_channels, first_block_args.input_filters,
-                                       kernel_size=3,
-                                       stride=2,
-                                       bias=False)
+        conv0 = Conv2dSamePadding(in_channels, first_block_args.input_filters,
+                                  kernel_size=3,
+                                  stride=2,
+                                  bias=False)
 
-        self.bn0 = nn.BatchNorm2d(num_features=first_block_args.input_filters,
-                                  momentum=bn_mom,
-                                  eps=bn_eps)
+        bn0 = nn.BatchNorm2d(num_features=first_block_args.input_filters,
+                             momentum=bn_mom,
+                             eps=bn_eps)
 
         activation_module = get_activation_module(first_block_args.activation)
-        self.act = activation_module(inplace=True)
+        act0 = activation_module(inplace=True)
+
+        self.stem = nn.Sequential(OrderedDict([
+            ("conv", conv0),
+            ("bn", bn0),
+            ("act", act0),
+        ]))
 
         # Build blocks
         for i, block_args in enumerate(blocks_args):
@@ -272,16 +280,23 @@ class EfficientNet(nn.Module):
 
     def forward(self, inputs):
         # Stem
-        x = self.act(self.bn0(self.conv0(inputs)))
+        x = self.stem(inputs)
 
         # Blocks
+        x = self.block0(x)
+        print(x.size())
         x = self.block1(x)
+        print(x.size())
         x = self.block2(x)
+        print(x.size())
         x = self.block3(x)
+        print(x.size())
         x = self.block4(x)
+        print(x.size())
         x = self.block5(x)
+        print(x.size())
         x = self.block6(x)
-        x = self.block7(x)
+        print(x.size())
 
         # Head
         x = self.act(self._bn1(self._conv_head(x)))
@@ -343,7 +358,7 @@ def test_efficient_net():
     from pytorch_toolbelt.utils.torch_utils import count_parameters
     num_classes = 1001
 
-    x = torch.randn((1, 3, 600, 600)).cuda()
+    x = torch.randn((1, 3, 600, 600))
 
     for model_fn in [efficient_net_b0,
                      efficient_net_b1,
@@ -353,10 +368,10 @@ def test_efficient_net():
                      efficient_net_b5,
                      efficient_net_b6,
                      efficient_net_b7]:
-        model = model_fn(num_classes).eval().cuda()
         print('=======', model_fn.__name__, '=======')
+        model = model_fn(num_classes).eval()
         print(count_parameters(model))
-        print(model)
+        # print(model)
         print()
         print()
 
