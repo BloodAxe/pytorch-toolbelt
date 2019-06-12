@@ -21,6 +21,8 @@ def test_resnet18_encoder():
     [E.MobilenetV3Encoder, {'small': False}],
     [E.MobilenetV3Encoder, {'small': True}],
     [E.Resnet18Encoder, {'layers': [0, 1, 2, 3, 4]}],
+    [E.EfficientNetB0Encoder, {}],
+    [E.EfficientNetB1Encoder, {}]
 ])
 def test_encoders(encoder: E.EncoderModule, encoder_params):
     with torch.no_grad():
@@ -56,6 +58,14 @@ def test_encoders(encoder: E.EncoderModule, encoder_params):
     [E.WiderResnet16A2Encoder, {}],
     [E.WiderResnet20A2Encoder, {}],
     [E.WiderResnet38A2Encoder, {}],
+    [E.EfficientNetB0Encoder, {}],
+    [E.EfficientNetB1Encoder, {}],
+    [E.EfficientNetB2Encoder, {}],
+    [E.EfficientNetB3Encoder, {}],
+    [E.EfficientNetB4Encoder, {}],
+    [E.EfficientNetB5Encoder, {}],
+    [E.EfficientNetB6Encoder, {}],
+    [E.EfficientNetB7Encoder, {}]
 ])
 def test_encoders_cuda_only(encoder: E.EncoderModule, encoder_params):
     if not torch.cuda.is_available():

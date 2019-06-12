@@ -41,6 +41,15 @@ __all__ = ['EncoderModule',
            'WiderResnet16A2Encoder',
            'WiderResnet38A2Encoder',
            'WiderResnet20A2Encoder',
+           'EfficientNetEncoder',
+           'EfficientNetB0Encoder',
+           'EfficientNetB1Encoder',
+           'EfficientNetB2Encoder',
+           'EfficientNetB3Encoder',
+           'EfficientNetB4Encoder',
+           'EfficientNetB5Encoder',
+           'EfficientNetB6Encoder',
+           'EfficientNetB7Encoder'
            ]
 
 
@@ -535,7 +544,7 @@ class EfficientNetB0Encoder(EfficientNetEncoder):
 
 class EfficientNetB1Encoder(EfficientNetEncoder):
     def __init__(self, layers=[1, 2, 4, 6]):
-        super().__init__(efficient_net_b1(num_classes=1), [], [2, 4, 8, 16, 16, 32, 32], layers)
+        super().__init__(efficient_net_b1(num_classes=1), [16, 24, 40, 80, 112, 192, 320], [2, 4, 8, 16, 16, 32, 32], layers)
 
 
 class EfficientNetB2Encoder(EfficientNetEncoder):
