@@ -3,6 +3,24 @@ from functools import partial
 from torch import nn
 from torch.nn import functional as F
 
+__all__ = ['ACT_ELU',
+           'ACT_HARD_SIGMOID', 'ACT_HARD_SWISH', 'ACT_LEAKY_RELU', 'ACT_NONE',
+           'ACT_RELU', 'ACT_RELU6', 'ACT_SELU', 'ACT_SWISH',
+           'swish', 'hard_sigmoid', 'hard_swish', 'HardSigmoid', 'HardSwish',
+           'Swish', 'get_activation_module'
+           ]
+
+# Activation names
+ACT_RELU = "relu"
+ACT_RELU6 = "relu6"
+ACT_LEAKY_RELU = "leaky_relu"
+ACT_ELU = "elu"
+ACT_NONE = "none"
+ACT_SELU = "selu"
+ACT_SWISH = "swish"
+ACT_HARD_SWISH = "hard_swish"
+ACT_HARD_SIGMOID = "hard_sigmoid"
+
 
 def swish(x):
     return x * x.sigmoid()

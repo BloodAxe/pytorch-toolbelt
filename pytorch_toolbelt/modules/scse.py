@@ -36,9 +36,10 @@ class SpatialGate2d(nn.Module):
 
     def __init__(self, channels, reduction=2):
         super().__init__()
+        squeeze_channels = max(1, channels // reduction)
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.squeeze = nn.Conv2d(channels, channels // reduction, kernel_size=1, padding=0)
-        self.expand = nn.Conv2d(channels // reduction, channels, kernel_size=1, padding=0)
+        self.squeeze = nn.Conv2d(channels, squeeze_channels, kernel_size=1)
+        self.expand = nn.Conv2d(squeeze_channels, channels, kernel_size=1)
 
     def forward(self, x: Tensor):
         module_input = x
@@ -71,9 +72,13 @@ class SpatialGate2dV2(nn.Module):
 
     def __init__(self, channels, reduction=4):
         super().__init__()
-        self.squeeze = nn.Conv2d(channels, channels // reduction, kernel_size=1, padding=0)
-        self.conv = nn.Conv2d(channels // reduction, channels // reduction, kernel_size=7, dilation=3, padding=3 * 3)
-        self.expand = nn.Conv2d(channels // reduction, channels, kernel_size=1, padding=0)
+        squeeze_channels = max(1, channels // reduction)
+        self.squeeze = nn.Conv2d(channels, squeeze_channels,
+                                 kernel_size=1, padding=0)
+        self.conv = nn.Conv2d(squeeze_channels, squeeze_channels,
+                              kernel_size=7, dilation=3, padding=3 * 3)
+        self.expand = nn.Conv2d(squeeze_channels, channels, kernel_size=1,
+                                padding=0)
 
     def forward(self, x: Tensor):
         module_input = x
