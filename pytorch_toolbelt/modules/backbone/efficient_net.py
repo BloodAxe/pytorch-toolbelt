@@ -161,7 +161,8 @@ class MBConvBlock(nn.Module):
 
         # Squeeze and Excitation layer, if desired
         if self.has_se:
-            self.se_block = SpatialGate2d(oup, block_args.se_reduction)
+            self.se_block = SpatialGate2d(oup,
+                                          squeeze_channels=max(1, inp // block_args.se_reduction))
 
         # Output phase
         final_oup = self._block_args.output_filters
@@ -393,13 +394,14 @@ def test_efficient_net():
     x = torch.randn((1, 3, 600, 600)).cuda()
 
     for model_fn in [efficient_net_b0,
-                     efficient_net_b1,
-                     efficient_net_b2,
-                     efficient_net_b3,
-                     efficient_net_b4,
-                     efficient_net_b5,
-                     efficient_net_b6,
-                     efficient_net_b7]:
+                     # efficient_net_b1,
+                     # efficient_net_b2,
+                     # efficient_net_b3,
+                     # efficient_net_b4,
+                     # efficient_net_b5,
+                     # efficient_net_b6,
+                     # efficient_net_b7
+                     ]:
         print('=======', model_fn.__name__, '=======')
         model = model_fn(num_classes).eval().cuda()
         print(count_parameters(model))
