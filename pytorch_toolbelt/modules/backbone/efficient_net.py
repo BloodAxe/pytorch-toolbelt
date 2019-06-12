@@ -12,7 +12,9 @@ from pytorch_toolbelt.modules.activations import get_activation_module
 
 
 def round_filters(filters, width_coefficient, depth_divisor, min_depth):
-    """ Calculate and round number of filters based on depth multiplier. """
+    """
+    Calculate and round number of filters based on depth multiplier.
+    """
     filters *= width_coefficient
     min_depth = min_depth or depth_divisor
     new_filters = max(min_depth, int(filters + depth_divisor / 2) // depth_divisor * depth_divisor)
@@ -22,15 +24,20 @@ def round_filters(filters, width_coefficient, depth_divisor, min_depth):
 
 
 def round_repeats(repeats: int, depth_multiplier):
-    """ Round number of filters based on depth multiplier. """
+    """
+    Round number of filters based on depth multiplier.
+    """
     if not depth_multiplier:
         return repeats
     return int(math.ceil(depth_multiplier * repeats))
 
 
 def drop_connect(inputs, p, training):
-    """ Drop connect. """
-    if not training: return inputs
+    """
+    Drop connect implementation.
+    """
+    if not training:
+        return inputs
     batch_size = inputs.shape[0]
     keep_prob = 1 - p
     random_tensor = keep_prob
@@ -41,7 +48,9 @@ def drop_connect(inputs, p, training):
 
 
 class Conv2dSamePadding(nn.Conv2d):
-    """ 2D Convolutions like TensorFlow """
+    """
+    2D Convolution module with 'same' padding.
+    """
 
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, dilation=1, groups=1, bias=True):
         super().__init__(in_channels, out_channels, kernel_size, stride, 0, dilation, groups, bias)
@@ -167,10 +176,9 @@ class MBConvBlock(nn.Module):
         :param drop_connect_rate: drop connect rate (float, between 0 and 1)
         :return: output of block
         """
-
-        # Expansion and Depthwise Convolution
         x = inputs
         if self.expand_ratio != 1:
+            # Expansion and Depthwise Convolution
             x = self.act(self.bn0(self.expand_conv(inputs)))
 
         x = self.act(self.bn1(self.depthwise_conv(x)))
@@ -376,3 +384,4 @@ def test_efficient_net():
         print()
 
         output = model(x)
+        print(output.size())

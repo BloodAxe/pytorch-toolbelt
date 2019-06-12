@@ -1,6 +1,6 @@
 import pytest
-import torch
 import pytorch_toolbelt.modules.encoders as E
+import torch
 from pytorch_toolbelt.utils.torch_utils import maybe_cuda, count_parameters
 
 
@@ -15,12 +15,12 @@ def test_resnet18_encoder():
 
 
 @pytest.mark.parametrize(['encoder', 'encoder_params'], [
-    [E.SqueezenetEncoder, {'layers': [0, 1, 2, 3]}],
+    [E.SqueezenetEncoder, {'pretrained': False, 'layers': [0, 1, 2, 3]}],
     [E.MobilenetV2Encoder, {'layers': [0, 1, 2, 3, 4, 5, 6, 7]}],
     [E.MobilenetV2Encoder, {'layers': [3, 5, 7], 'activation': 'elu'}],
     [E.MobilenetV3Encoder, {'small': False}],
     [E.MobilenetV3Encoder, {'small': True}],
-    [E.Resnet18Encoder, {'layers': [0, 1, 2, 3, 4]}],
+    [E.Resnet18Encoder, {'pretrained': False, 'layers': [0, 1, 2, 3, 4]}],
     [E.EfficientNetB0Encoder, {}],
     [E.EfficientNetB1Encoder, {}]
 ])
@@ -35,23 +35,25 @@ def test_encoders(encoder: E.EncoderModule, encoder_params):
         net = maybe_cuda(net)
         output = net(input)
         assert len(output) == len(net.output_filters)
-        for feature_map, expected_stride, expected_channels in zip(output, net.output_strides, net.output_filters):
+        for feature_map, expected_stride, expected_channels in zip(output,
+                                                                   net.output_strides,
+                                                                   net.output_filters):
             assert feature_map.size(1) == expected_channels
             assert feature_map.size(2) * expected_stride == 512
             assert feature_map.size(3) * expected_stride == 512
 
 
 @pytest.mark.parametrize(['encoder', 'encoder_params'], [
-    [E.Resnet34Encoder, {}],
-    [E.Resnet50Encoder, {}],
-    [E.SEResNeXt50Encoder, {'layers': [0, 1, 2, 3, 4]}],
-    [E.SEResnet50Encoder, {}],
-    [E.Resnet152Encoder, {}],
-    [E.Resnet101Encoder, {}],
-    [E.SEResnet152Encoder, {}],
-    [E.SEResNeXt101Encoder, {}],
-    [E.SEResnet101Encoder, {}],
-    [E.SENet154Encoder, {}],
+    [E.Resnet34Encoder, {'pretrained': False}],
+    [E.Resnet50Encoder, {'pretrained': False}],
+    [E.SEResNeXt50Encoder, {'pretrained': False, 'layers': [0, 1, 2, 3, 4]}],
+    [E.SEResnet50Encoder, {'pretrained': False}],
+    [E.Resnet152Encoder, {'pretrained': False}],
+    [E.Resnet101Encoder, {'pretrained': False}],
+    [E.SEResnet152Encoder, {'pretrained': False}],
+    [E.SEResNeXt101Encoder, {'pretrained': False}],
+    [E.SEResnet101Encoder, {'pretrained': False}],
+    [E.SENet154Encoder, {'pretrained': False}],
     [E.WiderResnet16Encoder, {}],
     [E.WiderResnet20Encoder, {}],
     [E.WiderResnet38Encoder, {}],
@@ -81,7 +83,9 @@ def test_encoders_cuda_only(encoder: E.EncoderModule, encoder_params):
         net = maybe_cuda(net)
         output = net(input)
         assert len(output) == len(net.output_filters)
-        for feature_map, expected_stride, expected_channels in zip(output, net.output_strides, net.output_filters):
+        for feature_map, expected_stride, expected_channels in zip(output,
+                                                                   net.output_strides,
+                                                                   net.output_filters):
             assert feature_map.size(1) == expected_channels
             assert feature_map.size(2) * expected_stride == 512
             assert feature_map.size(3) * expected_stride == 512
