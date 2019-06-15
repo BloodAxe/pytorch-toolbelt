@@ -4,10 +4,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from .scse import ChannelSpatialGate2dV2
-from .abn import ABN, ACT_ELU, ACT_SELU
-
-__all__ = ['FPNBottleneckBlock', 'FPNBottleneckBlockBN', 'FPNPredictionBlock', 'FPNFuse', 'FPNFuseSum', 'UpsampleAdd', 'UpsampleAddSmooth']
+__all__ = ['FPNBottleneckBlock', 'FPNBottleneckBlockBN', 'FPNPredictionBlock', 'FPNFuse', 'FPNFuseSum', 'UpsampleAdd', 'UpsampleAddConv']
 
 
 class FPNBottleneckBlock(nn.Module):
@@ -48,6 +45,11 @@ class FPNPredictionBlock(nn.Module):
 
 
 class UpsampleAdd(nn.Module):
+    """
+    Compute pixelwise sum of first tensor and upsampled second tensor and convolve with 3x3 kernel
+    to smooth aliasing artifacts
+    """
+
     def __init__(self, filters: int, upsample_scale=None, mode='nearest', align_corners=None):
         super().__init__()
         self.interpolation_mode = mode
@@ -73,16 +75,20 @@ class UpsampleAdd(nn.Module):
         return x
 
 
-class UpsampleAddSmooth(nn.Module):
+class UpsampleAddConv(nn.Module):
+    """
+    Compute pixelwise sum of first tensor and upsampled second tensor and convolve with 3x3 kernel
+    to smooth aliasing artifacts
+    """
+
     def __init__(self, filters: int, upsample_scale=None, mode='nearest', align_corners=None):
         super().__init__()
         self.interpolation_mode = mode
         self.upsample_scale = upsample_scale
         self.align_corners = align_corners
         self.conv = nn.Conv2d(filters, filters,
-                              kernel_size=5,
-                              padding=2,
-                              groups=filters)
+                              kernel_size=3,
+                              padding=1)
 
     def forward(self, x, y=None):
         if y is not None:
@@ -100,7 +106,7 @@ class UpsampleAddSmooth(nn.Module):
 
             x = x + y
 
-        x = self.conv(x) + x
+        x = self.conv(x)
         return x
 
 
