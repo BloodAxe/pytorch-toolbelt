@@ -1,23 +1,45 @@
 """Common functions to marshal data to/from PyTorch
 
 """
-
+import warnings
 from typing import Tuple
 
-import torch
 import numpy as np
+import torch
 from torch import nn
+
+
+def set_trainable(module: nn.Module, trainable=True, freeze_bn=True):
+    """
+    Change 'requires_grad' value for module and it's child modules and
+    optionally freeze batchnorm modules.
+    :param module: Module to change
+    :param trainable: True to enable training
+    :param freeze_bn: True to freeze batch norm
+    :return: None
+    """
+    trainable = bool(trainable)
+    freeze_bn = bool(freeze_bn)
+
+    for param in module.parameters():
+        param.requires_grad = trainable
+
+    # TODO: Add support for ABN, InplaceABN
+    bn_types = nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d, nn.SyncBatchNorm
+
+    if isinstance(module, bn_types):
+        module.track_running_stats = freeze_bn
+
+    for m in module.modules():
+        if isinstance(m, bn_types):
+            module.track_running_stats = freeze_bn
 
 
 def freeze_bn(module: nn.Module):
     """Freezes BatchNorm
     """
-    if isinstance(module, (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d)):
-        module.track_running_stats = False
-
-    for m in module.modules():
-        if isinstance(module, (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d)):
-            module.track_running_stats = False
+    warnings.warn('This method is deprecated. Please use `set_trainable`.')
+    set_trainable(module, True, False)
 
 
 def logit(x: torch.Tensor, eps=1e-5):
@@ -66,7 +88,8 @@ def tensor_from_mask_image(mask: np.ndarray) -> torch.Tensor:
     return tensor_from_rgb_image(mask)
 
 
-def rgb_image_from_tensor(image: torch.Tensor, mean, std, max_pixel_value=255.0) -> np.ndarray:
+def rgb_image_from_tensor(image: torch.Tensor, mean, std,
+                          max_pixel_value=255.0) -> np.ndarray:
     image = np.moveaxis(to_numpy(image), 0, -1)
     mean = to_numpy(mean)
     std = to_numpy(std)
