@@ -12,12 +12,14 @@ from tensorboardX import SummaryWriter
 from pytorch_toolbelt.utils.torch_utils import rgb_image_from_tensor, to_numpy
 from pytorch_toolbelt.utils.torch_utils import tensor_from_rgb_image
 
-__all__ = ['ShowPolarBatchesCallback',
-           'draw_binary_segmentation_predictions',
-           'draw_semantic_segmentation_predictions']
+__all__ = [
+    'get_tensorboard_logger',
+    'ShowPolarBatchesCallback',
+    'draw_binary_segmentation_predictions',
+    'draw_semantic_segmentation_predictions']
 
 
-def _get_tensorboard_logger(state: RunnerState) -> SummaryWriter:
+def get_tensorboard_logger(state: RunnerState) -> SummaryWriter:
     for logger in state.loggers:
         if isinstance(logger, TensorboardLogger):
             return logger.loggers[state.loader_name]

@@ -1,12 +1,11 @@
 import numpy as np
 import torch
 from catalyst.dl import Callback, RunnerState, MetricCallback
-from catalyst.dl.callbacks import TensorboardLogger
 from sklearn.metrics import f1_score, confusion_matrix
-from tensorboardX import SummaryWriter
 
 from pytorch_toolbelt.utils.torch_utils import to_numpy
 from pytorch_toolbelt.utils.visualization import render_figure_to_tensor, plot_confusion_matrix
+from pytorch_toolbelt.utils.catalyst.visualization import get_tensorboard_logger
 
 __all__ = ['pixel_accuracy',
            'binary_iou_score',
@@ -16,13 +15,6 @@ __all__ = ['pixel_accuracy',
            'MacroF1Callback',
            'ConfusionMatrixCallback',
            'JaccardScoreCallback']
-
-
-def _get_tensorboard_logger(state: RunnerState) -> SummaryWriter:
-    for logger in state.loggers:
-        if isinstance(logger, TensorboardLogger):
-            return logger.loggers[state.loader_name]
-    raise RuntimeError(f"Cannot find Tensorboard logger for loader {state.loader_name}")
 
 
 def pixel_accuracy(outputs, targets):
@@ -117,7 +109,7 @@ class ConfusionMatrixCallback(Callback):
                                     noshow=True)
         fig = render_figure_to_tensor(fig)
 
-        logger = _get_tensorboard_logger(state)
+        logger = get_tensorboard_logger(state)
         logger.add_image(f'{self.prefix}/epoch', fig, global_step=state.step)
 
 
