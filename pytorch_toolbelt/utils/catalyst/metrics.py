@@ -181,7 +181,7 @@ def binary_iou_score(y_true: torch.Tensor, y_pred: torch.Tensor, threshold=0., e
 def multiclass_iou_score(y_true: torch.Tensor, y_pred: torch.Tensor, threshold=0., eps=1e-3):
     ious = []
     num_classes = y_pred.size(0)
-    y_pred = y_pred.argmax(dim=1)
+    y_pred = y_pred.argmax(dim=0)
 
     for class_index in range(num_classes):
         iou = binary_iou_score((y_true == class_index).float(),
@@ -242,7 +242,6 @@ class JaccardScoreCallback(Callback):
             score_fn = binary_iou_score
 
         if self.mode == 'multiclass':
-            assert targets.size(1) == 1
             score_fn = multiclass_iou_score
 
         if self.mode == 'multilabel':
@@ -252,13 +251,21 @@ class JaccardScoreCallback(Callback):
         assert score_fn is not None
 
         batch_size = targets.size(0)
+        ious = []
         for image_index in range(batch_size):
-            self.scores.append(score_fn(targets[image_index], outputs[image_index]))
+            ious.append(score_fn(targets[image_index], outputs[image_index]))
+
+        iou_per_batch = np.nanmean(ious)
+        state.metrics.add_batch_value(self.prefix, float(iou_per_batch))
+        self.scores.append(ious)
 
     def on_loader_end(self, state):
-        scores = np.array(self.scores)
+        scores = np.array(self.scores, dtype=np.float32)
 
-        state.metrics.epoch_values[state.loader_name][self.prefix] = float(np.mean(scores))
+        iou = np.nanmean(scores)
+        print('epoch iou', iou)
+
+        state.metrics.epoch_values[state.loader_name][self.prefix] = float(iou)
 
         # Log additional IoU scores per class
         if self.mode in {'multiclass', 'multilabel'}:
@@ -267,6 +274,6 @@ class JaccardScoreCallback(Callback):
             if class_names is None:
                 class_names = [f'class_{i}' for i in range(num_classes)]
 
-            scores_per_class = np.mean(scores, dim=1)
+            scores_per_class = np.nanmean(scores, axis=1)
             for class_name, score_per_class in zip(class_names, scores_per_class):
                 state.metrics.epoch_values[state.loader_name][self.prefix + '_' + class_name] = float(score_per_class)
