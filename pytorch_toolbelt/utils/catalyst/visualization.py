@@ -106,7 +106,7 @@ class ShowPolarBatchesCallback(Callback):
             self.worst_output = self.to_cpu(state.output)
 
     def on_loader_end(self, state: RunnerState) -> None:
-        logger = _get_tensorboard_logger(state)
+        logger = get_tensorboard_logger(state)
 
         if self.best_score is not None:
             best_samples = self.visualize_batch(self.best_input, self.best_output)
