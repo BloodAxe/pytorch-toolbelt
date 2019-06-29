@@ -195,7 +195,7 @@ def draw_semantic_segmentation_predictions(input: dict,
 
         overlay = image.copy()
         for class_index, class_color in enumerate(range(len(class_colors))):
-            image[logits == class_index, :] = class_color
+            overlay[logits == class_index, :] = class_color
 
         overlay = cv2.addWeighted(image, 0.5, overlay, 0.5, 0, dtype=cv2.CV_8U)
 
