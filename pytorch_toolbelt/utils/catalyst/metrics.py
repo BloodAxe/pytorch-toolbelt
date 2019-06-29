@@ -257,10 +257,10 @@ class JaccardScoreCallback(Callback):
 
         iou_per_batch = np.nanmean(ious)
         state.metrics.add_batch_value(self.prefix, float(iou_per_batch))
-        self.scores.append(ious)
+        self.scores.extend(ious)
 
     def on_loader_end(self, state):
-        scores = np.array(self.scores, dtype=np.float32)
+        scores = np.array(self.scores)
 
         iou = np.nanmean(scores)
         print('epoch iou', iou)
@@ -274,6 +274,6 @@ class JaccardScoreCallback(Callback):
             if class_names is None:
                 class_names = [f'class_{i}' for i in range(num_classes)]
 
-            scores_per_class = np.nanmean(scores, axis=1)
+            scores_per_class = np.nanmean(scores, axis=0)
             for class_name, score_per_class in zip(class_names, scores_per_class):
                 state.metrics.epoch_values[state.loader_name][self.prefix + '_' + class_name] = float(score_per_class)
