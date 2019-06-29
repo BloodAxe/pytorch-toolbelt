@@ -1,6 +1,7 @@
 import pytest
 import pytorch_toolbelt.modules.encoders as E
 import torch
+from pytorch_toolbelt.modules.fpn import HFF
 from pytorch_toolbelt.utils.torch_utils import maybe_cuda, count_parameters
 
 
@@ -89,3 +90,32 @@ def test_encoders_cuda_only(encoder: E.EncoderModule, encoder_params):
             assert feature_map.size(1) == expected_channels
             assert feature_map.size(2) * expected_stride == 512
             assert feature_map.size(3) * expected_stride == 512
+
+
+def test_hff_dynamic_size():
+    feature_maps = [
+        torch.randn((4, 3, 512, 512)),
+        torch.randn((4, 3, 256, 256)),
+        torch.randn((4, 3, 128, 128)),
+        torch.randn((4, 3, 64, 64)),
+    ]
+
+    hff = HFF(upsample_scale=2)
+    output = hff(feature_maps)
+    assert output.size(2) == 512
+    assert output.size(3) == 512
+
+
+def test_hff_static_size():
+    feature_maps = [
+        torch.randn((4, 3, 512, 512)),
+        torch.randn((4, 3, 384, 384)),
+        torch.randn((4, 3, 256, 256)),
+        torch.randn((4, 3, 128, 128)),
+        torch.randn((4, 3, 32, 32)),
+    ]
+
+    hff = HFF(sizes=[(512, 512), (384, 384), (256, 256), (128, 128), (32, 32)])
+    output = hff(feature_maps)
+    assert output.size(2) == 512
+    assert output.size(3) == 512

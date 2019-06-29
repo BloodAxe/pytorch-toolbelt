@@ -1,10 +1,7 @@
-import torch
 from torch import nn
 
+from .fpn import FPNBottleneckBlock, FPNPredictionBlock, UpsampleAddConv
 from .unet import UnetCentralBlock, UnetDecoderBlock
-from .fpn import FPNFuse, FPNBottleneckBlock, FPNPredictionBlock, UpsampleAdd, UpsampleAddSmooth
-
-import torch.nn.functional as F
 
 
 class DecoderModule(nn.Module):
@@ -55,7 +52,7 @@ class UNetDecoder(DecoderModule):
 class FPNDecoder(DecoderModule):
     def __init__(self, features,
                  bottleneck=FPNBottleneckBlock,
-                 upsample_add_block=UpsampleAddSmooth,
+                 upsample_add_block=UpsampleAddConv,
                  prediction_block=FPNPredictionBlock,
                  fpn_features=128,
                  prediction_features=128,
