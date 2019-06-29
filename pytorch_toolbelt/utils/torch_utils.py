@@ -66,11 +66,11 @@ def tensor_from_mask_image(mask: np.ndarray) -> torch.Tensor:
     return tensor_from_rgb_image(mask)
 
 
-def rgb_image_from_tensor(image: torch.Tensor, mean, std, max_pixel_value=255.0) -> np.ndarray:
+def rgb_image_from_tensor(image: torch.Tensor, mean, std, max_pixel_value=255.0, dtype=np.uint8) -> np.ndarray:
     image = np.moveaxis(to_numpy(image), 0, -1)
     mean = to_numpy(mean)
     std = to_numpy(std)
-    rgb_image = (max_pixel_value * (image * std + mean) + 0.5).astype(np.uint8)
+    rgb_image = (max_pixel_value * (image * std + mean)).astype(dtype)
     return rgb_image
 
 
