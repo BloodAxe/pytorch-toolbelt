@@ -16,6 +16,8 @@ A `pytorch-toolbelt` is a Python library with a set of bells and whistles for Py
 * Losses: BinaryFocalLoss, Focal, ReducedFocal, Lovasz, Jaccard and Dice losses, Wing Loss and more.
 * Extras for [Catalyst](https://github.com/catalyst-team/catalyst) library (Visualization of batch predictions, additional metrics) 
 
+Showcase: [Catalyst, Albumentations, Pytorch Toolbelt example: Semantic Segmentation @ CamVid](https://colab.research.google.com/drive/1OUPJYU7TzH5Vz1si6FBkooackuIlzaGr#scrollTo=GUWuiO5K3aUm)
+
 # Why
 
 Honest answer is "I needed a convenient way to re-use code for my Kaggle career". 
