@@ -1,3 +1,5 @@
+from functools import partial
+
 import numpy as np
 import torch
 from catalyst.dl import Callback, RunnerState, MetricCallback
@@ -178,12 +180,15 @@ def binary_iou_score(y_true: torch.Tensor, y_pred: torch.Tensor, threshold=0., e
     return float(iou)
 
 
-def multiclass_iou_score(y_true: torch.Tensor, y_pred: torch.Tensor, threshold=0., eps=1e-3):
+def multiclass_iou_score(y_true: torch.Tensor, y_pred: torch.Tensor, threshold=0., eps=1e-3, classes_of_interest=None):
     ious = []
     num_classes = y_pred.size(0)
     y_pred = y_pred.argmax(dim=0)
 
-    for class_index in range(num_classes):
+    if classes_of_interest is None:
+        classes_of_interest = range(num_classes)
+
+    for class_index in classes_of_interest:
         iou = binary_iou_score((y_true == class_index).float(),
                                (y_pred == class_index).float(), threshold, eps)
         ious.append(iou)
@@ -191,11 +196,14 @@ def multiclass_iou_score(y_true: torch.Tensor, y_pred: torch.Tensor, threshold=0
     return ious
 
 
-def multilabel_iou_score(y_true: torch.Tensor, y_pred: torch.Tensor, threshold=0., eps=1e-3):
+def multilabel_iou_score(y_true: torch.Tensor, y_pred: torch.Tensor, threshold=0., eps=1e-3, classes_of_interest=None):
     ious = []
     num_classes = y_pred.size(0)
 
-    for class_index in range(num_classes):
+    if classes_of_interest is None:
+        classes_of_interest = range(num_classes)
+
+    for class_index in classes_of_interest:
         iou = binary_iou_score(y_true[class_index], y_pred[class_index], threshold, eps)
         ious.append(iou)
 
@@ -209,7 +217,9 @@ class JaccardScoreCallback(Callback):
 
     def __init__(self,
                  mode: str,
+                 num_classes: int = None,
                  class_names=None,
+                 classes_of_interest=None,
                  input_key: str = "targets",
                  output_key: str = "logits",
                  prefix: str = "jaccard"):
@@ -220,12 +230,31 @@ class JaccardScoreCallback(Callback):
         """
         assert mode in {'binary', 'multiclass', 'multilabel'}
 
+        if classes_of_interest is not None:
+            if classes_of_interest.dtype == np.bool:
+                num_classes = len(classes_of_interest)
+                classes_of_interest = np.arange(num_classes)[classes_of_interest]
+
+            if class_names is not None:
+                if len(class_names) != len(classes_of_interest):
+                    raise ValueError('Length of \'classes_of_interest\' must be equal to length of \'classes_of_interest\'')
+
         self.mode = mode
         self.prefix = prefix
         self.output_key = output_key
         self.input_key = input_key
         self.class_names = class_names
+        self.classes_of_interest = classes_of_interest
         self.scores = []
+
+        if self.mode == 'binary':
+            self.score_fn = binary_iou_score
+
+        if self.mode == 'multiclass':
+            self.score_fn = partial(multiclass_iou_score, classes_of_interest=self.classes_of_interest)
+
+        if self.mode == 'multilabel':
+            self.score_fn = partial(multilabel_iou_score, classes_of_interest=self.classes_of_interest)
 
     def on_loader_start(self, state):
         self.scores = []
@@ -234,26 +263,11 @@ class JaccardScoreCallback(Callback):
         outputs = state.output[self.output_key].detach()
         targets = state.input[self.input_key].detach()
 
-        score_fn = None
-
-        if self.mode == 'binary':
-            assert outputs.size(1) == 1
-            assert targets.size(1) == 1
-            score_fn = binary_iou_score
-
-        if self.mode == 'multiclass':
-            score_fn = multiclass_iou_score
-
-        if self.mode == 'multilabel':
-            assert outputs.size(1) == targets.size(1)
-            score_fn = multilabel_iou_score
-
-        assert score_fn is not None
-
         batch_size = targets.size(0)
         ious = []
         for image_index in range(batch_size):
-            ious.append(score_fn(targets[image_index], outputs[image_index]))
+            iou_per_class = self.score_fn(targets[image_index], outputs[image_index])
+            ious.append(iou_per_class)
 
         iou_per_batch = np.nanmean(ious)
         state.metrics.add_batch_value(self.prefix, float(iou_per_batch))
@@ -261,9 +275,7 @@ class JaccardScoreCallback(Callback):
 
     def on_loader_end(self, state):
         scores = np.array(self.scores)
-
         iou = np.nanmean(scores)
-        print('epoch iou', iou)
 
         state.metrics.epoch_values[state.loader_name][self.prefix] = float(iou)
 

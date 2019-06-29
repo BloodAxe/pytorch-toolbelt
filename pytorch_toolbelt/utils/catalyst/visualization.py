@@ -110,32 +110,24 @@ class ShowPolarBatchesCallback(Callback):
 
         if self.best_score is not None:
             best_samples = self.visualize_batch(self.best_input, self.best_output)
-
-            if 'tensorboard' in self.targets:
-                for i, image in enumerate(best_samples):
-                    logger.add_image(f"{self.target_metric}/best/{i}", tensor_from_rgb_image(image), state.step)
-
-            if 'matplotlib' in self.targets:
-                for i, image in enumerate(best_samples):
-                    plt.figure()
-                    plt.imshow(image)
-                    plt.tight_layout()
-                    plt.axis('off')
-                    plt.show()
+            self._log_samples(best_samples, 'best', logger, state.step)
 
         if self.worst_score is not None:
             worst_samples = self.visualize_batch(self.worst_input, self.worst_output)
-            if 'tensorboard' in self.targets:
-                for i, image in enumerate(worst_samples):
-                    logger.add_image(f"{self.target_metric}/worst/{i}", tensor_from_rgb_image(image), state.step)
+            self._log_samples(worst_samples, 'worst', logger, state.step)
 
-            if 'matplotlib' in self.targets:
-                for i, image in enumerate(worst_samples):
-                    plt.figure()
-                    plt.imshow(image)
-                    plt.tight_layout()
-                    plt.axis('off')
-                    plt.show()
+    def _log_samples(self, samples, name, logger, step):
+        if 'tensorboard' in self.targets:
+            for i, image in enumerate(samples):
+                logger.add_image(f"{self.target_metric}/{name}/{i}", tensor_from_rgb_image(image), step)
+
+        if 'matplotlib' in self.targets:
+            for i, image in enumerate(samples):
+                plt.figure()
+                plt.imshow(image)
+                plt.tight_layout()
+                plt.axis('off')
+                plt.show()
 
 
 def draw_binary_segmentation_predictions(input: dict,
@@ -176,12 +168,15 @@ def draw_binary_segmentation_predictions(input: dict,
 def draw_semantic_segmentation_predictions(input: dict,
                                            output: dict,
                                            class_colors,
+                                           mode='overlay',
                                            image_key='features',
                                            image_id_key='image_id',
                                            targets_key='targets',
                                            outputs_key='logits',
                                            mean=(0.485, 0.456, 0.406),
                                            std=(0.229, 0.224, 0.225)):
+    assert mode in {'overlay', 'side-by-side'}
+
     images = []
     image_id_input = input[image_id_key] if image_id_key is not None else [None] * len(input[image_key])
 
@@ -190,17 +185,31 @@ def draw_semantic_segmentation_predictions(input: dict,
                                                image_id_input,
                                                output[outputs_key]):
         image = rgb_image_from_tensor(image, mean, std)
-
         logits = to_numpy(logits).argmax(axis=0)
+        target = to_numpy(target)
 
-        overlay = image.copy()
-        for class_index, class_color in enumerate(range(len(class_colors))):
-            overlay[logits == class_index, :] = class_color
+        if mode == 'overlay':
+            overlay = image.copy()
+            for class_index, class_color in enumerate(class_colors):
+                overlay[logits == class_index, :] = class_color
 
-        overlay = cv2.addWeighted(image, 0.5, overlay, 0.5, 0, dtype=cv2.CV_8U)
+            overlay = cv2.addWeighted(image, 0.5, overlay, 0.5, 0, dtype=cv2.CV_8U)
 
-        if image_id is not None:
-            cv2.putText(overlay, str(image_id), (10, 15), cv2.FONT_HERSHEY_PLAIN, 1, (250, 250, 250))
+            if image_id is not None:
+                cv2.putText(overlay, str(image_id), (10, 15), cv2.FONT_HERSHEY_PLAIN, 1, (250, 250, 250))
+        elif mode == 'side-by-side':
+
+            true_mask = np.zeros_like(image)
+            for class_index, class_color in enumerate(class_colors):
+                true_mask[target == class_index, :] = class_color
+
+            pred_mask = np.zeros_like(image)
+            for class_index, class_color in enumerate(class_colors):
+                pred_mask[logits == class_index, :] = class_color
+
+            overlay = np.hstack((image, true_mask, pred_mask))
+        else:
+            raise ValueError(mode)
 
         images.append(overlay)
 
