@@ -7,6 +7,7 @@ from functools import partial
 from typing import Tuple, List
 
 from torch import Tensor, nn
+from torch.nn.functional import interpolate
 
 from . import functional as F
 
@@ -70,7 +71,7 @@ def fivecrop_image2label(model: nn.Module, image: Tensor,
     center_crop_x = (image_width - crop_width) // 2
 
     crop_cc = image[..., center_crop_y:center_crop_y + crop_height,
-                         center_crop_x:center_crop_x + crop_width]
+              center_crop_x:center_crop_x + crop_width]
     assert crop_cc.size(2) == crop_height
     assert crop_cc.size(3) == crop_width
 
@@ -117,7 +118,7 @@ def tencrop_image2label(model: nn.Module, image: Tensor,
     center_crop_x = (image_width - crop_width) // 2
 
     crop_cc = image[..., center_crop_y:center_crop_y + crop_height,
-                         center_crop_x:center_crop_x + crop_width]
+              center_crop_x:center_crop_x + crop_width]
     assert crop_cc.size(2) == crop_height
     assert crop_cc.size(3) == crop_width
 
@@ -236,11 +237,11 @@ class MultiscaleTTAWrapper(nn.Module):
 
         for scale in self.scale_levels:
             dst_size = int(h * scale), int(w * scale)
-            input_scaled = F.interpolate(input, dst_size, mode='bilinear',
-                                         align_corners=True)
+            input_scaled = interpolate(input, dst_size, mode='bilinear',
+                                       align_corners=True)
             output_scaled = self.model(input_scaled)
-            output_scaled = F.interpolate(output_scaled, out_size,
-                                          mode='bilinear', align_corners=True)
+            output_scaled = interpolate(output_scaled, out_size,
+                                        mode='bilinear', align_corners=True)
             output += output_scaled
 
         return output / (1 + len(self.scale_levels))
