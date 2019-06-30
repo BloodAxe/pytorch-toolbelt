@@ -71,7 +71,7 @@ def fivecrop_image2label(model: nn.Module, image: Tensor,
     center_crop_x = (image_width - crop_width) // 2
 
     crop_cc = image[..., center_crop_y:center_crop_y + crop_height,
-              center_crop_x:center_crop_x + crop_width]
+                         center_crop_x:center_crop_x + crop_width]
     assert crop_cc.size(2) == crop_height
     assert crop_cc.size(3) == crop_width
 
@@ -118,7 +118,7 @@ def tencrop_image2label(model: nn.Module, image: Tensor,
     center_crop_x = (image_width - crop_width) // 2
 
     crop_cc = image[..., center_crop_y:center_crop_y + crop_height,
-              center_crop_x:center_crop_x + crop_width]
+                         center_crop_x:center_crop_x + crop_width]
     assert crop_cc.size(2) == crop_height
     assert crop_cc.size(3) == crop_width
 
