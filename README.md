@@ -6,12 +6,17 @@
 
 A `pytorch-toolbelt` is a Python library with a set of bells and whistles for PyTorch for fast R&D prototyping and Kaggle farming:
 
+## What's inside
+
 * Easy model building using flexible encoder-decoder architecture.
-* Modules: CoordConv, SCSE, Hypercolumn, Depthwise separable convolution and more
+* Modules: CoordConv, SCSE, Hypercolumn, Depthwise separable convolution and more.
 * GPU-friendly test-time augmentation TTA for segmentation and classification
 * GPU-friendly inference on huge (5000x5000) images
 * Every-day common routines (fix/restore random seed, filesystem utils, metrics)
-* Fancy losses: Focal, Lovasz, Jaccard and Dice losses, Wing Loss
+* Losses: BinaryFocalLoss, Focal, ReducedFocal, Lovasz, Jaccard and Dice losses, Wing Loss and more.
+* Extras for [Catalyst](https://github.com/catalyst-team/catalyst) library (Visualization of batch predictions, additional metrics) 
+
+Showcase: [Catalyst, Albumentations, Pytorch Toolbelt example: Semantic Segmentation @ CamVid](https://colab.research.google.com/drive/1OUPJYU7TzH5Vz1si6FBkooackuIlzaGr#scrollTo=GUWuiO5K3aUm)
 
 # Why
 
@@ -120,3 +125,4 @@ merged_mask = tiler.crop_to_orignal_size(merged_mask)
 ## Advanced examples
 
 1. [Inria Sattelite Segmentation](https://github.com/BloodAxe/Catalyst-Inria-Segmentation-Example)
+1. [CamVid Semantic Segmentation](https://github.com/BloodAxe/Catalyst-CamVid-Segmentation-Example)
