@@ -75,6 +75,26 @@ def to_numpy(x) -> np.ndarray:
     return x
 
 
+def to_tensor(x, dtype=None) -> torch.Tensor:
+    if isinstance(x, torch.Tensor):
+        if dtype is not None:
+            x = x.type(dtype)
+        return x
+    if isinstance(x, np.ndarray):
+        x = torch.from_numpy(x)
+        if dtype is not None:
+            x = x.type(dtype)
+        return x
+    if isinstance(x, (list, tuple)):
+        x = np.ndarray(x)
+        x = torch.from_numpy(x)
+        if dtype is not None:
+            x = x.type(dtype)
+        return x
+
+    raise ValueError('Unsupported input type' + str(type(x)))
+
+
 def tensor_from_rgb_image(image: np.ndarray) -> torch.Tensor:
     image = np.moveaxis(image, -1, 0)
     image = np.ascontiguousarray(image)

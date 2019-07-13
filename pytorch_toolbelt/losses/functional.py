@@ -95,30 +95,66 @@ def reduced_focal_loss(input: torch.Tensor,
     return loss
 
 
-def soft_jaccard_score(pred: torch.Tensor,
-                       target: torch.Tensor,
-                       smooth=1e-3,
-                       from_logits=False) -> torch.Tensor:
-    if from_logits:
-        pred = pred.sigmoid()
+def soft_jaccard_score(y_pred: torch.Tensor,
+                       y_true: torch.Tensor,
+                       smooth=0,
+                       eps=1e-7,
+                       dims=None) -> torch.Tensor:
+    """
 
-    target = target.float()
-    intersection = torch.sum(pred * target)
-    union = torch.sum(pred) + torch.sum(target)
-    iou = intersection / (union - intersection + smooth)
-    return iou
+    :param y_pred:
+    :param y_true:
+    :param smooth:
+    :param eps:
+    :return:
+
+    Shape:
+        - Input: :math:`(N, NC, *)` where :math:`*` means
+            any number of additional dimensions
+        - Target: :math:`(N, NC, *)`, same shape as the input
+        - Output: scalar.
+
+    """
+    assert y_pred.size() == y_true.size()
+
+    if dims is not None:
+        intersection = torch.sum(y_pred * y_true, dim=dims)
+        cardinality = torch.sum(y_pred + y_true, dim=dims)
+    else:
+        intersection = torch.sum(y_pred * y_true)
+        cardinality = torch.sum(y_pred + y_true)
+
+    union = cardinality - intersection
+    jaccard_score = (intersection + smooth) / (union + smooth + eps)
+    return jaccard_score
 
 
-def soft_dice_score(pred: torch.Tensor,
-                    target: torch.Tensor,
-                    smooth=1e-3,
-                    from_logits=False) -> torch.Tensor:
-    if from_logits:
-        pred = pred.sigmoid()
+def soft_dice_score(y_pred: torch.Tensor,
+                    y_true: torch.Tensor,
+                    smooth=0,
+                    eps=1e-7, 
+                    dims=None) -> torch.Tensor:
+    """
 
-    intersection = torch.sum(pred * target)
-    union = torch.sum(pred) + torch.sum(target) + smooth
-    return 2 * intersection / union
+    :param y_pred:
+    :param y_true:
+    :param smooth:
+    :param eps:
+    :return:
+
+    Shape:
+        - Input: :math:`(N, NC, *)` where :math:`*` means any number
+            of additional dimensions
+        - Target: :math:`(N, NC, *)`, same shape as the input
+        - Output: scalar.
+
+    """
+    assert y_pred.size() == y_true.size()
+    intersection = torch.sum(y_pred * y_true, dims)
+    cardinality = torch.sum(y_pred + y_true, dims)
+
+    dice_score = (2. * intersection + smooth) / (cardinality + smooth + eps)
+    return dice_score
 
 
 def wing_loss(prediction: torch.Tensor, target: torch.Tensor, width=5, curvature=0.5, reduction='mean'):

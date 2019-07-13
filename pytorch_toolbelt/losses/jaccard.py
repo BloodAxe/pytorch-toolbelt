@@ -1,74 +1,44 @@
 from typing import List
 
 import torch
+from pytorch_toolbelt.utils.torch_utils import to_numpy, to_tensor
 from torch import Tensor
 from torch.nn.modules.loss import _Loss
 
 from .functional import soft_jaccard_score
 
-__all__ = ['BinaryJaccardLoss', 'BinaryJaccardLogLoss', 'MulticlassJaccardLoss']
+__all__ = ['JaccardLoss']
+
+BINARY_MODE = 'binary'
+MULTICLASS_MODE = 'multiclass'
+MULTILABEL_MODE = 'multilabel'
 
 
-class BinaryJaccardLoss(_Loss):
-    """Implementation of Jaccard loss for binary image segmentation task
+class JaccardLoss(_Loss):
+    """
+    Implementation of Jaccard loss for image segmentation task.
+    It supports binary, multi-class and multi-label cases.
     """
 
-    def __init__(self, from_logits=True, weight=None, smooth=1e-3):
-        super(BinaryJaccardLoss, self).__init__()
-        self.from_logits = from_logits
-        self.weight = weight
-        self.smooth = smooth
+    def __init__(self,
+                 mode: str,
+                 classes: List[int] = None,
+                 log_loss=False,
+                 from_logits=True,
+                 smooth=0,
+                 eps=1e-7):
+        assert mode in {BINARY_MODE, MULTILABEL_MODE, MULTICLASS_MODE}
+        super(JaccardLoss, self).__init__()
+        self.mode = mode
+        if classes is not None:
+            assert mode != BINARY_MODE, 'Masking classes is not supported with mode=binary'
+            classes = to_tensor(classes, dtype=torch.long)
 
-    def forward(self, y_pred: Tensor, y_true: Tensor) -> Tensor:
-        """
-
-        :param y_pred: NxCxHxW
-        :param y_true: NxHxW
-        :return: scalar
-        """
-        if y_true.sum() == 0:
-            return 0
-
-        iou = soft_jaccard_score(y_pred, y_true, from_logits=self.from_logits, smooth=self.smooth)
-        loss = (1.0 - iou)
-
-        return loss
-
-
-class BinaryJaccardLogLoss(_Loss):
-    """Implementation of Jaccard loss for binary image segmentation task
-    """
-
-    def __init__(self, from_logits=True, weight=None, smooth=1e-3):
-        super(BinaryJaccardLogLoss, self).__init__()
-        self.from_logits = from_logits
-        self.weight = weight
-        self.smooth = smooth
-
-    def forward(self, y_pred: Tensor, y_true: Tensor) -> Tensor:
-        """
-
-        :param y_pred: NxCxHxW
-        :param y_true: NxHxW
-        :return: scalar
-        """
-        if y_true.sum() == 0:
-            return 0
-
-        iou = soft_jaccard_score(y_pred, y_true, from_logits=self.from_logits, smooth=self.smooth)
-        loss = - torch.log(iou)
-        return loss
-
-
-class MulticlassJaccardLoss(_Loss):
-    """Implementation of Jaccard loss for multiclass (semantic) image segmentation task
-    """
-
-    def __init__(self, classes: List[int] = None, from_logits=True, weight=None, reduction='elementwise_mean'):
-        super(MulticlassJaccardLoss, self).__init__(reduction=reduction)
         self.classes = classes
         self.from_logits = from_logits
-        self.weight = weight
+        self.smooth = smooth
+        self.eps = eps
+        self.log_loss = log_loss
 
     def forward(self, y_pred: Tensor, y_true: Tensor) -> Tensor:
         """
@@ -77,41 +47,50 @@ class MulticlassJaccardLoss(_Loss):
         :param y_true: NxHxW
         :return: scalar
         """
+
         if self.from_logits:
-            y_pred = y_pred.softmax(dim=1)
-
-        n_classes = y_pred.size(1)
-        smooth = 1e-3
-
-        loss = torch.zeros(n_classes, dtype=torch.float, device=y_pred.device)
-
-        if self.classes is None:
-            classes = range(n_classes)
-        else:
-            classes = self.classes
-
-        if self.weight is None:
-            weights = [1] * n_classes
-        else:
-            weights = self.weight
-
-        for class_index, weight in zip(classes, weights):
-
-            jaccard_target = (y_true == class_index).float()
-            jaccard_output = y_pred[:, class_index, ...]
-
-            num_preds = jaccard_target.long().sum()
-
-            if num_preds == 0:
-                loss[class_index] = 0
+            # Apply activations to get [0..1] class probabilities
+            if self.mode == MULTICLASS_MODE:
+                y_pred = y_pred.softmax(dim=1)
             else:
-                iou = soft_jaccard_score(jaccard_output, jaccard_target, from_logits=False, smooth=smooth)
-                loss[class_index] = (1.0 - iou) * weight
+                y_pred = y_pred.sigmoid()
 
-        if self.reduction == 'elementwise_mean':
-            return loss.mean()
+        num_classes = y_pred.size(1)
 
-        if self.reduction == 'sum':
-            return loss.sum()
+        dims = None
+
+        if self.mode == BINARY_MODE:
+            mask = torch.sum(y_true) > 0
+
+        if self.mode == MULTICLASS_MODE:
+            y_true = torch.eye(num_classes)[y_true.squeeze(1)]
+            y_true = y_true.permute(0, 3, 1, 2).type(y_pred.dtype)
+            dims = (0,) + tuple(range(2, y_true.ndimension()))
+
+        if self.classes is not None:
+            y_pred = y_pred[:, self.classes, ...]
+            y_true = y_true[:, self.classes, ...]
+            dims = (0,) + tuple(range(2, y_true.ndimension()))
+
+        mask = torch.sum(y_true, dims) > 0
+        scores = soft_jaccard_score(y_pred, y_true,
+                                    self.smooth, self.eps, dims=dims)
+
+        # Since IoU is not defined when no samples are present,
+        # we select classes with non-zero pixels counts
+        scores = scores[mask]
+
+        if len(scores) == 0:
+            # If IoU is not defined, return zero loss
+            return 0
+
+        if len(scores) > 1:
+            # If scores is vector, compute a mean of non-nan elements
+            scores = scores.mean()
+
+        if self.log_loss:
+            loss = -torch.log(scores)
+        else:
+            loss = 1.0 - scores
 
         return loss
