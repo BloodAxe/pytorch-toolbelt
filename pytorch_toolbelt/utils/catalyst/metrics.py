@@ -19,12 +19,21 @@ __all__ = ['pixel_accuracy',
            'JaccardScoreCallback']
 
 
-def pixel_accuracy(outputs, targets):
-    """Compute the pixel accuracy
+def pixel_accuracy(outputs: torch.Tensor,
+                   targets: torch.Tensor, ignore_index=None):
     """
-    outputs = (outputs.detach() > 0).float()
+    Compute the pixel accuracy
+    """
+    outputs = outputs.detach()
+    targets = targets.detach()
+    if ignore_index is not None:
+        mask = targets != ignore_index
+        outputs = outputs[mask]
+        targets = targets[mask]
 
-    correct = float(torch.sum(outputs == targets.detach()))
+    outputs = (outputs > 0).float()
+
+    correct = float(torch.sum(outputs == targets))
     total = targets.numel()
     return correct / total
 
@@ -38,16 +47,18 @@ class PixelAccuracyCallback(MetricCallback):
             input_key: str = "targets",
             output_key: str = "logits",
             prefix: str = "accuracy",
+            ignore_index=None
     ):
         """
         :param input_key: input key to use for iou calculation;
             specifies our `y_true`.
         :param output_key: output key to use for iou calculation;
             specifies our `y_pred`
+        :param ignore_index: same meaning as in nn.CrossEntropyLoss
         """
         super().__init__(
             prefix=prefix,
-            metric_fn=pixel_accuracy,
+            metric_fn=partial(pixel_accuracy, ignore_index=ignore_index),
             input_key=input_key,
             output_key=output_key,
         )
@@ -64,13 +75,15 @@ class ConfusionMatrixCallback(Callback):
             input_key: str = "targets",
             output_key: str = "logits",
             prefix: str = "confusion_matrix",
-            class_names=None
+            class_names=None,
+            ignore_index=None
     ):
         """
         :param input_key: input key to use for precision calculation;
             specifies our `y_true`.
         :param output_key: output key to use for precision calculation;
             specifies our `y_pred`.
+        :param ignore_index: same meaning as in nn.CrossEntropyLoss
         """
         self.prefix = prefix
         self.class_names = class_names
@@ -78,6 +91,7 @@ class ConfusionMatrixCallback(Callback):
         self.input_key = input_key
         self.outputs = []
         self.targets = []
+        self.ignore_index = ignore_index
 
     def on_loader_start(self, state):
         self.outputs = []
@@ -88,6 +102,11 @@ class ConfusionMatrixCallback(Callback):
         targets = to_numpy(state.input[self.input_key])
 
         outputs = np.argmax(outputs, axis=1)
+
+        if self.ignore_index is not None:
+            mask = targets != self.ignore_index
+            outputs = outputs[mask]
+            targets = targets[mask]
 
         self.outputs.extend(outputs)
         self.targets.extend(targets)
@@ -124,7 +143,8 @@ class MacroF1Callback(Callback):
             self,
             input_key: str = "targets",
             output_key: str = "logits",
-            prefix: str = "macro_f1"
+            prefix: str = "macro_f1",
+            ignore_index=None
     ):
         """
         :param input_key: input key to use for precision calculation;
@@ -138,13 +158,21 @@ class MacroF1Callback(Callback):
         self.input_key = input_key
         self.outputs = []
         self.targets = []
+        self.ignore_index = ignore_index
 
     def on_batch_end(self, state: RunnerState):
         outputs = to_numpy(state.output[self.output_key])
         targets = to_numpy(state.input[self.input_key])
-        num_classes = outputs.shape[1]
 
-        outputs = [np.eye(num_classes)[y] for y in np.argmax(outputs, axis=1)]
+        num_classes = outputs.shape[1]
+        outputs = np.argmax(outputs, axis=1)
+
+        if self.ignore_index is not None:
+            mask = targets != self.ignore_index
+            outputs = outputs[mask]
+            targets = targets[mask]
+
+        outputs = [np.eye(num_classes)[y] for y in outputs]
         targets = [np.eye(num_classes)[y] for y in targets]
 
         self.outputs.extend(outputs)

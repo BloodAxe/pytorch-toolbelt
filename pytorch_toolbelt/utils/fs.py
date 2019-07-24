@@ -10,7 +10,7 @@ import numpy as np
 
 def has_image_ext(fname: str):
     name, ext = os.path.splitext(fname)
-    return ext.lower() in {'.bmp', '.png', '.jpeg', '.jpg', '.tiff'}
+    return ext.lower() in {'.bmp', '.png', '.jpeg', '.jpg', '.tiff', 'tif'}
 
 
 def find_in_dir(dirname: str):
