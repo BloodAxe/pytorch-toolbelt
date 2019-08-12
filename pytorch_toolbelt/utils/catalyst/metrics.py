@@ -121,7 +121,7 @@ class ConfusionMatrixCallback(Callback):
             class_names = self.class_names
 
         num_classes = len(class_names)
-        cm = confusion_matrix(outputs, targets, labels=range(num_classes))
+        cm = confusion_matrix(targets, outputs, labels=range(num_classes))
 
         fig = plot_confusion_matrix(cm,
                                     figsize=(6 + num_classes // 3, 6 + num_classes // 3),
