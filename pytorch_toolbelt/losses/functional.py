@@ -152,7 +152,6 @@ def soft_dice_score(y_pred: torch.Tensor,
     assert y_pred.size() == y_true.size()
     intersection = torch.sum(y_pred * y_true, dims)
     cardinality = torch.sum(y_pred + y_true, dims)
-
     dice_score = (2. * intersection + smooth) / (cardinality + smooth + eps)
     return dice_score
 

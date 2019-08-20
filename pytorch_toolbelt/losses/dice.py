@@ -11,7 +11,9 @@ __all__ = ['DiceLoss']
 
 
 class DiceLoss(_Loss):
-    """Implementation of Dice loss for image segmentation task. It supports binary, multiclass and multilabel cases
+    """
+    Implementation of Dice loss for image segmentation task.
+    It supports binary, multiclass and multilabel cases
     """
 
     def __init__(self,
@@ -19,15 +21,17 @@ class DiceLoss(_Loss):
                  classes: List[int] = None,
                  log_loss=False,
                  from_logits=True,
+                 ignore_index=None,
                  smooth=0,
                  eps=1e-7):
         assert mode in {'binary', 'multiclass', 'multilabel'}
         super(DiceLoss, self).__init__()
-        self.mode = mode
-        if classes is not None:
-            classes = to_tensor(classes, dtype=torch.long)
-            assert mode != 'binary', 'Masking classes is not supported in mode=binary'
 
+        if classes is not None:
+            assert mode != 'binary', 'Masking classes is not supported in mode=binary'
+            classes = to_tensor(classes, dtype=torch.long)
+
+        self.mode = mode
         self.classes = classes
         self.from_logits = from_logits
         self.smooth = smooth
@@ -50,9 +54,7 @@ class DiceLoss(_Loss):
         num_classes = y_pred.size(1)
 
         if self.mode == 'binary':
-            y_pred = torch.cat([1 - y_pred, y_pred], dim=1)
-            y_true = torch.eye(2)[y_true.squeeze(1)]
-            y_true = y_true.permute(0, 3, 1, 2).type(y_pred.dtype)
+            pass
 
         if self.mode == 'multiclass':
             y_true = torch.eye(num_classes)[y_true.squeeze(1)]
@@ -61,6 +63,11 @@ class DiceLoss(_Loss):
         if self.classes is not None:
             y_pred = y_pred[:, self.classes, ...]
             y_true = y_true[:, self.classes, ...]
+
+        if self.ignore_index is not None:
+            mask = y_true == self.ignore_index
+            y_pred = y_pred.masked_fill(mask, 0)
+            y_true = y_true.masked_fill(mask, 0)
 
         score = soft_dice_score(y_pred, y_true, self.smooth, self.eps)
 
