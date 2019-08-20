@@ -194,21 +194,52 @@ class MacroF1Callback(Callback):
         state.metrics.epoch_values[state.loader_name][metric_name] = metric
 
 
-def binary_iou_score(y_true: torch.Tensor, y_pred: torch.Tensor, threshold=0., eps=1e-3):
-    if y_true.sum() == 0:
-        return np.nan
+def binary_dice_iou_score(y_pred: torch.Tensor, y_true: torch.Tensor,
+                          mode='dice',
+                          threshold=None,
+                          nan_score_on_empty=False,
+                          eps=1e-7) -> float:
+    """
+    Compute IoU score between two image tensors
+    :param y_pred: Input image tensor of any shape
+    :param y_true: Target image of any shape (must match size of y_pred)
+    :param mode: Metric to compute (dice, iou)
+    :param threshold: Optional binarization threshold to apply on @y_pred
+    :param nan_score_on_empty: If true, return np.nan if target has no positive pixels;
+        If false, return 1. if both target and input are empty, and 0 otherwise.
+    :param eps: Small value to add to denominator for numerical stability
+    :return: Float scalar
+    """
+    assert mode in {'dice', 'iou'}
 
     # Binarize predictions
     if threshold is not None:
         y_pred = (y_pred > threshold).to(y_true.dtype)
 
-    intersection = (y_pred * y_true).sum()
-    union = y_pred.sum() + y_true.sum()
-    iou = intersection / (union - intersection + eps)
-    return float(iou)
+    intersection = torch.sum(y_pred * y_true).item()
+    cardinality = (torch.sum(y_pred) + torch.sum(y_true)).item()
+
+    if mode == 'dice':
+        score = ((2. * intersection) / (cardinality + eps))
+    else:
+        score = intersection / (cardinality + eps)
+
+    has_targets = torch.sum(y_true) > 0
+    has_predicted = torch.sum(y_pred) > 0
+
+    if not has_targets:
+        if nan_score_on_empty:
+            score = np.nan
+        else:
+            score = float(not has_predicted)
+    return score
 
 
-def multiclass_iou_score(y_true: torch.Tensor, y_pred: torch.Tensor, threshold=0., eps=1e-3, classes_of_interest=None):
+def multiclass_dice_iou_score(y_pred: torch.Tensor, y_true: torch.Tensor,
+                              mode='dice',
+                              threshold=None,
+                              eps=1e-7,
+                              classes_of_interest=None):
     ious = []
     num_classes = y_pred.size(0)
     y_pred = y_pred.argmax(dim=0)
@@ -217,14 +248,21 @@ def multiclass_iou_score(y_true: torch.Tensor, y_pred: torch.Tensor, threshold=0
         classes_of_interest = range(num_classes)
 
     for class_index in classes_of_interest:
-        iou = binary_iou_score((y_true == class_index).float(),
-                               (y_pred == class_index).float(), threshold, eps)
+        iou = binary_dice_iou_score((y_true == class_index).float(),
+                                    (y_pred == class_index).float(),
+                                    mode=mode,
+                                    threshold=threshold,
+                                    eps=eps)
         ious.append(iou)
 
     return ious
 
 
-def multilabel_iou_score(y_true: torch.Tensor, y_pred: torch.Tensor, threshold=0., eps=1e-3, classes_of_interest=None):
+def multilabel_dice_iou_score(y_pred: torch.Tensor, y_true: torch.Tensor,
+                              mode='dice',
+                              threshold=None,
+                              eps=1e-7,
+                              classes_of_interest=None):
     ious = []
     num_classes = y_pred.size(0)
 
@@ -232,7 +270,10 @@ def multilabel_iou_score(y_true: torch.Tensor, y_pred: torch.Tensor, threshold=0
         classes_of_interest = range(num_classes)
 
     for class_index in classes_of_interest:
-        iou = binary_iou_score(y_true[class_index], y_pred[class_index], threshold, eps)
+        iou = binary_dice_iou_score(y_true[class_index], y_pred[class_index],
+                                    mode=mode,
+                                    threshold=threshold,
+                                    eps=eps)
         ious.append(iou)
 
     return ious
@@ -276,13 +317,13 @@ class JaccardScoreCallback(Callback):
         self.scores = []
 
         if self.mode == 'binary':
-            self.score_fn = binary_iou_score
+            self.score_fn = partial(binary_dice_iou_score, mode='iou')
 
         if self.mode == 'multiclass':
-            self.score_fn = partial(multiclass_iou_score, classes_of_interest=self.classes_of_interest)
+            self.score_fn = partial(multiclass_dice_iou_score, mode='iou', classes_of_interest=self.classes_of_interest)
 
         if self.mode == 'multilabel':
-            self.score_fn = partial(multilabel_iou_score, classes_of_interest=self.classes_of_interest)
+            self.score_fn = partial(multilabel_dice_iou_score, mode='iou', classes_of_interest=self.classes_of_interest)
 
     def on_loader_start(self, state):
         self.scores = []
@@ -294,7 +335,8 @@ class JaccardScoreCallback(Callback):
         batch_size = targets.size(0)
         ious = []
         for image_index in range(batch_size):
-            iou_per_class = self.score_fn(targets[image_index], outputs[image_index])
+            iou_per_class = self.score_fn(y_pred=outputs[image_index],
+                                          y_true=targets[image_index])
             ious.append(iou_per_class)
 
         iou_per_batch = np.nanmean(ious)
@@ -308,6 +350,88 @@ class JaccardScoreCallback(Callback):
         state.metrics.epoch_values[state.loader_name][self.prefix] = float(iou)
 
         # Log additional IoU scores per class
+        if self.mode in {'multiclass', 'multilabel'}:
+            num_classes = scores.shape[1]
+            class_names = self.class_names
+            if class_names is None:
+                class_names = [f'class_{i}' for i in range(num_classes)]
+
+            scores_per_class = np.nanmean(scores, axis=0)
+            for class_name, score_per_class in zip(class_names, scores_per_class):
+                state.metrics.epoch_values[state.loader_name][self.prefix + '_' + class_name] = float(score_per_class)
+
+
+class DiceScoreCallback(Callback):
+    """
+    Dice metric callback which is computed across whole epoch, not per-batch.
+    """
+
+    def __init__(self,
+                 mode: str,
+                 num_classes: int = None,
+                 class_names=None,
+                 classes_of_interest=None,
+                 input_key: str = "targets",
+                 output_key: str = "logits",
+                 prefix: str = "dice"):
+        """
+        :param mode: One of: 'binary', 'multiclass', 'multilabel'.
+        :param input_key: input key to use for precision calculation; specifies our `y_true`.
+        :param output_key: output key to use for precision calculation; specifies our `y_pred`.
+        """
+        assert mode in {'binary', 'multiclass', 'multilabel'}
+
+        if classes_of_interest is not None:
+            if classes_of_interest.dtype == np.bool:
+                num_classes = len(classes_of_interest)
+                classes_of_interest = np.arange(num_classes)[classes_of_interest]
+
+            if class_names is not None:
+                if len(class_names) != len(classes_of_interest):
+                    raise ValueError('Length of \'classes_of_interest\' must be equal to length of \'classes_of_interest\'')
+
+        self.mode = mode
+        self.prefix = prefix
+        self.output_key = output_key
+        self.input_key = input_key
+        self.class_names = class_names
+        self.classes_of_interest = classes_of_interest
+        self.scores = []
+
+        if self.mode == 'binary':
+            self.score_fn = partial(binary_dice_iou_score, mode='dice')
+
+        if self.mode == 'multiclass':
+            self.score_fn = partial(multiclass_dice_iou_score, mode='dice', classes_of_interest=self.classes_of_interest)
+
+        if self.mode == 'multilabel':
+            self.score_fn = partial(multilabel_dice_iou_score, mode='dice', classes_of_interest=self.classes_of_interest)
+
+    def on_loader_start(self, state):
+        self.scores = []
+
+    def on_batch_end(self, state: RunnerState):
+        outputs = state.output[self.output_key].detach()
+        targets = state.input[self.input_key].detach()
+
+        batch_size = targets.size(0)
+        dice_scores = []
+        for image_index in range(batch_size):
+            dice_per_class = self.score_fn(y_pred=outputs[image_index],
+                                           y_true=targets[image_index])
+            dice_scores.append(dice_per_class)
+
+        dice_per_batch = np.nanmean(dice_scores)
+        state.metrics.add_batch_value(self.prefix, float(dice_per_batch))
+        self.scores.extend(dice_scores)
+
+    def on_loader_end(self, state):
+        scores = np.array(self.scores)
+        dice = np.nanmean(scores)
+
+        state.metrics.epoch_values[state.loader_name][self.prefix] = float(dice)
+
+        # Log additional dice scores per class
         if self.mode in {'multiclass', 'multilabel'}:
             num_classes = scores.shape[1]
             class_names = self.class_names
