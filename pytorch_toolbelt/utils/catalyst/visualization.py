@@ -5,7 +5,7 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-from catalyst.dl import Callback, RunnerState
+from catalyst.dl import Callback, RunnerState, CallbackOrder
 from catalyst.dl.callbacks import TensorboardLogger
 from tensorboardX import SummaryWriter
 
@@ -46,6 +46,7 @@ class ShowPolarBatchesCallback(Callback):
         :param min_delta:
         :param targets: Str 'tensorboard' or 'matplotlib, or ['tensorboard', 'matplotlib']
         """
+        super().__init__(CallbackOrder.Other)
         assert isinstance(targets, (list, str))
 
         self.best_score = None
@@ -153,9 +154,11 @@ def draw_binary_segmentation_predictions(input: dict,
         true_mask = target > 0
         pred_mask = logits > 0
 
-        overlay[true_mask & pred_mask] = np.array([0, 250, 0], dtype=overlay.dtype)  # Correct predictions (Hits) painted with green
+        overlay[true_mask & pred_mask] = np.array([0, 250, 0],
+                                                  dtype=overlay.dtype)  # Correct predictions (Hits) painted with green
         overlay[true_mask & ~pred_mask] = np.array([250, 0, 0], dtype=overlay.dtype)  # Misses painted with red
-        overlay[~true_mask & pred_mask] = np.array([250, 250, 0], dtype=overlay.dtype)  # False alarm painted with yellow
+        overlay[~true_mask & pred_mask] = np.array([250, 250, 0],
+                                                   dtype=overlay.dtype)  # False alarm painted with yellow
         overlay = cv2.addWeighted(image, 0.5, overlay, 0.5, 0, dtype=cv2.CV_8U)
 
         if image_id is not None:
