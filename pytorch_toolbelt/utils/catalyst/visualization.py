@@ -20,7 +20,7 @@ __all__ = [
 
 
 def get_tensorboard_logger(state: RunnerState) -> SummaryWriter:
-    for logger in state.loggers:
+    for logger_name, logger in state.loggers.items():
         if isinstance(logger, TensorboardLogger):
             return logger.loggers[state.loader_name]
     raise RuntimeError(f"Cannot find Tensorboard logger for loader {state.loader_name}")
