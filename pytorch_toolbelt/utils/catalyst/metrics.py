@@ -2,12 +2,12 @@ from functools import partial
 
 import numpy as np
 import torch
-from catalyst.dl import Callback, RunnerState, MetricCallback
+from catalyst.dl import Callback, RunnerState, MetricCallback, CallbackOrder
 from sklearn.metrics import f1_score, confusion_matrix
 
+from pytorch_toolbelt.utils.catalyst.visualization import get_tensorboard_logger
 from pytorch_toolbelt.utils.torch_utils import to_numpy
 from pytorch_toolbelt.utils.visualization import render_figure_to_tensor, plot_confusion_matrix
-from pytorch_toolbelt.utils.catalyst.visualization import get_tensorboard_logger
 
 __all__ = ['pixel_accuracy',
            'binary_iou_score',
@@ -70,14 +70,8 @@ class ConfusionMatrixCallback(Callback):
     For use with Multiclass classification/segmentation.
     """
 
-    def __init__(
-            self,
-            input_key: str = "targets",
-            output_key: str = "logits",
-            prefix: str = "confusion_matrix",
-            class_names=None,
-            ignore_index=None
-    ):
+    def __init__(self, input_key: str = "targets", output_key: str = "logits",
+                 prefix: str = "confusion_matrix", class_names=None, ignore_index=None):
         """
         :param input_key: input key to use for precision calculation;
             specifies our `y_true`.
@@ -85,6 +79,7 @@ class ConfusionMatrixCallback(Callback):
             specifies our `y_pred`.
         :param ignore_index: same meaning as in nn.CrossEntropyLoss
         """
+        super().__init__(CallbackOrder.Logger)
         self.prefix = prefix
         self.class_names = class_names
         self.output_key = output_key
@@ -121,7 +116,7 @@ class ConfusionMatrixCallback(Callback):
             class_names = self.class_names
 
         num_classes = len(class_names)
-        cm = confusion_matrix(outputs, targets, labels=range(num_classes))
+        cm = confusion_matrix(targets, outputs, labels=range(num_classes))
 
         fig = plot_confusion_matrix(cm,
                                     figsize=(6 + num_classes // 3, 6 + num_classes // 3),
@@ -152,6 +147,7 @@ class MacroF1Callback(Callback):
         :param output_key: output key to use for precision calculation;
             specifies our `y_pred`.
         """
+        super().__init__(CallbackOrder.Metric)
         self.metric_fn = lambda outputs, targets: f1_score(targets, outputs, average='macro')
         self.prefix = prefix
         self.output_key = output_key
@@ -256,6 +252,7 @@ class JaccardScoreCallback(Callback):
         :param input_key: input key to use for precision calculation; specifies our `y_true`.
         :param output_key: output key to use for precision calculation; specifies our `y_pred`.
         """
+        super().__init__(CallbackOrder.Metric)
         assert mode in {'binary', 'multiclass', 'multilabel'}
 
         if classes_of_interest is not None:
@@ -265,7 +262,8 @@ class JaccardScoreCallback(Callback):
 
             if class_names is not None:
                 if len(class_names) != len(classes_of_interest):
-                    raise ValueError('Length of \'classes_of_interest\' must be equal to length of \'classes_of_interest\'')
+                    raise ValueError(
+                        'Length of \'classes_of_interest\' must be equal to length of \'classes_of_interest\'')
 
         self.mode = mode
         self.prefix = prefix
