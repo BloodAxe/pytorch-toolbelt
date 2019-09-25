@@ -92,6 +92,10 @@ def test_encoders_cuda_only(encoder: E.EncoderModule, encoder_params):
             assert feature_map.size(3) * expected_stride == 512
 
 
+def test_densenet_encoder():
+    enc = E.DenseNet121Encoder()
+    out = enc(torch.randn(2,3,512,512))
+
 def test_hff_dynamic_size():
     feature_maps = [
         torch.randn((4, 3, 512, 512)),

@@ -579,15 +579,28 @@ class DenseNet121Encoder(EncoderModule):
     def __init__(self, layers=[1, 2, 3, 4], pretrained=True):
         densenet = densenet121(pretrained=pretrained)
 
-        strides = [4, 8, 16, 32]
-        channels = [1024]
+        strides = [2, 4, 8, 16, 32]
+        channels = [64, 128, 256, 512, 1024]
 
         super().__init__([1024], [32], [0])
-        self.layer0 = nn.Sequential(densenet.features.conv0)
-        self.layer1 = nn.Sequential(densenet.features.conv0)
-        self.layer3 = nn.Sequential(densenet.features.conv0)
-        self.layer4 = nn.Sequential(densenet.features.conv0)
-        self.layer0 = nn.Sequential(densenet.features.conv0)
+        self.layer0 = nn.Sequential(
+            densenet.features.conv0, densenet.features.norm0, densenet.features.relu0
+        )
+        self.pool0 = densenet.features.pool0
+
+        self.layer1 = nn.Sequential(
+            densenet.features.denseblock1, densenet.features.transition1
+        )
+
+        self.layer2 = nn.Sequential(
+            densenet.features.denseblock2, densenet.features.transition2
+        )
+
+        self.layer3 = nn.Sequential(
+            densenet.features.denseblock3, densenet.features.transition3
+        )
+
+        self.layer4 = nn.Sequential(densenet.features.denseblock4)
 
         self._output_strides = _take(strides, layers)
         self._output_filters = _take(channels, layers)
@@ -613,7 +626,7 @@ class DenseNet121Encoder(EncoderModule):
 
             if layer == self.layer0:
                 # Fist maxpool operator is not a part of layer0 because we want that layer0 output to have stride of 2
-                output = self.maxpool(output)
+                output = self.pool0(output)
             input = output
 
         # Return only features that were requested
