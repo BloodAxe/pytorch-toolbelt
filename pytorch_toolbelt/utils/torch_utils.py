@@ -104,6 +104,15 @@ def maybe_cuda(x):
     return x
 
 
+def get_optimizable_parameters(model: nn.Module):
+    """
+    Return list of optimizable parameters from the model
+    :param model:
+    :return:
+    """
+    return filter(lambda x: x.requires_grad, model.parameters())
+
+
 def transfer_weights(model: nn.Module,
                      model_state_dict: collections.OrderedDict):
     """
