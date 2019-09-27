@@ -378,7 +378,7 @@ class IoUMetricsCallback(Callback):
             mean_score)
 
         # Log additional IoU scores per class
-        if self.mode in {'multiclass', 'multilabel'}:
+        if self.mode in {MULTICLASS_MODE, MULTILABEL_MODE}:
             num_classes = scores.shape[1]
             class_names = self.class_names
             if class_names is None:
