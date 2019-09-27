@@ -1,6 +1,7 @@
 import pytest
-import pytorch_toolbelt.modules.encoders as E
 import torch
+
+import pytorch_toolbelt.modules.encoders as E
 from pytorch_toolbelt.modules.fpn import HFF
 from pytorch_toolbelt.utils.torch_utils import maybe_cuda, count_parameters
 
@@ -93,8 +94,18 @@ def test_encoders_cuda_only(encoder: E.EncoderModule, encoder_params):
 
 
 def test_densenet_encoder():
-    enc = E.DenseNet121Encoder()
-    out = enc(torch.randn(2,3,512,512))
+    dn121 = E.DenseNet121Encoder(layers=[0, 1, 2, 3, 4])
+    out121 = dn121(torch.randn(2, 3, 512, 512))
+    print([o.size() for o in out121])
+
+    dn169 = E.DenseNet169Encoder(layers=[0, 1, 2, 3, 4])
+    out169 = dn169(torch.randn(2, 3, 512, 512))
+    print([o.size() for o in out169])
+
+    dn201 = E.DenseNet201Encoder(layers=[0, 1, 2, 3, 4])
+    out201 = dn201(torch.randn(2, 3, 512, 512))
+    print([o.size() for o in out201])
+
 
 def test_hff_dynamic_size():
     feature_maps = [
