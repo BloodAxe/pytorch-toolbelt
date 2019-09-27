@@ -1,6 +1,7 @@
 """Common functions to marshal data to/from PyTorch
 
 """
+import collections
 import warnings
 from typing import Tuple
 
@@ -38,7 +39,7 @@ def set_trainable(module: nn.Module, trainable=True, freeze_bn=True):
 def freeze_bn(module: nn.Module):
     """Freezes BatchNorm
     """
-    warnings.warn('This method is deprecated. Please use `set_trainable`.')
+    warnings.warn("This method is deprecated. Please use `set_trainable`.")
     set_trainable(module, True, False)
 
 
@@ -71,7 +72,7 @@ def to_numpy(x) -> np.ndarray:
     elif isinstance(x, list) or isinstance(x, tuple):
         return np.array(x)
     else:
-        raise ValueError('Unsupported type')
+        raise ValueError("Unsupported type")
     return x
 
 
@@ -108,7 +109,9 @@ def tensor_from_mask_image(mask: np.ndarray) -> torch.Tensor:
     return tensor_from_rgb_image(mask)
 
 
-def rgb_image_from_tensor(image: torch.Tensor, mean, std, max_pixel_value=255.0, dtype=np.uint8) -> np.ndarray:
+def rgb_image_from_tensor(
+    image: torch.Tensor, mean, std, max_pixel_value=255.0, dtype=np.uint8
+) -> np.ndarray:
     image = np.moveaxis(to_numpy(image), 0, -1)
     mean = to_numpy(mean)
     std = to_numpy(std)
@@ -120,3 +123,21 @@ def maybe_cuda(x):
     if torch.cuda.is_available():
         return x.cuda()
     return x
+
+
+def transfer_weights(model: nn.Module, model_state_dict: collections.OrderedDict):
+    """
+    Copy weights from state dict to model, skipping layers that are incompatible.
+    This method is helpful if you are doing some model surgery and want to load
+    part of the model weights into different model.
+    :param model: Model to load weights into
+    :param model_state_dict: Model state dict to load weights from
+    :return: None
+    """
+    for name, value in model_state_dict.items():
+        try:
+            model.load_state_dict(
+                collections.OrderedDict([(name, value)]), strict=False
+            )
+        except Exception as e:
+            print(e)
