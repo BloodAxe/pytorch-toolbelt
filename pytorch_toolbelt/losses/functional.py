@@ -1,8 +1,10 @@
 import math
+
 import torch
 import torch.nn.functional as F
 
-__all__ = ['sigmoid_focal_loss', 'soft_jaccard_score', 'soft_dice_score', 'wing_loss']
+__all__ = ['sigmoid_focal_loss', 'soft_jaccard_score', 'soft_dice_score',
+           'wing_loss']
 
 
 def sigmoid_focal_loss(input: torch.Tensor,
@@ -31,7 +33,8 @@ def sigmoid_focal_loss(input: torch.Tensor,
     """
     target = target.type(input.type())
 
-    logpt = -F.binary_cross_entropy_with_logits(input, target, reduction='none')
+    logpt = -F.binary_cross_entropy_with_logits(input, target,
+                                                reduction='none')
     pt = torch.exp(logpt)
 
     # compute the loss
@@ -76,7 +79,8 @@ def reduced_focal_loss(input: torch.Tensor,
     """
     target = target.type(input.type())
 
-    logpt = -F.binary_cross_entropy_with_logits(input, target, reduction='none')
+    logpt = -F.binary_cross_entropy_with_logits(input, target,
+                                                reduction='none')
     pt = torch.exp(logpt)
 
     # compute the loss
@@ -97,7 +101,7 @@ def reduced_focal_loss(input: torch.Tensor,
 
 def soft_jaccard_score(y_pred: torch.Tensor,
                        y_true: torch.Tensor,
-                       smooth=0,
+                       smooth=0.,
                        eps=1e-7,
                        dims=None) -> torch.Tensor:
     """
@@ -132,7 +136,7 @@ def soft_jaccard_score(y_pred: torch.Tensor,
 def soft_dice_score(y_pred: torch.Tensor,
                     y_true: torch.Tensor,
                     smooth=0,
-                    eps=1e-7, 
+                    eps=1e-7,
                     dims=None) -> torch.Tensor:
     """
 
@@ -150,13 +154,18 @@ def soft_dice_score(y_pred: torch.Tensor,
 
     """
     assert y_pred.size() == y_true.size()
-    intersection = torch.sum(y_pred * y_true, dims)
-    cardinality = torch.sum(y_pred + y_true, dims)
+    if dims is not None:
+        intersection = torch.sum(y_pred * y_true, dim=dims)
+        cardinality = torch.sum(y_pred + y_true, dim=dims)
+    else:
+        intersection = torch.sum(y_pred * y_true)
+        cardinality = torch.sum(y_pred + y_true)
     dice_score = (2. * intersection + smooth) / (cardinality + smooth + eps)
     return dice_score
 
 
-def wing_loss(prediction: torch.Tensor, target: torch.Tensor, width=5, curvature=0.5, reduction='mean'):
+def wing_loss(prediction: torch.Tensor, target: torch.Tensor, width=5,
+              curvature=0.5, reduction='mean'):
     """
     https://arxiv.org/pdf/1711.06753.pdf
     :param prediction:
@@ -172,7 +181,8 @@ def wing_loss(prediction: torch.Tensor, target: torch.Tensor, width=5, curvature
     idx_smaller = diff_abs < width
     idx_bigger = diff_abs >= width
 
-    loss[idx_smaller] = width * torch.log(1 + diff_abs[idx_smaller] / curvature)
+    loss[idx_smaller] = width * torch.log(
+        1 + diff_abs[idx_smaller] / curvature)
 
     C = width - width * math.log(1 + width / curvature)
     loss[idx_bigger] = loss[idx_bigger] - C

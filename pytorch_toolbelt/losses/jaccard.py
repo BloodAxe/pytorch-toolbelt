@@ -1,7 +1,8 @@
 from typing import List
 
 import torch
-from pytorch_toolbelt.utils.torch_utils import to_numpy, to_tensor
+import torch.nn.functional as F
+from pytorch_toolbelt.utils.torch_utils import to_tensor
 from torch import Tensor
 from torch.nn.modules.loss import _Loss
 
@@ -27,6 +28,15 @@ class JaccardLoss(_Loss):
                  from_logits=True,
                  smooth=0,
                  eps=1e-7):
+        """
+
+        :param mode: Metric mode {'binary', 'multiclass', 'multilabel'}
+        :param classes: Optional list of classes that contribute in loss computation; By default, all channels are included.
+        :param log_loss: If True, loss computed as `-log(jaccard)`; otherwise `1 - jaccard`
+        :param from_logits: If True assumes input is raw logits
+        :param smooth:
+        :param eps: Small epsilon for numerical stability
+        """
         assert mode in {BINARY_MODE, MULTILABEL_MODE, MULTICLASS_MODE}
         super(JaccardLoss, self).__init__()
         self.mode = mode
@@ -47,6 +57,7 @@ class JaccardLoss(_Loss):
         :param y_true: NxHxW
         :return: scalar
         """
+        assert y_true.size(0) == y_pred.size(0)
 
         if self.from_logits:
             # Apply activations to get [0..1] class probabilities
@@ -55,42 +66,42 @@ class JaccardLoss(_Loss):
             else:
                 y_pred = y_pred.sigmoid()
 
+        bs = y_true.size(0)
         num_classes = y_pred.size(1)
-
-        dims = None
+        dims = (0, 2)
 
         if self.mode == BINARY_MODE:
-            mask = torch.sum(y_true) > 0
+            y_true = y_true.view(bs, 1, -1)
+            y_pred = y_pred.view(bs, 1, -1)
 
         if self.mode == MULTICLASS_MODE:
-            y_true = torch.eye(num_classes)[y_true.squeeze(1)]
-            y_true = y_true.permute(0, 3, 1, 2).type(y_pred.dtype)
-            dims = (0,) + tuple(range(2, y_true.ndimension()))
+            y_true = y_true.view(bs, -1)
+            y_pred = y_pred.view(bs, num_classes, -1)
 
-        if self.classes is not None:
-            y_pred = y_pred[:, self.classes, ...]
-            y_true = y_true[:, self.classes, ...]
-            dims = (0,) + tuple(range(2, y_true.ndimension()))
+            y_true = F.one_hot(y_true, num_classes)  # N,H*W -> N,H*W, C
+            y_true = y_true.permute(0, 2, 1)  # H, C, H*W
 
-        mask = torch.sum(y_true, dims) > 0
-        scores = soft_jaccard_score(y_pred, y_true,
+        if self.mode == MULTILABEL_MODE:
+            y_true = y_true.view(bs, num_classes, -1)
+            y_pred = y_pred.view(bs, num_classes, -1)
+
+        scores = soft_jaccard_score(y_pred, y_true.type(y_pred.dtype),
                                     self.smooth, self.eps, dims=dims)
-
-        # Since IoU is not defined when no samples are present,
-        # we select classes with non-zero pixels counts
-        scores = scores[mask]
-
-        if len(scores) == 0:
-            # If IoU is not defined, return zero loss
-            return 0
-
-        if len(scores) > 1:
-            # If scores is vector, compute a mean of non-nan elements
-            scores = scores.mean()
 
         if self.log_loss:
             loss = -torch.log(scores)
         else:
-            loss = 1.0 - scores
+            loss = 1 - scores
 
-        return loss
+        # IoU loss is defined for non-empty classes
+        # So we zero contribution of channel that does not have true pixels
+        # NOTE: A better workaround would be to use loss term `mean(y_pred)`
+        # for this case, however it will be a modified jaccard loss
+
+        mask = (y_true.sum(dims) > 0).float()
+        loss = loss * mask
+
+        if self.classes is not None:
+            loss = loss[self.classes]
+
+        return loss.mean()

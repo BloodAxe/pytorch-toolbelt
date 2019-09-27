@@ -13,21 +13,29 @@ __all__ = ['GlobalAvgPool2d',
 
 
 class GlobalAvgPool2d(nn.Module):
-    def __init__(self):
+    def __init__(self, flatten=False):
         """Global average pooling over the input's spatial dimensions"""
         super(GlobalAvgPool2d, self).__init__()
+        self.flatten = flatten
 
-    def forward(self, inputs):
-        return F.adaptive_avg_pool2d(inputs, output_size=1)
+    def forward(self, x):
+        x = F.adaptive_avg_pool2d(x, output_size=1)
+        if self.flatten:
+            x = x.view(x.size(0), x.size(1))
+        return x
 
 
 class GlobalMaxPool2d(nn.Module):
-    def __init__(self):
+    def __init__(self, flatten=False):
         """Global average pooling over the input's spatial dimensions"""
         super(GlobalMaxPool2d, self).__init__()
+        self.flatten = flatten
 
-    def forward(self, inputs):
-        return F.adaptive_max_pool2d(inputs, output_size=1)
+    def forward(self, x):
+        x = F.adaptive_max_pool2d(x, output_size=1)
+        if self.flatten:
+            x = x.view(x.size(0), x.size(1))
+        return x
 
 
 class GWAP(nn.Module):

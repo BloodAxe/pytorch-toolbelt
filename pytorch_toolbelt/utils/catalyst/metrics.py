@@ -277,7 +277,8 @@ def multilabel_dice_iou_score(y_pred: torch.Tensor, y_true: torch.Tensor,
 
 class IoUMetricsCallback(Callback):
     """
-    A metric callback for computing either Dice or Jaccard metric which is computed across whole epoch, not per-batch.
+    A metric callback for computing either Dice or Jaccard metric
+    which is computed across whole epoch, not per-batch.
     """
 
     def __init__(self,
