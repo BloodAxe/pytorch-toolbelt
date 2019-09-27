@@ -1,14 +1,15 @@
+import math
 from collections import OrderedDict
 from copy import deepcopy
 from typing import List
 
-import math
 import torch
 from pytorch_toolbelt.modules import ABN, SpatialGate2d
 from pytorch_toolbelt.modules.activations import ACT_HARD_SWISH
 from pytorch_toolbelt.modules.agn import AGN
 from torch import nn
 from torch.nn import functional as F
+from torch.nn.init import kaiming_normal_
 
 
 def round_filters(filters, width_coefficient, depth_divisor, min_depth):
@@ -47,34 +48,6 @@ def drop_connect(inputs, p, training):
     binary_tensor = torch.floor(random_tensor)
     output = inputs / keep_prob * binary_tensor
     return output
-
-
-class Conv2dSamePadding(nn.Conv2d):
-    """
-    2D Convolution module with 'same' padding.
-    """
-
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1,
-                 dilation=1, groups=1, bias=True):
-        super().__init__(in_channels, out_channels, kernel_size, stride, 0,
-                         dilation, groups, bias)
-
-    def forward(self, x):
-        ih, iw = x.size()[-2:]
-        kh, kw = self.weight.size()[-2:]
-        sh, sw = self.stride
-        oh, ow = math.ceil(ih / sh), math.ceil(iw / sw)
-        pad_h = max(
-            (oh - 1) * self.stride[0] + (kh - 1) * self.dilation[0] + 1 - ih,
-            0)
-        pad_w = max(
-            (ow - 1) * self.stride[1] + (kw - 1) * self.dilation[1] + 1 - iw,
-            0)
-        if pad_h > 0 or pad_w > 0:
-            x = F.pad(x, [pad_w // 2, pad_w - pad_w // 2, pad_h // 2,
-                          pad_h - pad_h // 2])
-        return F.conv2d(x, self.weight, self.bias, self.stride, self.padding,
-                        self.dilation, self.groups)
 
 
 class EfficientNetBlockArgs:
@@ -130,7 +103,8 @@ class MBConvBlock(nn.Module):
         has_se (bool): Whether the block contains a Squeeze and Excitation layer.
     """
 
-    def __init__(self, block_args: EfficientNetBlockArgs,
+    def __init__(self,
+                 block_args: EfficientNetBlockArgs,
                  abn_block: ABN,
                  abn_params):
         super().__init__()
@@ -150,19 +124,20 @@ class MBConvBlock(nn.Module):
             self.abn0 = abn_block(oup, **abn_params)
 
         # Depthwise convolution phase
-        self.depthwise_conv = Conv2dSamePadding(
+        self.depthwise_conv = nn.Conv2d(
             in_channels=oup,
             out_channels=oup,
             groups=oup,  # groups makes it depthwise
             kernel_size=block_args.kernel_size,
+            padding=block_args.kernel_size // 2,
             stride=block_args.stride,
             bias=False)
         self.abn1 = abn_block(oup, **abn_params)
 
         # Squeeze and Excitation layer, if desired
         if self.has_se:
-            self.se_block = SpatialGate2d(oup,
-                                          squeeze_channels=max(1, inp // block_args.se_reduction))
+            se_channels = max(1, inp // block_args.se_reduction)
+            self.se_block = SpatialGate2d(oup, squeeze_channels=se_channels)
 
         # Output phase
         final_oup = self._block_args.output_filters
@@ -172,6 +147,17 @@ class MBConvBlock(nn.Module):
 
         self.input_filters = block_args.input_filters
         self.output_filters = block_args.output_filters
+
+    def reset_parameters(self):
+        if hasattr(self, 'expand_conv'):
+            kaiming_normal_(self.expand_conv.weight,
+                            nonlinearity=self.abn0.activation)
+
+        kaiming_normal_(self.depthwise_conv.weight,
+                        nonlinearity=self.abn1.activation)
+
+        kaiming_normal_(self.project_conv.weight,
+                        nonlinearity=self.abn2.activation)
 
     def forward(self, inputs, drop_connect_rate=None):
         """
@@ -265,10 +251,11 @@ class EfficientNet(nn.Module):
         # Stem
         self.stem = nn.Sequential(OrderedDict([
             ("conv",
-             Conv2dSamePadding(in_channels, first_block_args.input_filters,
-                               kernel_size=3,
-                               stride=2,
-                               bias=False)),
+             nn.Conv2d(in_channels, first_block_args.input_filters,
+                       kernel_size=3,
+                       padding=1,
+                       stride=2,
+                       bias=False)),
             ("abn", abn_block(first_block_args.input_filters, **abn_params))
         ]))
 
@@ -309,19 +296,19 @@ class EfficientNet(nn.Module):
 
         # Blocks
         x = self.block0(x)
-        print(x.size())
+        # print(x.size())
         x = self.block1(x)
-        print(x.size())
+        # print(x.size())
         x = self.block2(x)
-        print(x.size())
+        # print(x.size())
         x = self.block3(x)
-        print(x.size())
+        # print(x.size())
         x = self.block4(x)
-        print(x.size())
+        # print(x.size())
         x = self.block5(x)
-        print(x.size())
+        # print(x.size())
         x = self.block6(x)
-        print(x.size())
+        # print(x.size())
 
         # Head
         x = self.abn_head(self.conv_head(x))

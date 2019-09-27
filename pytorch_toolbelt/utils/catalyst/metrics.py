@@ -3,11 +3,12 @@ from functools import partial
 import numpy as np
 import torch
 from catalyst.dl import Callback, RunnerState, MetricCallback, CallbackOrder
-from sklearn.metrics import f1_score, confusion_matrix
-
-from pytorch_toolbelt.utils.catalyst.visualization import get_tensorboard_logger
+from pytorch_toolbelt.utils.catalyst.visualization import \
+    get_tensorboard_logger
 from pytorch_toolbelt.utils.torch_utils import to_numpy
-from pytorch_toolbelt.utils.visualization import render_figure_to_tensor, plot_confusion_matrix
+from pytorch_toolbelt.utils.visualization import render_figure_to_tensor, \
+    plot_confusion_matrix
+from sklearn.metrics import f1_score, confusion_matrix
 
 __all__ = ['pixel_accuracy',
            'binary_dice_iou_score',
@@ -17,6 +18,10 @@ __all__ = ['pixel_accuracy',
            'MacroF1Callback',
            'ConfusionMatrixCallback',
            'IoUMetricsCallback']
+
+BINARY_MODE = 'binary'
+MULTICLASS_MODE = 'multiclass'
+MULTILABEL_MODE = 'multilabel'
 
 
 def pixel_accuracy(outputs: torch.Tensor,
@@ -71,7 +76,8 @@ class ConfusionMatrixCallback(Callback):
     """
 
     def __init__(self, input_key: str = "targets", output_key: str = "logits",
-                 prefix: str = "confusion_matrix", class_names=None, ignore_index=None):
+                 prefix: str = "confusion_matrix", class_names=None,
+                 ignore_index=None):
         """
         :param input_key: input key to use for precision calculation;
             specifies our `y_true`.
@@ -119,7 +125,8 @@ class ConfusionMatrixCallback(Callback):
         cm = confusion_matrix(targets, outputs, labels=range(num_classes))
 
         fig = plot_confusion_matrix(cm,
-                                    figsize=(6 + num_classes // 3, 6 + num_classes // 3),
+                                    figsize=(6 + num_classes // 3,
+                                             6 + num_classes // 3),
                                     class_names=class_names,
                                     normalize=True,
                                     noshow=True)
@@ -148,7 +155,8 @@ class MacroF1Callback(Callback):
             specifies our `y_pred`.
         """
         super().__init__(CallbackOrder.Metric)
-        self.metric_fn = lambda outputs, targets: f1_score(targets, outputs, average='macro')
+        self.metric_fn = lambda outputs, targets: f1_score(targets, outputs,
+                                                           average='macro')
         self.prefix = prefix
         self.output_key = output_key
         self.input_key = input_key
@@ -235,6 +243,7 @@ def multiclass_dice_iou_score(y_pred: torch.Tensor, y_true: torch.Tensor,
                               mode='dice',
                               threshold=None,
                               eps=1e-7,
+                              nan_score_on_empty=False,
                               classes_of_interest=None):
     ious = []
     num_classes = y_pred.size(0)
@@ -247,6 +256,7 @@ def multiclass_dice_iou_score(y_pred: torch.Tensor, y_true: torch.Tensor,
         iou = binary_dice_iou_score((y_true == class_index).float(),
                                     (y_pred == class_index).float(),
                                     mode=mode,
+                                    nan_score_on_empty=nan_score_on_empty,
                                     threshold=threshold,
                                     eps=eps)
         ious.append(iou)
@@ -258,6 +268,7 @@ def multilabel_dice_iou_score(y_pred: torch.Tensor, y_true: torch.Tensor,
                               mode='dice',
                               threshold=None,
                               eps=1e-7,
+                              nan_score_on_empty=False,
                               classes_of_interest=None):
     ious = []
     num_classes = y_pred.size(0)
@@ -269,6 +280,7 @@ def multilabel_dice_iou_score(y_pred: torch.Tensor, y_true: torch.Tensor,
         iou = binary_dice_iou_score(y_true[class_index], y_pred[class_index],
                                     mode=mode,
                                     threshold=threshold,
+                                    nan_score_on_empty=nan_score_on_empty,
                                     eps=eps)
         ious.append(iou)
 
@@ -284,19 +296,20 @@ class IoUMetricsCallback(Callback):
     def __init__(self,
                  mode: str,
                  metric='dice',
-                 num_classes: int = None,
                  class_names=None,
                  classes_of_interest=None,
                  input_key: str = "targets",
                  output_key: str = "logits",
+                 nan_score_on_empty=True,
                  prefix: str = None):
         """
         :param mode: One of: 'binary', 'multiclass', 'multilabel'.
         :param input_key: input key to use for precision calculation; specifies our `y_true`.
         :param output_key: output key to use for precision calculation; specifies our `y_pred`.
+        :param accuracy_for_empty:
         """
         super().__init__(CallbackOrder.Metric)
-        assert mode in {'binary', 'multiclass', 'multilabel'}
+        assert mode in {BINARY_MODE, MULTILABEL_MODE, MULTICLASS_MODE}
 
         if prefix is None:
             prefix = metric
@@ -304,7 +317,8 @@ class IoUMetricsCallback(Callback):
         if classes_of_interest is not None:
             if classes_of_interest.dtype == np.bool:
                 num_classes = len(classes_of_interest)
-                classes_of_interest = np.arange(num_classes)[classes_of_interest]
+                classes_of_interest = np.arange(num_classes)[
+                    classes_of_interest]
 
             if class_names is not None:
                 if len(class_names) != len(classes_of_interest):
@@ -319,18 +333,28 @@ class IoUMetricsCallback(Callback):
         self.classes_of_interest = classes_of_interest
         self.scores = []
 
-        if self.mode == 'binary':
-            self.score_fn = partial(binary_dice_iou_score, mode=metric)
+        if self.mode == BINARY_MODE:
+            self.score_fn = partial(binary_dice_iou_score,
+                                    threshold=0.,
+                                    nan_score_on_empty=nan_score_on_empty,
+                                    mode=metric)
 
-        if self.mode == 'multiclass':
-            self.score_fn = partial(multiclass_dice_iou_score, mode=metric, classes_of_interest=self.classes_of_interest)
+        if self.mode == MULTICLASS_MODE:
+            self.score_fn = partial(multiclass_dice_iou_score, mode=metric,
+                                    threshold=0.,
+                                    nan_score_on_empty=nan_score_on_empty,
+                                    classes_of_interest=self.classes_of_interest)
 
-        if self.mode == 'multilabel':
-            self.score_fn = partial(multilabel_dice_iou_score, mode=metric, classes_of_interest=self.classes_of_interest)
+        if self.mode == MULTILABEL_MODE:
+            self.score_fn = partial(multilabel_dice_iou_score, mode=metric,
+                                    threshold=0.,
+                                    nan_score_on_empty=nan_score_on_empty,
+                                    classes_of_interest=self.classes_of_interest)
 
     def on_loader_start(self, state):
         self.scores = []
 
+    @torch.no_grad()
     def on_batch_end(self, state: RunnerState):
         outputs = state.output[self.output_key].detach()
         targets = state.input[self.input_key].detach()
@@ -350,7 +374,8 @@ class IoUMetricsCallback(Callback):
         scores = np.array(self.scores)
         mean_score = np.nanmean(scores)
 
-        state.metrics.epoch_values[state.loader_name][self.prefix] = float(mean_score)
+        state.metrics.epoch_values[state.loader_name][self.prefix] = float(
+            mean_score)
 
         # Log additional IoU scores per class
         if self.mode in {'multiclass', 'multilabel'}:
@@ -360,5 +385,7 @@ class IoUMetricsCallback(Callback):
                 class_names = [f'class_{i}' for i in range(num_classes)]
 
             scores_per_class = np.nanmean(scores, axis=0)
-            for class_name, score_per_class in zip(class_names, scores_per_class):
-                state.metrics.epoch_values[state.loader_name][self.prefix + '_' + class_name] = float(score_per_class)
+            for class_name, score_per_class in zip(class_names,
+                                                   scores_per_class):
+                state.metrics.epoch_values[state.loader_name][
+                    self.prefix + '_' + class_name] = float(score_per_class)
