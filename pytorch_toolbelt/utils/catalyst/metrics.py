@@ -198,7 +198,8 @@ class MacroF1Callback(Callback):
         state.metrics.epoch_values[state.loader_name][metric_name] = metric
 
 
-def binary_dice_iou_score(y_pred: torch.Tensor, y_true: torch.Tensor,
+def binary_dice_iou_score(y_pred: torch.Tensor,
+                          y_true: torch.Tensor,
                           mode='dice',
                           threshold=None,
                           nan_score_on_empty=False,
@@ -239,7 +240,8 @@ def binary_dice_iou_score(y_pred: torch.Tensor, y_true: torch.Tensor,
     return score
 
 
-def multiclass_dice_iou_score(y_pred: torch.Tensor, y_true: torch.Tensor,
+def multiclass_dice_iou_score(y_pred: torch.Tensor,
+                              y_true: torch.Tensor,
                               mode='dice',
                               threshold=None,
                               eps=1e-7,
@@ -253,8 +255,8 @@ def multiclass_dice_iou_score(y_pred: torch.Tensor, y_true: torch.Tensor,
         classes_of_interest = range(num_classes)
 
     for class_index in classes_of_interest:
-        iou = binary_dice_iou_score((y_true == class_index).float(),
-                                    (y_pred == class_index).float(),
+        iou = binary_dice_iou_score(y_pred=(y_pred == class_index).float(),
+                                    y_true=(y_true == class_index).float(),
                                     mode=mode,
                                     nan_score_on_empty=nan_score_on_empty,
                                     threshold=threshold,
@@ -264,7 +266,8 @@ def multiclass_dice_iou_score(y_pred: torch.Tensor, y_true: torch.Tensor,
     return ious
 
 
-def multilabel_dice_iou_score(y_pred: torch.Tensor, y_true: torch.Tensor,
+def multilabel_dice_iou_score(y_true: torch.Tensor,
+                              y_pred: torch.Tensor,
                               mode='dice',
                               threshold=None,
                               eps=1e-7,
@@ -277,7 +280,8 @@ def multilabel_dice_iou_score(y_pred: torch.Tensor, y_true: torch.Tensor,
         classes_of_interest = range(num_classes)
 
     for class_index in classes_of_interest:
-        iou = binary_dice_iou_score(y_true[class_index], y_pred[class_index],
+        iou = binary_dice_iou_score(y_pred=y_pred[class_index],
+                                    y_true=y_true[class_index],
                                     mode=mode,
                                     threshold=threshold,
                                     nan_score_on_empty=nan_score_on_empty,
@@ -378,7 +382,7 @@ class IoUMetricsCallback(Callback):
             mean_score)
 
         # Log additional IoU scores per class
-        if self.mode in {'multiclass', 'multilabel'}:
+        if self.mode in {MULTICLASS_MODE, MULTILABEL_MODE}:
             num_classes = scores.shape[1]
             class_names = self.class_names
             if class_names is None:
