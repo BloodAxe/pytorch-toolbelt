@@ -1,11 +1,23 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as functional
-from pytorch_toolbelt.modules.activations import ACT_LEAKY_RELU, ACT_NONE, \
-    ACT_HARD_SIGMOID, ACT_HARD_SWISH, ACT_SWISH, ACT_SELU, ACT_ELU, ACT_RELU6, \
-    ACT_RELU, hard_swish, hard_sigmoid, swish
 
-__all__ = ['AGN']
+from .activations import (
+    ACT_LEAKY_RELU,
+    ACT_NONE,
+    ACT_HARD_SIGMOID,
+    ACT_HARD_SWISH,
+    ACT_SWISH,
+    ACT_SELU,
+    ACT_ELU,
+    ACT_RELU6,
+    ACT_RELU,
+    hard_swish,
+    hard_sigmoid,
+    swish,
+)
+
+__all__ = ["AGN"]
 
 
 class AGN(nn.Module):
@@ -13,11 +25,15 @@ class AGN(nn.Module):
     This gathers a `GroupNorm2d` and an activation function in a single module
     """
 
-    def __init__(self, num_features: int, num_groups: int,
-                 eps=1e-5,
-                 momentum=0.1,
-                 activation=ACT_LEAKY_RELU,
-                 slope=0.01):
+    def __init__(
+        self,
+        num_features: int,
+        num_groups: int,
+        eps=1e-5,
+        momentum=0.1,
+        activation=ACT_LEAKY_RELU,
+        slope=0.01,
+    ):
         """Create an Activated Batch Normalization module
         Parameters
         ----------
@@ -53,16 +69,14 @@ class AGN(nn.Module):
         nn.init.zeros_(self.bias)
 
     def forward(self, x):
-        x = functional.group_norm(x, self.num_groups,
-                                  self.weight, self.bias, self.eps)
+        x = functional.group_norm(x, self.num_groups, self.weight, self.bias, self.eps)
 
         if self.activation == ACT_RELU:
             return functional.relu(x, inplace=True)
         elif self.activation == ACT_RELU6:
             return functional.relu6(x, inplace=True)
         elif self.activation == ACT_LEAKY_RELU:
-            return functional.leaky_relu(x, negative_slope=self.slope,
-                                         inplace=True)
+            return functional.leaky_relu(x, negative_slope=self.slope, inplace=True)
         elif self.activation == ACT_ELU:
             return functional.elu(x, inplace=True)
         elif self.activation == ACT_SELU:
@@ -79,10 +93,11 @@ class AGN(nn.Module):
             raise KeyError(self.activation)
 
     def __repr__(self):
-        rep = '{name}({num_features},{num_groups}, eps={eps}' \
-              ', activation={activation}'
+        rep = (
+            "{name}({num_features},{num_groups}, eps={eps}" ", activation={activation}"
+        )
         if self.activation == "leaky_relu":
-            rep += ', slope={slope})'
+            rep += ", slope={slope})"
         else:
-            rep += ')'
+            rep += ")"
         return rep.format(name=self.__class__.__name__, **self.__dict__)
