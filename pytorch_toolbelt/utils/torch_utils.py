@@ -68,12 +68,11 @@ def to_numpy(x) -> np.ndarray:
     if isinstance(x, np.ndarray):
         return x
     elif isinstance(x, torch.Tensor):
-        x = x.detach().cpu().numpy()
-    elif isinstance(x, list) or isinstance(x, tuple):
+        return x.detach().cpu().numpy()
+    elif isinstance(x, (list, tuple, int, float)):
         return np.array(x)
     else:
         raise ValueError("Unsupported type")
-    return x
 
 
 def to_tensor(x, dtype=None) -> torch.Tensor:
@@ -110,7 +109,7 @@ def tensor_from_mask_image(mask: np.ndarray) -> torch.Tensor:
 
 
 def rgb_image_from_tensor(
-    image: torch.Tensor, mean, std, max_pixel_value=255.0, dtype=np.uint8
+        image: torch.Tensor, mean, std, max_pixel_value=255.0, dtype=np.uint8
 ) -> np.ndarray:
     image = np.moveaxis(to_numpy(image), 0, -1)
     mean = to_numpy(mean)
@@ -125,7 +124,17 @@ def maybe_cuda(x):
     return x
 
 
-def transfer_weights(model: nn.Module, model_state_dict: collections.OrderedDict):
+def get_optimizable_parameters(model: nn.Module):
+    """
+    Return list of optimizable parameters from the model
+    :param model:
+    :return:
+    """
+    return filter(lambda x: x.requires_grad, model.parameters())
+
+
+def transfer_weights(model: nn.Module,
+                     model_state_dict: collections.OrderedDict):
     """
     Copy weights from state dict to model, skipping layers that are incompatible.
     This method is helpful if you are doing some model surgery and want to load
