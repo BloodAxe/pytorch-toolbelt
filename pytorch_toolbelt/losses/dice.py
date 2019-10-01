@@ -61,24 +61,32 @@ class BinaryDiceLogLoss(_Loss):
 
 
 class MulticlassDiceLoss(_Loss):
-    """Implementation of Dice loss for multiclass (semantic) image segmentation task
-    """
+    """Implementation of Dice loss for multiclass and multilabel (semantic) image segmentation task."""
 
-    def __init__(self, classes: List[int] = None, from_logits=True, weight=None, reduction='elementwise_mean'):
+    def __init__(self, classes: List[int] = None, from_logits=True, weight=None, reduction='elementwise_mean',
+                 activation='softmax'):
         super(MulticlassDiceLoss, self).__init__(reduction=reduction)
         self.classes = classes
         self.from_logits = from_logits
         self.weight = weight
+        self.activation = activation
 
     def forward(self, y_pred: Tensor, y_true: Tensor) -> Tensor:
         """
 
         :param y_pred: NxCxHxW
-        :param y_true: NxHxW
+        :param y_true: NxHxW for Multiclass and NxCxHxW for multilabel
         :return: scalar
         """
+
         if self.from_logits:
-            y_pred = y_pred.softmax(dim=1)
+            if self.activation == 'softmax':
+                y_pred = y_pred.softmax(dim=1)
+            elif self.activation == 'sigmoid':
+                y_pred = y_pred.sigmoid()
+            else:
+                raise NotImplementedError("Activation should be softmax or sigmoid, "
+                                          "but got {}.".format(self.activation))
 
         n_classes = y_pred.size(1)
         smooth = 1e-3
