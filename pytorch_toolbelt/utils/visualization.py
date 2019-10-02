@@ -6,17 +6,21 @@ import numpy as np
 from pytorch_toolbelt.utils.torch_utils import tensor_from_rgb_image
 
 
-def plot_confusion_matrix(cm, class_names,
-                          figsize=(16, 16),
-                          normalize=False,
-                          title='Confusion matrix',
-                          fname=None,
-                          noshow=False):
+def plot_confusion_matrix(
+    cm,
+    class_names,
+    figsize=(16, 16),
+    normalize=False,
+    title="Confusion matrix",
+    fname=None,
+    noshow=False,
+):
     """Render the confusion matrix and return matplotlib's figure with it.
     Normalization can be applied by setting `normalize=True`.
     """
     import matplotlib
-    matplotlib.use('Agg')
+
+    matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
     cmap = plt.cm.Oranges
@@ -26,26 +30,30 @@ def plot_confusion_matrix(cm, class_names,
 
     f = plt.figure(figsize=figsize)
     plt.title(title)
-    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.imshow(cm, interpolation="nearest", cmap=cmap)
 
     tick_marks = np.arange(len(class_names))
-    plt.xticks(tick_marks, class_names, rotation=45, ha='right')
+    plt.xticks(tick_marks, class_names, rotation=45, ha="right")
     # f.tick_params(direction='inout')
     # f.set_xticklabels(varLabels, rotation=45, ha='right')
     # f.set_yticklabels(varLabels, rotation=45, va='top')
 
     plt.yticks(tick_marks, class_names)
 
-    fmt = '.2f' if normalize else 'd'
-    thresh = cm.max() / 2.
+    fmt = ".2f" if normalize else "d"
+    thresh = cm.max() / 2.0
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
-        plt.text(j, i, format(cm[i, j], fmt),
-                 horizontalalignment="center",
-                 color="white" if cm[i, j] > thresh else "black")
+        plt.text(
+            j,
+            i,
+            format(cm[i, j], fmt),
+            horizontalalignment="center",
+            color="white" if cm[i, j] > thresh else "black",
+        )
 
     plt.tight_layout()
-    plt.ylabel('True label')
-    plt.xlabel('Predicted label')
+    plt.ylabel("True label")
+    plt.xlabel("Predicted label")
 
     if fname is not None:
         plt.savefig(fname=fname)
@@ -58,7 +66,8 @@ def plot_confusion_matrix(cm, class_names,
 
 def render_figure_to_tensor(figure):
     import matplotlib
-    matplotlib.use('Agg')
+
+    matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
     figure.canvas.draw()

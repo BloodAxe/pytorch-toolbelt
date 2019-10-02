@@ -11,14 +11,16 @@ from torch.nn.functional import interpolate
 
 from . import functional as F
 
-__all__ = ['d4_image2label',
-           'd4_image2mask',
-           'fivecrop_image2label',
-           'tencrop_image2label',
-           'fliplr_image2mask',
-           'fliplr_image2label',
-           'TTAWrapper',
-           'MultiscaleTTAWrapper']
+__all__ = [
+    "d4_image2label",
+    "d4_image2mask",
+    "fivecrop_image2label",
+    "tencrop_image2label",
+    "fliplr_image2mask",
+    "fliplr_image2label",
+    "TTAWrapper",
+    "MultiscaleTTAWrapper",
+]
 
 
 def fliplr_image2label(model: nn.Module, image: Tensor) -> Tensor:
@@ -34,8 +36,7 @@ def fliplr_image2label(model: nn.Module, image: Tensor) -> Tensor:
     return output * one_over_2
 
 
-def fivecrop_image2label(model: nn.Module, image: Tensor,
-                         crop_size: Tuple) -> Tensor:
+def fivecrop_image2label(model: nn.Module, image: Tensor, crop_size: Tuple) -> Tensor:
     """Test-time augmentation for image classification that takes five crops out of input tensor (4 on corners and central)
     and averages predictions from them.
 
@@ -70,19 +71,26 @@ def fivecrop_image2label(model: nn.Module, image: Tensor,
     center_crop_y = (image_height - crop_height) // 2
     center_crop_x = (image_width - crop_width) // 2
 
-    crop_cc = image[..., center_crop_y:center_crop_y + crop_height,
-                         center_crop_x:center_crop_x + crop_width]
+    crop_cc = image[
+        ...,
+        center_crop_y : center_crop_y + crop_height,
+        center_crop_x : center_crop_x + crop_width,
+    ]
     assert crop_cc.size(2) == crop_height
     assert crop_cc.size(3) == crop_width
 
-    output = model(crop_tl) + model(crop_tr) + model(crop_bl) + model(
-        crop_br) + model(crop_cc)
+    output = (
+        model(crop_tl)
+        + model(crop_tr)
+        + model(crop_bl)
+        + model(crop_br)
+        + model(crop_cc)
+    )
     one_over_5 = float(1.0 / 5.0)
     return output * one_over_5
 
 
-def tencrop_image2label(model: nn.Module, image: Tensor,
-                        crop_size: Tuple) -> Tensor:
+def tencrop_image2label(model: nn.Module, image: Tensor, crop_size: Tuple) -> Tensor:
     """Test-time augmentation for image classification that takes five crops out of input tensor (4 on corners and central)
     and averages predictions from them and from their horisontally-flipped versions (10-Crop TTA).
 
@@ -117,16 +125,26 @@ def tencrop_image2label(model: nn.Module, image: Tensor,
     center_crop_y = (image_height - crop_height) // 2
     center_crop_x = (image_width - crop_width) // 2
 
-    crop_cc = image[..., center_crop_y:center_crop_y + crop_height,
-                         center_crop_x:center_crop_x + crop_width]
+    crop_cc = image[
+        ...,
+        center_crop_y : center_crop_y + crop_height,
+        center_crop_x : center_crop_x + crop_width,
+    ]
     assert crop_cc.size(2) == crop_height
     assert crop_cc.size(3) == crop_width
 
-    output = model(crop_tl) + model(F.torch_fliplr(crop_tl)) + \
-             model(crop_tr) + model(F.torch_fliplr(crop_tr)) + \
-             model(crop_bl) + model(F.torch_fliplr(crop_bl)) + \
-             model(crop_br) + model(F.torch_fliplr(crop_br)) + \
-             model(crop_cc) + model(F.torch_fliplr(crop_cc))
+    output = (
+        model(crop_tl)
+        + model(F.torch_fliplr(crop_tl))
+        + model(crop_tr)
+        + model(F.torch_fliplr(crop_tr))
+        + model(crop_bl)
+        + model(F.torch_fliplr(crop_bl))
+        + model(crop_br)
+        + model(F.torch_fliplr(crop_br))
+        + model(crop_cc)
+        + model(F.torch_fliplr(crop_cc))
+    )
 
     one_over_10 = float(1.0 / 10.0)
     return output * one_over_10
@@ -183,16 +201,19 @@ def d4_image2mask(model: nn.Module, image: Tensor) -> Tensor:
     """
     output = model(image)
 
-    for aug, deaug in zip([F.torch_rot90, F.torch_rot180, F.torch_rot270],
-                          [F.torch_rot270, F.torch_rot180, F.torch_rot90]):
+    for aug, deaug in zip(
+        [F.torch_rot90, F.torch_rot180, F.torch_rot270],
+        [F.torch_rot270, F.torch_rot180, F.torch_rot90],
+    ):
         x = deaug(model(aug(image)))
         output = output + x
 
     image = F.torch_transpose(image)
 
     for aug, deaug in zip(
-            [F.torch_none, F.torch_rot90, F.torch_rot180, F.torch_rot270],
-            [F.torch_none, F.torch_rot270, F.torch_rot180, F.torch_rot90]):
+        [F.torch_none, F.torch_rot90, F.torch_rot180, F.torch_rot270],
+        [F.torch_none, F.torch_rot270, F.torch_rot180, F.torch_rot90],
+    ):
         x = deaug(model(aug(image)))
         output = output + F.torch_transpose(x)
 
@@ -237,11 +258,13 @@ class MultiscaleTTAWrapper(nn.Module):
 
         for scale in self.scale_levels:
             dst_size = int(h * scale), int(w * scale)
-            input_scaled = interpolate(input, dst_size, mode='bilinear',
-                                       align_corners=True)
+            input_scaled = interpolate(
+                input, dst_size, mode="bilinear", align_corners=True
+            )
             output_scaled = self.model(input_scaled)
-            output_scaled = interpolate(output_scaled, out_size,
-                                        mode='bilinear', align_corners=True)
+            output_scaled = interpolate(
+                output_scaled, out_size, mode="bilinear", align_corners=True
+            )
             output += output_scaled
 
         return output / (1 + len(self.scale_levels))

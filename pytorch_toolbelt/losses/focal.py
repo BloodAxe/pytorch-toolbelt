@@ -4,11 +4,19 @@ from torch.nn.modules.loss import _Loss
 
 from .functional import sigmoid_focal_loss, reduced_focal_loss
 
-__all__ = ['BinaryFocalLoss', 'FocalLoss']
+__all__ = ["BinaryFocalLoss", "FocalLoss"]
 
 
 class BinaryFocalLoss(_Loss):
-    def __init__(self, alpha=0.5, gamma=2, ignore_index=None, reduction='mean', reduced=False, threshold=0.5):
+    def __init__(
+        self,
+        alpha=0.5,
+        gamma=2,
+        ignore_index=None,
+        reduction="mean",
+        reduced=False,
+        threshold=0.5,
+    ):
         """
 
         :param alpha:
@@ -22,9 +30,16 @@ class BinaryFocalLoss(_Loss):
         self.gamma = gamma
         self.ignore_index = ignore_index
         if reduced:
-            self.focal_loss = partial(reduced_focal_loss, gamma=gamma, threshold=threshold, reduction=reduction)
+            self.focal_loss = partial(
+                reduced_focal_loss,
+                gamma=gamma,
+                threshold=threshold,
+                reduction=reduction,
+            )
         else:
-            self.focal_loss = partial(sigmoid_focal_loss, gamma=gamma, alpha=alpha, reduction=reduction)
+            self.focal_loss = partial(
+                sigmoid_focal_loss, gamma=gamma, alpha=alpha, reduction=reduction
+            )
 
     def forward(self, label_input, label_target):
         """Compute focal loss for binary classification problem.
@@ -72,5 +87,7 @@ class FocalLoss(_Loss):
                 cls_label_target = cls_label_target[not_ignored]
                 cls_label_input = cls_label_input[not_ignored]
 
-            loss += sigmoid_focal_loss(cls_label_input, cls_label_target, gamma=self.gamma, alpha=self.alpha)
+            loss += sigmoid_focal_loss(
+                cls_label_input, cls_label_target, gamma=self.gamma, alpha=self.alpha
+            )
         return loss

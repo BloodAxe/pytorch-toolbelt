@@ -1,6 +1,6 @@
 from torch import nn
 
-__all__ = ['Identity']
+__all__ = ["Identity"]
 
 
 class Identity(nn.Module):

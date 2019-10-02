@@ -92,7 +92,7 @@ def to_tensor(x, dtype=None) -> torch.Tensor:
             x = x.type(dtype)
         return x
 
-    raise ValueError('Unsupported input type' + str(type(x)))
+    raise ValueError("Unsupported input type" + str(type(x)))
 
 
 def tensor_from_rgb_image(image: np.ndarray) -> torch.Tensor:
@@ -109,7 +109,7 @@ def tensor_from_mask_image(mask: np.ndarray) -> torch.Tensor:
 
 
 def rgb_image_from_tensor(
-        image: torch.Tensor, mean, std, max_pixel_value=255.0, dtype=np.uint8
+    image: torch.Tensor, mean, std, max_pixel_value=255.0, dtype=np.uint8
 ) -> np.ndarray:
     image = np.moveaxis(to_numpy(image), 0, -1)
     mean = to_numpy(mean)
@@ -133,8 +133,7 @@ def get_optimizable_parameters(model: nn.Module):
     return filter(lambda x: x.requires_grad, model.parameters())
 
 
-def transfer_weights(model: nn.Module,
-                     model_state_dict: collections.OrderedDict):
+def transfer_weights(model: nn.Module, model_state_dict: collections.OrderedDict):
     """
     Copy weights from state dict to model, skipping layers that are incompatible.
     This method is helpful if you are doing some model surgery and want to load

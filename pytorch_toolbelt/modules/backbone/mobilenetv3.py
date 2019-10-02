@@ -40,11 +40,15 @@ class SqEx(nn.Module):
         super(SqEx, self).__init__()
 
         if n_features % reduction != 0:
-            raise ValueError('n_features must be divisible by reduction (default = 4)')
+            raise ValueError("n_features must be divisible by reduction (default = 4)")
 
-        self.linear1 = nn.Conv2d(n_features, n_features // reduction, kernel_size=1, bias=True)
+        self.linear1 = nn.Conv2d(
+            n_features, n_features // reduction, kernel_size=1, bias=True
+        )
         self.nonlin1 = nn.ReLU(inplace=True)
-        self.linear2 = nn.Conv2d(n_features // reduction, n_features, kernel_size=1, bias=True)
+        self.linear2 = nn.Conv2d(
+            n_features // reduction, n_features, kernel_size=1, bias=True
+        )
         self.nonlin2 = HardSigmoid(inplace=True)
 
     def forward(self, x):
@@ -56,18 +60,39 @@ class SqEx(nn.Module):
 
 
 class LinearBottleneck(nn.Module):
-    def __init__(self, inplanes, outplanes, expplanes, k=3, stride=1, drop_prob=0, num_steps=3e5, start_step=0,
-                 activation=nn.ReLU, act_params={"inplace": True}, SE=False):
+    def __init__(
+        self,
+        inplanes,
+        outplanes,
+        expplanes,
+        k=3,
+        stride=1,
+        drop_prob=0,
+        num_steps=3e5,
+        start_step=0,
+        activation=nn.ReLU,
+        act_params={"inplace": True},
+        SE=False,
+    ):
         super(LinearBottleneck, self).__init__()
         self.conv1 = nn.Conv2d(inplanes, expplanes, kernel_size=1, bias=False)
         self.bn1 = nn.BatchNorm2d(expplanes)
         self.db1 = nn.Dropout2d(drop_prob)
         # self.db1 = DropBlockScheduled(DropBlock2D(drop_prob=drop_prob, block_size=7), start_value=0.,
         #                               stop_value=drop_prob, nr_steps=num_steps, start_step=start_step)
-        self.act1 = activation(**act_params)  # first does have act according to MobileNetV2
+        self.act1 = activation(
+            **act_params
+        )  # first does have act according to MobileNetV2
 
-        self.conv2 = nn.Conv2d(expplanes, expplanes, kernel_size=k, stride=stride, padding=k // 2, bias=False,
-                               groups=expplanes)
+        self.conv2 = nn.Conv2d(
+            expplanes,
+            expplanes,
+            kernel_size=k,
+            stride=stride,
+            padding=k // 2,
+            bias=False,
+            groups=expplanes,
+        )
         self.bn2 = nn.BatchNorm2d(expplanes)
         self.db2 = nn.Dropout2d(drop_prob)
         # self.db2 = DropBlockScheduled(DropBlock2D(drop_prob=drop_prob, block_size=7), start_value=0.,
@@ -160,7 +185,9 @@ class LastBlockSmall(nn.Module):
 
         self.avgpool = nn.AdaptiveAvgPool2d(1)
 
-        self.conv2 = nn.Conv2d(expplanes1, expplanes2, kernel_size=1, stride=1, bias=False)
+        self.conv2 = nn.Conv2d(
+            expplanes1, expplanes2, kernel_size=1, stride=1, bias=False
+        )
         self.act2 = HardSwish(inplace=True)
 
         self.dropout = nn.Dropout(p=0.2, inplace=True)
@@ -193,8 +220,16 @@ class MobileNetV3(nn.Module):
     """MobileNetV3 implementation.
     """
 
-    def __init__(self, num_classes=1000, scale=1., in_channels=3, drop_prob=0.0, num_steps=3e5, start_step=0,
-                 small=False):
+    def __init__(
+        self,
+        num_classes=1000,
+        scale=1.0,
+        in_channels=3,
+        drop_prob=0.0,
+        num_steps=3e5,
+        start_step=0,
+        small=False,
+    ):
         super(MobileNetV3, self).__init__()
 
         self.num_steps = num_steps
@@ -237,28 +272,48 @@ class MobileNetV3(nn.Module):
             [96, 576, 96, 1, 5, drop_prob, True, HardSwish],  # -> 7x7
         ]
 
-        self.bottlenecks_setting = self.bottlenecks_setting_small if small else self.bottlenecks_setting_large
+        self.bottlenecks_setting = (
+            self.bottlenecks_setting_small if small else self.bottlenecks_setting_large
+        )
         for l in self.bottlenecks_setting:
             l[0] = _make_divisible(l[0] * self.scale, 8)
             l[1] = _make_divisible(l[1] * self.scale, 8)
             l[2] = _make_divisible(l[2] * self.scale, 8)
 
-        self.conv1 = nn.Conv2d(in_channels, self.bottlenecks_setting[0][0], kernel_size=3, bias=False, stride=2,
-                               padding=1)
+        self.conv1 = nn.Conv2d(
+            in_channels,
+            self.bottlenecks_setting[0][0],
+            kernel_size=3,
+            bias=False,
+            stride=2,
+            padding=1,
+        )
         self.bn1 = nn.BatchNorm2d(self.bottlenecks_setting[0][0])
         self.act1 = HardSwish(inplace=True)
-        self.layer0, self.layer1, self.layer2, self.layer3, self.layer4 = self._make_bottlenecks()
+        self.layer0, self.layer1, self.layer2, self.layer3, self.layer4 = (
+            self._make_bottlenecks()
+        )
 
         # Last convolution has 1280 output channels for scale <= 1
-        self.last_exp2 = 1280 if self.scale <= 1 else _make_divisible(1280 * self.scale, 8)
+        self.last_exp2 = (
+            1280 if self.scale <= 1 else _make_divisible(1280 * self.scale, 8)
+        )
         if small:
             self.last_exp1 = _make_divisible(576 * self.scale, 8)
-            self.last_block = LastBlockSmall(self.bottlenecks_setting[-1][2], num_classes, self.last_exp1,
-                                             self.last_exp2)
+            self.last_block = LastBlockSmall(
+                self.bottlenecks_setting[-1][2],
+                num_classes,
+                self.last_exp1,
+                self.last_exp2,
+            )
         else:
             self.last_exp1 = _make_divisible(960 * self.scale, 8)
-            self.last_block = LastBlockLarge(self.bottlenecks_setting[-1][2], num_classes, self.last_exp1,
-                                             self.last_exp2)
+            self.last_block = LastBlockLarge(
+                self.bottlenecks_setting[-1][2],
+                num_classes,
+                self.last_exp1,
+                self.last_exp2,
+            )
 
     def _make_bottlenecks(self):
         layers = []
@@ -268,9 +323,19 @@ class MobileNetV3(nn.Module):
         # add LinearBottleneck
         for i, setup in enumerate(self.bottlenecks_setting):
             name = stage_name + "_{}".format(i)
-            module = LinearBottleneck(setup[0], setup[2], setup[1], k=setup[4], stride=setup[3], drop_prob=setup[5],
-                                      num_steps=self.num_steps, start_step=self.start_step, activation=setup[7],
-                                      act_params={"inplace": True}, SE=setup[6])
+            module = LinearBottleneck(
+                setup[0],
+                setup[2],
+                setup[1],
+                k=setup[4],
+                stride=setup[3],
+                drop_prob=setup[5],
+                num_steps=self.num_steps,
+                start_step=self.start_step,
+                activation=setup[7],
+                act_params={"inplace": True},
+                SE=setup[6],
+            )
             modules[name] = module
 
             if setup[3] == 2:

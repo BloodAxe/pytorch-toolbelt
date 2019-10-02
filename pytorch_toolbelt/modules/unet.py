@@ -4,15 +4,39 @@ import torch.nn.functional as F
 
 from .abn import ABN, ACT_RELU
 
-__all__ = ['UnetEncoderBlock', 'UnetDecoderBlock', 'UnetCentralBlock']
+__all__ = ["UnetEncoderBlock", "UnetDecoderBlock", "UnetCentralBlock"]
 
 
 class UnetEncoderBlock(nn.Module):
-    def __init__(self, in_dec_filters, out_filters, abn_block=ABN, activation=ACT_RELU, stride=1, **kwargs):
+    def __init__(
+        self,
+        in_dec_filters,
+        out_filters,
+        abn_block=ABN,
+        activation=ACT_RELU,
+        stride=1,
+        **kwargs
+    ):
         super().__init__()
-        self.conv1 = nn.Conv2d(in_dec_filters, out_filters, kernel_size=3, padding=1, stride=1, bias=False, **kwargs)
+        self.conv1 = nn.Conv2d(
+            in_dec_filters,
+            out_filters,
+            kernel_size=3,
+            padding=1,
+            stride=1,
+            bias=False,
+            **kwargs
+        )
         self.bn1 = abn_block(out_filters, activation=activation)
-        self.conv2 = nn.Conv2d(out_filters, out_filters, kernel_size=3, padding=1, stride=stride, bias=False, **kwargs)
+        self.conv2 = nn.Conv2d(
+            out_filters,
+            out_filters,
+            kernel_size=3,
+            padding=1,
+            stride=stride,
+            bias=False,
+            **kwargs
+        )
         self.bn2 = abn_block(out_filters, activation=activation)
 
     def forward(self, x):
@@ -24,11 +48,23 @@ class UnetEncoderBlock(nn.Module):
 
 
 class UnetCentralBlock(nn.Module):
-    def __init__(self, in_dec_filters, out_filters, abn_block=ABN, activation=ACT_RELU, **kwargs):
+    def __init__(
+        self, in_dec_filters, out_filters, abn_block=ABN, activation=ACT_RELU, **kwargs
+    ):
         super().__init__()
-        self.conv1 = nn.Conv2d(in_dec_filters, out_filters, kernel_size=3, padding=1, stride=2, bias=False, **kwargs)
+        self.conv1 = nn.Conv2d(
+            in_dec_filters,
+            out_filters,
+            kernel_size=3,
+            padding=1,
+            stride=2,
+            bias=False,
+            **kwargs
+        )
         self.bn1 = abn_block(out_filters, activation=activation)
-        self.conv2 = nn.Conv2d(out_filters, out_filters, kernel_size=3, padding=1, bias=False, **kwargs)
+        self.conv2 = nn.Conv2d(
+            out_filters, out_filters, kernel_size=3, padding=1, bias=False, **kwargs
+        )
         self.bn2 = abn_block(out_filters, activation=activation)
 
     def forward(self, x):
@@ -43,12 +79,38 @@ class UnetDecoderBlock(nn.Module):
     """
     """
 
-    def __init__(self, in_dec_filters, in_enc_filters, out_filters, abn_block=ABN, activation=ACT_RELU, pre_dropout_rate=0., post_dropout_rate=0., **kwargs):
+    def __init__(
+        self,
+        in_dec_filters,
+        in_enc_filters,
+        out_filters,
+        abn_block=ABN,
+        activation=ACT_RELU,
+        pre_dropout_rate=0.0,
+        post_dropout_rate=0.0,
+        **kwargs
+    ):
         super(UnetDecoderBlock, self).__init__()
 
-        self.conv1 = nn.Conv2d(in_dec_filters + in_enc_filters, out_filters, kernel_size=3, stride=1, padding=1, bias=False, **kwargs)
+        self.conv1 = nn.Conv2d(
+            in_dec_filters + in_enc_filters,
+            out_filters,
+            kernel_size=3,
+            stride=1,
+            padding=1,
+            bias=False,
+            **kwargs
+        )
         self.bn1 = abn_block(out_filters, activation=activation)
-        self.conv2 = nn.Conv2d(out_filters, out_filters, kernel_size=3, stride=1, padding=1, bias=False, **kwargs)
+        self.conv2 = nn.Conv2d(
+            out_filters,
+            out_filters,
+            kernel_size=3,
+            stride=1,
+            padding=1,
+            bias=False,
+            **kwargs
+        )
         self.bn2 = abn_block(out_filters, activation=activation)
 
         self.pre_drop = nn.Dropout(pre_dropout_rate, inplace=True)
@@ -56,7 +118,7 @@ class UnetDecoderBlock(nn.Module):
 
     def forward(self, x, enc):
         lat_size = enc.size()[2:]
-        x = F.interpolate(x, size=lat_size, mode='bilinear', align_corners=True)
+        x = F.interpolate(x, size=lat_size, mode="bilinear", align_corners=True)
 
         x = torch.cat([x, enc], 1)
 

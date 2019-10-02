@@ -17,7 +17,9 @@ class DecoderModule(nn.Module):
 
 
 class UNetDecoder(DecoderModule):
-    def __init__(self, features, start_features: int, dilation_factors=[1, 1, 1, 1], **kwargs):
+    def __init__(
+        self, features, start_features: int, dilation_factors=[1, 1, 1, 1], **kwargs
+    ):
         super().__init__()
         decoder_features = start_features
         reversed_features = list(reversed(features))
@@ -30,7 +32,14 @@ class UNetDecoder(DecoderModule):
 
         blocks = []
         for block_index, encoder_features in enumerate(reversed_features):
-            blocks.append(UnetDecoderBlock(output_filters[-1], encoder_features, decoder_features, dilation=dilation_factors[block_index]))
+            blocks.append(
+                UnetDecoderBlock(
+                    output_filters[-1],
+                    encoder_features,
+                    decoder_features,
+                    dilation=dilation_factors[block_index],
+                )
+            )
             output_filters.append(decoder_features)
             # print(block_index, decoder_features, encoder_features, decoder_features)
             decoder_features = decoder_features // 2
@@ -42,7 +51,9 @@ class UNetDecoder(DecoderModule):
         reversed_features = list(reversed(features))
         decoder_outputs = [self.center(reversed_features[0])]
 
-        for block_index, decoder_block, encoder_output in zip(range(len(self.blocks)), self.blocks, reversed_features):
+        for block_index, decoder_block, encoder_output in zip(
+            range(len(self.blocks)), self.blocks, reversed_features
+        ):
             # print(block_index, decoder_outputs[-1].size(), encoder_output.size())
             decoder_outputs.append(decoder_block(decoder_outputs[-1], encoder_output))
 
@@ -50,15 +61,18 @@ class UNetDecoder(DecoderModule):
 
 
 class FPNDecoder(DecoderModule):
-    def __init__(self, features,
-                 bottleneck=FPNBottleneckBlock,
-                 upsample_add_block=UpsampleAddConv,
-                 prediction_block=FPNPredictionBlock,
-                 fpn_features=128,
-                 prediction_features=128,
-                 mode='bilinear',
-                 align_corners=True,
-                 upsample_scale=None):
+    def __init__(
+        self,
+        features,
+        bottleneck=FPNBottleneckBlock,
+        upsample_add_block=UpsampleAddConv,
+        prediction_block=FPNPredictionBlock,
+        fpn_features=128,
+        prediction_features=128,
+        mode="bilinear",
+        align_corners=True,
+        upsample_scale=None,
+    ):
         """
 
         :param features:
@@ -77,7 +91,9 @@ class FPNDecoder(DecoderModule):
         if isinstance(fpn_features, list) and len(fpn_features) != len(features):
             raise ValueError()
 
-        if isinstance(prediction_features, list) and len(prediction_features) != len(features):
+        if isinstance(prediction_features, list) and len(prediction_features) != len(
+            features
+        ):
             raise ValueError()
 
         if not isinstance(fpn_features, list):
@@ -86,15 +102,26 @@ class FPNDecoder(DecoderModule):
         if not isinstance(prediction_features, list):
             prediction_features = [int(prediction_features)] * len(features)
 
-        bottlenecks = [bottleneck(input_channels, output_channels)
-                       for input_channels, output_channels in zip(features, fpn_features)]
+        bottlenecks = [
+            bottleneck(input_channels, output_channels)
+            for input_channels, output_channels in zip(features, fpn_features)
+        ]
 
-        integrators = [upsample_add_block(output_channels,
-                                          upsample_scale=upsample_scale,
-                                          mode=mode,
-                                          align_corners=align_corners) for output_channels in fpn_features]
-        predictors = [prediction_block(input_channels, output_channels)
-                      for input_channels, output_channels in zip(fpn_features, prediction_features)]
+        integrators = [
+            upsample_add_block(
+                output_channels,
+                upsample_scale=upsample_scale,
+                mode=mode,
+                align_corners=align_corners,
+            )
+            for output_channels in fpn_features
+        ]
+        predictors = [
+            prediction_block(input_channels, output_channels)
+            for input_channels, output_channels in zip(
+                fpn_features, prediction_features
+            )
+        ]
 
         self.bottlenecks = nn.ModuleList(bottlenecks)
         self.integrators = nn.ModuleList(integrators)
@@ -105,10 +132,12 @@ class FPNDecoder(DecoderModule):
     def forward(self, features):
         fpn_outputs = []
         prev_fpn = None
-        for feature_map, bottleneck_module, upsample_add, output_module in zip(reversed(features),
-                                                                               reversed(self.bottlenecks),
-                                                                               reversed(self.integrators),
-                                                                               reversed(self.predictors)):
+        for feature_map, bottleneck_module, upsample_add, output_module in zip(
+            reversed(features),
+            reversed(self.bottlenecks),
+            reversed(self.integrators),
+            reversed(self.predictors),
+        ):
             curr_fpn = bottleneck_module(feature_map)
             curr_fpn = upsample_add(curr_fpn, prev_fpn)
 
