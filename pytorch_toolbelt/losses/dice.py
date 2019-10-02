@@ -105,7 +105,13 @@ class MulticlassDiceLoss(_Loss):
 
         for class_index, weight in zip(classes, weights):
 
-            dice_target = (y_true == class_index).float()
+            if len(y_true.shape) == 3:  # multiclass
+                dice_target = (y_true == class_index).float()
+            elif len(y_true.shape) == 4:  # multilabels
+                dice_target = y_true[:, class_index, ...].float()
+            else:
+                raise NotImplementedError()
+
             dice_output = y_pred[:, class_index, ...]
 
             num_preds = dice_target.long().sum()
