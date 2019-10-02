@@ -98,6 +98,10 @@ def test_densenet_encoder():
     out121 = dn121(torch.randn(2, 3, 512, 512))
     print([o.size() for o in out121])
 
+    dn161 = E.DenseNet161Encoder(layers=[0, 1, 2, 3, 4])
+    out161 = dn161(torch.randn(2, 3, 512, 512))
+    print([o.size() for o in out161])
+
     dn169 = E.DenseNet169Encoder(layers=[0, 1, 2, 3, 4])
     out169 = dn169(torch.randn(2, 3, 512, 512))
     print([o.size() for o in out169])

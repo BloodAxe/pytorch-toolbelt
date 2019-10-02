@@ -15,6 +15,7 @@ from torchvision.models import (
     resnet152,
     squeezenet1_1,
     densenet121,
+    densenet161,
     densenet169,
     densenet201,
     DenseNet)
@@ -673,30 +674,40 @@ class DenseNetEncoder(EncoderModule):
 
 
 class DenseNet121Encoder(DenseNetEncoder):
-    def __init__(self, layers=None, pretrained=True):
+    def __init__(self, layers=None, pretrained=True, memory_efficient=False):
         if layers is None:
             layers = [1, 2, 3, 4]
-        densenet = densenet121(pretrained=pretrained)
+        densenet = densenet121(pretrained=pretrained, memory_efficient=memory_efficient)
         strides = [2, 4, 8, 16, 32]
         channels = [64, 128, 256, 512, 1024]
         super().__init__(densenet, channels, strides, layers)
 
 
-class DenseNet169Encoder(DenseNetEncoder):
-    def __init__(self, layers=None, pretrained=True):
+class DenseNet161Encoder(DenseNetEncoder):
+    def __init__(self, layers=None, pretrained=True, memory_efficient=False):
         if layers is None:
             layers = [1, 2, 3, 4]
-        densenet = densenet169(pretrained=pretrained)
+        densenet = densenet161(pretrained=pretrained, memory_efficient=memory_efficient)
+        strides = [2, 4, 8, 16, 32]
+        channels = [96, 192, 384, 1056, 2208]
+        super().__init__(densenet, channels, strides, layers)
+
+
+class DenseNet169Encoder(DenseNetEncoder):
+    def __init__(self, layers=None, pretrained=True, memory_efficient=False):
+        if layers is None:
+            layers = [1, 2, 3, 4]
+        densenet = densenet169(pretrained=pretrained, memory_efficient=memory_efficient)
         strides = [2, 4, 8, 16, 32]
         channels = [64, 128, 256, 640, 1664]
         super().__init__(densenet, channels, strides, layers)
 
 
 class DenseNet201Encoder(DenseNetEncoder):
-    def __init__(self, layers=None, pretrained=True):
+    def __init__(self, layers=None, pretrained=True, memory_efficient=False):
         if layers is None:
             layers = [1, 2, 3, 4]
-        densenet = densenet201(pretrained=pretrained)
+        densenet = densenet201(pretrained=pretrained, memory_efficient=memory_efficient)
         strides = [2, 4, 8, 16, 32]
         channels = [64, 128, 256, 896, 1920]
         super().__init__(densenet, channels, strides, layers)
