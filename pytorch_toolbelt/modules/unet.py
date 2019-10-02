@@ -62,6 +62,8 @@ class UnetDecoderBlock(nn.Module):
 
         x = self.pre_drop(x)
         x = self.conv1(x)
+        x = self.bn1(x)
         x = self.conv2(x)
+        x = self.bn2(x)
         x = self.post_drop(x)
         return x
