@@ -8,6 +8,10 @@ from pytorch_toolbelt.utils.torch_utils import (
 )
 from torch import nn
 from torch.utils.data import DataLoader
+import pytest
+
+CUDA_IS_ABSENT = not torch.cuda.is_available()
+CUDA_IS_ABSENT_REASON = "Cuda is not available"
 
 
 def test_tiles_split_merge():
@@ -28,9 +32,9 @@ def test_tiles_split_merge_non_dividable():
     np.testing.assert_equal(merged, image)
 
 
+@pytest.mark.skipif(CUDA_IS_ABSENT, CUDA_IS_ABSENT_REASON)
 def test_tiles_split_merge_non_dividable_cuda():
-    if not torch.cuda.is_available():
-        return
+
     image = np.random.random((5632, 5120, 3)).astype(np.uint8)
     tiler = ImageSlicer(
         image.shape, tile_size=(1280, 1280), tile_step=(1280, 1280), weight="mean"
@@ -66,11 +70,8 @@ def test_tiles_split_merge_2():
     np.testing.assert_equal(merged, image)
 
 
-@torch.no_grad()
+@pytest.mark.skipif(CUDA_IS_ABSENT, CUDA_IS_ABSENT_REASON)
 def test_tiles_split_merge_cuda():
-    if not torch.cuda.is_available():
-        return
-
     class MaxChannelIntensity(nn.Module):
         def __init__(self):
             super().__init__()

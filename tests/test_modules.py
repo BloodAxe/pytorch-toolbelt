@@ -12,38 +12,6 @@ CUDA_IS_ABSENT_REASON = "Cuda is not available"
 @pytest.mark.parametrize(
     ["encoder", "encoder_params"],
     [
-        [E.SqueezenetEncoder, {"pretrained": False, "layers": [0, 1, 2, 3]}],
-        [E.MobilenetV2Encoder, {"layers": [0, 1, 2, 3, 4, 5, 6, 7]}],
-        [E.MobilenetV2Encoder, {"layers": [3, 5, 7], "activation": "elu"}],
-        [E.MobilenetV3Encoder, {"small": False}],
-        [E.MobilenetV3Encoder, {"small": True}],
-        [E.Resnet18Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [E.EfficientNetB0Encoder, {}],
-        [E.EfficientNetB1Encoder, {}],
-    ],
-)
-def test_encoders(encoder: E.EncoderModule, encoder_params):
-    with torch.no_grad():
-        net = encoder(**encoder_params).eval()
-        print(net.__class__.__name__, count_parameters(net))
-        print(net.output_strides)
-        print(net.output_filters)
-        input = torch.rand((4, 3, 512, 512))
-        input = maybe_cuda(input)
-        net = maybe_cuda(net)
-        output = net(input)
-        assert len(output) == len(net.output_filters)
-        for feature_map, expected_stride, expected_channels in zip(
-            output, net.output_strides, net.output_filters
-        ):
-            assert feature_map.size(1) == expected_channels
-            assert feature_map.size(2) * expected_stride == 512
-            assert feature_map.size(3) * expected_stride == 512
-
-
-@pytest.mark.parametrize(
-    ["encoder", "encoder_params"],
-    [
         [E.Resnet34Encoder, {"pretrained": False}],
         [E.Resnet50Encoder, {"pretrained": False}],
         [E.SEResNeXt50Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
@@ -75,7 +43,7 @@ def test_encoders(encoder: E.EncoderModule, encoder_params):
     ],
 )
 @torch.no_grad()
-@pytest.skip(CUDA_IS_ABSENT, CUDA_IS_ABSENT_REASON)
+@pytest.mark.skipif(CUDA_IS_ABSENT, CUDA_IS_ABSENT_REASON)
 def test_encoders(encoder: E.EncoderModule, encoder_params):
     net = encoder(**encoder_params).eval()
     print(net.__class__.__name__, count_parameters(net))
