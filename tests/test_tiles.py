@@ -10,9 +10,10 @@ from torch import nn
 from torch.utils.data import DataLoader
 import pytest
 
-CUDA_IS_ABSENT = not torch.cuda.is_available()
-CUDA_IS_ABSENT_REASON = "Cuda is not available"
 
+skip_if_no_cuda = pytest.mark.skipif(
+    not torch.cuda.is_available(), reason="Cuda is not available"
+)
 
 def test_tiles_split_merge():
     image = np.random.random((500, 500, 3)).astype(np.uint8)
@@ -32,7 +33,7 @@ def test_tiles_split_merge_non_dividable():
     np.testing.assert_equal(merged, image)
 
 
-@pytest.mark.skipif(CUDA_IS_ABSENT, CUDA_IS_ABSENT_REASON)
+@skip_if_no_cuda
 def test_tiles_split_merge_non_dividable_cuda():
 
     image = np.random.random((5632, 5120, 3)).astype(np.uint8)
@@ -70,7 +71,7 @@ def test_tiles_split_merge_2():
     np.testing.assert_equal(merged, image)
 
 
-@pytest.mark.skipif(CUDA_IS_ABSENT, CUDA_IS_ABSENT_REASON)
+@skip_if_no_cuda
 def test_tiles_split_merge_cuda():
     class MaxChannelIntensity(nn.Module):
         def __init__(self):

@@ -5,8 +5,9 @@ import pytorch_toolbelt.modules.encoders as E
 from pytorch_toolbelt.modules.fpn import HFF
 from pytorch_toolbelt.utils.torch_utils import maybe_cuda, count_parameters
 
-CUDA_IS_ABSENT = not torch.cuda.is_available()
-CUDA_IS_ABSENT_REASON = "Cuda is not available"
+skip_if_no_cuda = pytest.mark.skipif(
+    not torch.cuda.is_available(), reason="Cuda is not available"
+)
 
 
 @pytest.mark.parametrize(
@@ -43,13 +44,13 @@ CUDA_IS_ABSENT_REASON = "Cuda is not available"
     ],
 )
 @torch.no_grad()
-@pytest.mark.skipif(CUDA_IS_ABSENT, CUDA_IS_ABSENT_REASON)
+@skip_if_no_cuda
 def test_encoders(encoder: E.EncoderModule, encoder_params):
     net = encoder(**encoder_params).eval()
     print(net.__class__.__name__, count_parameters(net))
     print(net.output_strides)
     print(net.output_filters)
-    input = torch.rand((4, 3, 512, 512))
+    input = torch.rand((4, 3, 256, 256))
     input = maybe_cuda(input)
     net = maybe_cuda(net)
     output = net(input)
@@ -58,8 +59,8 @@ def test_encoders(encoder: E.EncoderModule, encoder_params):
         output, net.output_strides, net.output_filters
     ):
         assert feature_map.size(1) == expected_channels
-        assert feature_map.size(2) * expected_stride == 512
-        assert feature_map.size(3) * expected_stride == 512
+        assert feature_map.size(2) * expected_stride == 256
+        assert feature_map.size(3) * expected_stride == 256
 
 
 def test_hff_dynamic_size():
