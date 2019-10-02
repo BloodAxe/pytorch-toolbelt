@@ -663,7 +663,7 @@ class DenseNet121Encoder(DenseNetEncoder):
         densenet = densenet121(pretrained=pretrained, memory_efficient=memory_efficient)
         strides = [2, 4, 8, 16, 32]
         channels = [64, 128, 256, 512, 1024]
-        super().__init__(densenet, channels, strides, layers)
+        super().__init__(densenet, strides, channels, layers)
 
 
 class DenseNet161Encoder(DenseNetEncoder):
@@ -673,7 +673,7 @@ class DenseNet161Encoder(DenseNetEncoder):
         densenet = densenet161(pretrained=pretrained, memory_efficient=memory_efficient)
         strides = [2, 4, 8, 16, 32]
         channels = [96, 192, 384, 1056, 2208]
-        super().__init__(densenet, channels, strides, layers)
+        super().__init__(densenet, strides, channels, layers)
 
 
 class DenseNet169Encoder(DenseNetEncoder):
@@ -683,7 +683,7 @@ class DenseNet169Encoder(DenseNetEncoder):
         densenet = densenet169(pretrained=pretrained, memory_efficient=memory_efficient)
         strides = [2, 4, 8, 16, 32]
         channels = [64, 128, 256, 640, 1664]
-        super().__init__(densenet, channels, strides, layers)
+        super().__init__(densenet, strides, channels, layers)
 
 
 class DenseNet201Encoder(DenseNetEncoder):
@@ -693,7 +693,7 @@ class DenseNet201Encoder(DenseNetEncoder):
         densenet = densenet201(pretrained=pretrained, memory_efficient=memory_efficient)
         strides = [2, 4, 8, 16, 32]
         channels = [64, 128, 256, 896, 1920]
-        super().__init__(densenet, channels, strides, layers)
+        super().__init__(densenet, strides, channels, layers)
 
 
 class EfficientNetEncoder(EncoderModule):
@@ -738,7 +738,7 @@ class EfficientNetEncoder(EncoderModule):
 class EfficientNetB0Encoder(EfficientNetEncoder):
     def __init__(self, layers=[1, 2, 4, 6], **kwargs):
         super().__init__(
-            efficient_net_b0(num_classes=1),
+            efficient_net_b0(num_classes=1, **kwargs),
             [16, 24, 40, 80, 112, 192, 320],
             [2, 4, 8, 16, 16, 32, 32],
             layers,

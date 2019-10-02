@@ -5,6 +5,8 @@ Original paper: https://arxiv.org/abs/1803.02579
 
 from torch import nn, Tensor
 from torch.nn import functional as F
+from torch.nn.init import kaiming_normal_
+
 
 __all__ = [
     "ChannelGate2d",
@@ -58,6 +60,12 @@ class SpatialGate2d(nn.Module):
         self.squeeze = nn.Conv2d(channels, squeeze_channels, kernel_size=1)
         self.expand = nn.Conv2d(squeeze_channels, channels, kernel_size=1)
 
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        kaiming_normal_(self.squeeze.weight, nonlinearity="relu")
+        kaiming_normal_(self.expand.weight, nonlinearity="sigmoid")
+
     def forward(self, x: Tensor):
         module_input = x
         x = self.avg_pool(x)
@@ -65,6 +73,7 @@ class SpatialGate2d(nn.Module):
         x = F.relu(x, inplace=True)
         x = self.expand(x)
         x = x.sigmoid()
+        # print(module_input.mean().item(), module_input.std().item(), x.mean().item(), x.std().item())
         return module_input * x
 
 
