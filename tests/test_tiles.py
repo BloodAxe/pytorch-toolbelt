@@ -15,6 +15,7 @@ skip_if_no_cuda = pytest.mark.skipif(
     not torch.cuda.is_available(), reason="Cuda is not available"
 )
 
+
 def test_tiles_split_merge():
     image = np.random.random((500, 500, 3)).astype(np.uint8)
     tiler = ImageSlicer(image.shape, tile_size=51, tile_step=26, weight="mean")
