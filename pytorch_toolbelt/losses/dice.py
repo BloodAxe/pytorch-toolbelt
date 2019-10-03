@@ -10,8 +10,7 @@ __all__ = ['BinaryDiceLoss', 'BinaryDiceLogLoss', 'MulticlassDiceLoss']
 
 
 class BinaryDiceLoss(_Loss):
-    """Implementation of Dice loss for binary image segmentation task
-    """
+    """Implementation of Dice loss for binary image segmentation task."""
 
     def __init__(self, from_logits=True, weight=None, smooth=1e-3):
         super(BinaryDiceLoss, self).__init__()
@@ -78,7 +77,6 @@ class MulticlassDiceLoss(_Loss):
         :param y_true: NxHxW for Multiclass and NxCxHxW for multilabel
         :return: scalar
         """
-
         if self.from_logits:
             if self.activation == 'softmax':
                 y_pred = y_pred.softmax(dim=1)
