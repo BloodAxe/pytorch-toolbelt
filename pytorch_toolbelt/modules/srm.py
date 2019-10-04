@@ -12,10 +12,9 @@ class SRMLayer(nn.Module):
         super(SRMLayer, self).__init__()
 
         # Equal to torch.einsum('bck,ck->bc', A, B)
-        self.cfc = nn.Conv1d(channels, channels,
-                             kernel_size=2,
-                             bias=False,
-                             groups=channels)
+        self.cfc = nn.Conv1d(
+            channels, channels, kernel_size=2, bias=False, groups=channels
+        )
         self.bn = nn.BatchNorm1d(channels)
 
     def forward(self, x):

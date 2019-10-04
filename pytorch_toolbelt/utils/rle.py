@@ -1,6 +1,6 @@
 import numpy as np
 
-__all__ = ['rle_decode', 'rle_encode', 'rle_to_string']
+__all__ = ["rle_decode", "rle_encode", "rle_to_string"]
 
 
 def rle_encode(mask: np.ndarray):
@@ -25,7 +25,7 @@ def rle_encode(mask: np.ndarray):
 
 
 def rle_to_string(runs) -> str:
-    return ' '.join(str(x) for x in runs)
+    return " ".join(str(x) for x in runs)
 
 
 def rle_decode(rle_str, shape, dtype) -> np.ndarray:

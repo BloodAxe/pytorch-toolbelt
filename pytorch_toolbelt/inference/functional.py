@@ -62,12 +62,18 @@ def pad_image_tensor(image_tensor: Tensor, pad_size: int = 32):
     :return: Tuple of output tensor and pad params. Second argument can be used to reverse pad operation of model output
     """
     rows, cols = image_tensor.size(2), image_tensor.size(3)
-    if isinstance(pad_size, Sized) and isinstance(pad_size, Iterable) and len(pad_size) == 2:
+    if (
+        isinstance(pad_size, Sized)
+        and isinstance(pad_size, Iterable)
+        and len(pad_size) == 2
+    ):
         pad_height, pad_width = [int(val) for val in pad_size]
     elif isinstance(pad_size, int):
         pad_height = pad_width = pad_size
     else:
-        raise ValueError(f"Unsupported pad_size: {pad_size}, must be either tuple(pad_rows,pad_cols) or single int scalar.")
+        raise ValueError(
+            f"Unsupported pad_size: {pad_size}, must be either tuple(pad_rows,pad_cols) or single int scalar."
+        )
 
     if rows > pad_height:
         pad_rows = rows % pad_height
@@ -98,12 +104,14 @@ def pad_image_tensor(image_tensor: Tensor, pad_size: int = 32):
 def unpad_image_tensor(image_tensor, pad):
     pad_left, pad_right, pad_top, pad_btm = pad
     rows, cols = image_tensor.size(2), image_tensor.size(3)
-    return image_tensor[..., pad_top:rows - pad_btm, pad_left: cols - pad_right]
+    return image_tensor[..., pad_top : rows - pad_btm, pad_left : cols - pad_right]
 
 
 def unpad_xyxy_bboxes(bboxes_tensor: torch.Tensor, pad, dim=-1):
     pad_left, pad_right, pad_top, pad_btm = pad
-    pad = torch.tensor([pad_left, pad_top, pad_left, pad_top], dtype=bboxes_tensor.dtype).to(bboxes_tensor.device)
+    pad = torch.tensor(
+        [pad_left, pad_top, pad_left, pad_top], dtype=bboxes_tensor.dtype
+    ).to(bboxes_tensor.device)
 
     if dim == -1:
         dim = len(bboxes_tensor.size()) - 1

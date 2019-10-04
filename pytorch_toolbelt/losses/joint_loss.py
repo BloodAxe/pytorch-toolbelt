@@ -1,6 +1,6 @@
 from torch.nn.modules.loss import _Loss
 
-__all__ = ['JointLoss', 'WeightedLoss']
+__all__ = ["JointLoss", "WeightedLoss"]
 
 
 class WeightedLoss(_Loss):

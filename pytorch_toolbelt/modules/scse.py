@@ -5,12 +5,16 @@ Original paper: https://arxiv.org/abs/1803.02579
 
 from torch import nn, Tensor
 from torch.nn import functional as F
+from torch.nn.init import kaiming_normal_
 
-__all__ = ['ChannelGate2d',
-           'SpatialGate2d',
-           'ChannelSpatialGate2d',
-           'SpatialGate2dV2',
-           'ChannelSpatialGate2dV2']
+
+__all__ = [
+    "ChannelGate2d",
+    "SpatialGate2d",
+    "ChannelSpatialGate2d",
+    "SpatialGate2dV2",
+    "ChannelSpatialGate2dV2",
+]
 
 
 class ChannelGate2d(nn.Module):
@@ -43,14 +47,24 @@ class SpatialGate2d(nn.Module):
         :param squeeze_channels: Number of channels in squeeze block.
         """
         super().__init__()
-        assert reduction or squeeze_channels, "One of 'reduction' and 'squeeze_channels' must be set"
-        assert not (reduction and squeeze_channels), "'reduction' and 'squeeze_channels' are mutually exclusive"
+        assert (
+            reduction or squeeze_channels
+        ), "One of 'reduction' and 'squeeze_channels' must be set"
+        assert not (
+            reduction and squeeze_channels
+        ), "'reduction' and 'squeeze_channels' are mutually exclusive"
 
         if squeeze_channels is None:
             squeeze_channels = max(1, channels // reduction)
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.squeeze = nn.Conv2d(channels, squeeze_channels, kernel_size=1)
         self.expand = nn.Conv2d(squeeze_channels, channels, kernel_size=1)
+
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        kaiming_normal_(self.squeeze.weight, nonlinearity="relu")
+        kaiming_normal_(self.expand.weight, nonlinearity="sigmoid")
 
     def forward(self, x: Tensor):
         module_input = x
@@ -59,6 +73,7 @@ class SpatialGate2d(nn.Module):
         x = F.relu(x, inplace=True)
         x = self.expand(x)
         x = x.sigmoid()
+        # print(module_input.mean().item(), module_input.std().item(), x.mean().item(), x.std().item())
         return module_input * x
 
 
@@ -84,12 +99,11 @@ class SpatialGate2dV2(nn.Module):
     def __init__(self, channels, reduction=4):
         super().__init__()
         squeeze_channels = max(1, channels // reduction)
-        self.squeeze = nn.Conv2d(channels, squeeze_channels,
-                                 kernel_size=1, padding=0)
-        self.conv = nn.Conv2d(squeeze_channels, squeeze_channels,
-                              kernel_size=7, dilation=3, padding=3 * 3)
-        self.expand = nn.Conv2d(squeeze_channels, channels, kernel_size=1,
-                                padding=0)
+        self.squeeze = nn.Conv2d(channels, squeeze_channels, kernel_size=1, padding=0)
+        self.conv = nn.Conv2d(
+            squeeze_channels, squeeze_channels, kernel_size=7, dilation=3, padding=3 * 3
+        )
+        self.expand = nn.Conv2d(squeeze_channels, channels, kernel_size=1, padding=0)
 
     def forward(self, x: Tensor):
         module_input = x

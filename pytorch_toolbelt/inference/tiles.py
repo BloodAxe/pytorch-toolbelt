@@ -47,7 +47,9 @@ class ImageSlicer:
     Helper class to slice image into tiles and merge them back
     """
 
-    def __init__(self, image_shape, tile_size, tile_step=0, image_margin=0, weight='mean'):
+    def __init__(
+        self, image_shape, tile_size, tile_step=0, image_margin=0, weight="mean"
+    ):
         """
 
         :param image_shape: Shape of the source image (H, W)
@@ -71,12 +73,13 @@ class ImageSlicer:
         else:
             self.tile_step = int(tile_step), int(tile_step)
 
-        weights = {
-            'mean': self._mean,
-            'pyramid': self._pyramid
-        }
+        weights = {"mean": self._mean, "pyramid": self._pyramid}
 
-        self.weight = weight if isinstance(weight, np.ndarray) else weights[weight](self.tile_size)
+        self.weight = (
+            weight
+            if isinstance(weight, np.ndarray)
+            else weights[weight](self.tile_size)
+        )
 
         if self.tile_step[0] < 1 or self.tile_step[0] > self.tile_size[0]:
             raise ValueError()
@@ -108,10 +111,14 @@ class ImageSlicer:
             self.margin_bottom = extra_h - self.margin_top
 
         else:
-            if (self.image_width - overlap[1] + 2 * image_margin) % self.tile_step[1] != 0:
+            if (self.image_width - overlap[1] + 2 * image_margin) % self.tile_step[
+                1
+            ] != 0:
                 raise ValueError()
 
-            if (self.image_height - overlap[0] + 2 * image_margin) % self.tile_step[0] != 0:
+            if (self.image_height - overlap[0] + 2 * image_margin) % self.tile_step[
+                0
+            ] != 0:
                 raise ValueError()
 
             self.margin_left = image_margin
@@ -122,10 +129,33 @@ class ImageSlicer:
         crops = []
         bbox_crops = []
 
-        for y in range(0, self.image_height + self.margin_top + self.margin_bottom - self.tile_size[0] + 1, self.tile_step[0]):
-            for x in range(0, self.image_width + self.margin_left + self.margin_right - self.tile_size[1] + 1, self.tile_step[1]):
+        for y in range(
+            0,
+            self.image_height
+            + self.margin_top
+            + self.margin_bottom
+            - self.tile_size[0]
+            + 1,
+            self.tile_step[0],
+        ):
+            for x in range(
+                0,
+                self.image_width
+                + self.margin_left
+                + self.margin_right
+                - self.tile_size[1]
+                + 1,
+                self.tile_step[1],
+            ):
                 crops.append((x, y, self.tile_size[1], self.tile_size[0]))
-                bbox_crops.append((x - self.margin_left, y - self.margin_top, self.tile_size[1], self.tile_size[0]))
+                bbox_crops.append(
+                    (
+                        x - self.margin_left,
+                        y - self.margin_top,
+                        self.tile_size[1],
+                        self.tile_size[0],
+                    )
+                )
 
         self.crops = np.array(crops)
         self.bbox_crops = np.array(bbox_crops)
@@ -135,7 +165,15 @@ class ImageSlicer:
         assert image.shape[1] == self.image_width
 
         orig_shape_len = len(image.shape)
-        image = cv2.copyMakeBorder(image, self.margin_top, self.margin_bottom, self.margin_left, self.margin_right, borderType=border_type, value=value)
+        image = cv2.copyMakeBorder(
+            image,
+            self.margin_top,
+            self.margin_bottom,
+            self.margin_left,
+            self.margin_right,
+            borderType=border_type,
+            value=value,
+        )
 
         # This check recovers possible lack of last dummy dimension for single-channel images
         if len(image.shape) != orig_shape_len:
@@ -143,7 +181,7 @@ class ImageSlicer:
 
         tiles = []
         for x, y, tile_width, tile_height in self.crops:
-            tile = image[y:y + tile_height, x:x + tile_width].copy()
+            tile = image[y : y + tile_height, x : x + tile_width].copy()
             assert tile.shape[0] == self.tile_size[0]
             assert tile.shape[1] == self.tile_size[1]
 
@@ -151,12 +189,22 @@ class ImageSlicer:
 
         return tiles
 
-    def cut_patch(self, image: np.ndarray, slice_index, border_type=cv2.BORDER_CONSTANT, value=0):
+    def cut_patch(
+        self, image: np.ndarray, slice_index, border_type=cv2.BORDER_CONSTANT, value=0
+    ):
         assert image.shape[0] == self.image_height
         assert image.shape[1] == self.image_width
 
         orig_shape_len = len(image.shape)
-        image = cv2.copyMakeBorder(image, self.margin_top, self.margin_bottom, self.margin_left, self.margin_right, borderType=border_type, value=value)
+        image = cv2.copyMakeBorder(
+            image,
+            self.margin_top,
+            self.margin_bottom,
+            self.margin_left,
+            self.margin_right,
+            borderType=border_type,
+            value=value,
+        )
 
         # This check recovers possible lack of last dummy dimension for single-channel images
         if len(image.shape) != orig_shape_len:
@@ -164,14 +212,17 @@ class ImageSlicer:
 
         x, y, tile_width, tile_height = self.crops[slice_index]
 
-        tile = image[y:y + tile_height, x:x + tile_width].copy()
+        tile = image[y : y + tile_height, x : x + tile_width].copy()
         assert tile.shape[0] == self.tile_size[0]
         assert tile.shape[1] == self.tile_size[1]
         return tile
 
     @property
     def target_shape(self):
-        target_shape = self.image_height + self.margin_bottom + self.margin_top, self.image_width + self.margin_right + self.margin_left
+        target_shape = (
+            self.image_height + self.margin_bottom + self.margin_top,
+            self.image_width + self.margin_right + self.margin_left,
+        )
         return target_shape
 
     def merge(self, tiles: List[np.ndarray], dtype=np.float32):
@@ -179,7 +230,11 @@ class ImageSlicer:
             raise ValueError
 
         channels = 1 if len(tiles[0].shape) == 2 else tiles[0].shape[2]
-        target_shape = self.image_height + self.margin_bottom + self.margin_top, self.image_width + self.margin_right + self.margin_left, channels
+        target_shape = (
+            self.image_height + self.margin_bottom + self.margin_top,
+            self.image_width + self.margin_right + self.margin_left,
+            channels,
+        )
 
         image = np.zeros(target_shape, dtype=np.float64)
         norm_mask = np.zeros(target_shape, dtype=np.float64)
@@ -188,8 +243,8 @@ class ImageSlicer:
 
         for tile, (x, y, tile_width, tile_height) in zip(tiles, self.crops):
             # print(x, y, tile_width, tile_height, image.shape)
-            image[y:y + tile_height, x:x + tile_width] += tile * w
-            norm_mask[y:y + tile_height, x:x + tile_width] += w
+            image[y : y + tile_height, x : x + tile_width] += tile * w
+            norm_mask[y : y + tile_height, x : x + tile_width] += w
 
         # print(norm_mask.min(), norm_mask.max())
         norm_mask = np.clip(norm_mask, a_min=np.finfo(norm_mask.dtype).eps, a_max=None)
@@ -200,7 +255,10 @@ class ImageSlicer:
     def crop_to_orignal_size(self, image):
         assert image.shape[0] == self.target_shape[0]
         assert image.shape[1] == self.target_shape[1]
-        crop = image[self.margin_top:self.image_height + self.margin_top, self.margin_left:self.image_width + self.margin_left]
+        crop = image[
+            self.margin_top : self.image_height + self.margin_top,
+            self.margin_left : self.image_width + self.margin_left,
+        ]
         assert crop.shape[0] == self.image_height
         assert crop.shape[1] == self.image_width
         return crop
@@ -240,11 +298,13 @@ class CudaTileMerger:
         :param crop_coords: Corresponding tile crops w.r.t to original image
         """
         if len(batch) != len(crop_coords):
-            raise ValueError("Number of images in batch does not correspond to number of coordinates")
+            raise ValueError(
+                "Number of images in batch does not correspond to number of coordinates"
+            )
 
         for tile, (x, y, tile_width, tile_height) in zip(batch, crop_coords):
-            self.image[:, y:y + tile_height, x:x + tile_width] += tile * self.weight
-            self.norm_mask[:, y:y + tile_height, x:x + tile_width] += self.weight
+            self.image[:, y : y + tile_height, x : x + tile_width] += tile * self.weight
+            self.norm_mask[:, y : y + tile_height, x : x + tile_width] += self.weight
 
     def merge(self) -> torch.Tensor:
         return self.image / self.norm_mask

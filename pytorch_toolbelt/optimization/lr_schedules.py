@@ -7,13 +7,13 @@ from torch.optim.lr_scheduler import _LRScheduler
 
 def set_learning_rate(optimizer, lr):
     for i, param_group in enumerate(optimizer.param_groups):
-        param_group['lr'] = lr
+        param_group["lr"] = lr
 
 
 class OnceCycleLR(_LRScheduler):
-    def __init__(self, optimizer, epochs, min_lr_factor=0.05, max_lr=1.):
+    def __init__(self, optimizer, epochs, min_lr_factor=0.05, max_lr=1.0):
         half_epochs = epochs // 2
-        decay_epochs = (epochs * 0.05)
+        decay_epochs = epochs * 0.05
 
         lr_grow = np.linspace(min_lr_factor, max_lr, half_epochs)
         lr_down = np.linspace(max_lr, min_lr_factor, half_epochs - decay_epochs)
@@ -22,7 +22,9 @@ class OnceCycleLR(_LRScheduler):
         super().__init__(optimizer)
 
     def get_lr(self):
-        return [base_lr * self.learning_rates[self.last_epoch] for base_lr in self.base_lrs]
+        return [
+            base_lr * self.learning_rates[self.last_epoch] for base_lr in self.base_lrs
+        ]
 
 
 class CosineAnnealingLRWithDecay(_LRScheduler):
@@ -59,15 +61,20 @@ class CosineAnnealingLRWithDecay(_LRScheduler):
 
     def get_lr(self):
         def compute_lr(base_lr):
-            return self.eta_min + (base_lr * self.gamma ** self.last_epoch - self.eta_min) * (1 + math.cos(math.pi * self.last_epoch / self.T_max)) / 2
+            return (
+                self.eta_min
+                + (base_lr * self.gamma ** self.last_epoch - self.eta_min)
+                * (1 + math.cos(math.pi * self.last_epoch / self.T_max))
+                / 2
+            )
 
         return [compute_lr(base_lr) for base_lr in self.base_lrs]
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import matplotlib as mpl
 
-    mpl.use('module://backend_interagg')
+    mpl.use("module://backend_interagg")
     import matplotlib.pyplot as plt
 
     from torch.optim import SGD

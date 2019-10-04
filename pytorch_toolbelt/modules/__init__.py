@@ -5,3 +5,4 @@ from .identity import *
 from .dsconv import *
 from .scse import *
 from .hypercolumn import *
+from .fpn import *

@@ -15,7 +15,7 @@ try:
 except ImportError:  # py3k
     from itertools import filterfalse as ifilterfalse
 
-__all__ = ['BinaryLovaszLoss', 'LovaszLoss']
+__all__ = ["BinaryLovaszLoss", "LovaszLoss"]
 
 
 def _lovasz_grad(gt_sorted):
@@ -26,7 +26,7 @@ def _lovasz_grad(gt_sorted):
     gts = gt_sorted.sum()
     intersection = gts - gt_sorted.float().cumsum(0)
     union = gts + (1 - gt_sorted).float().cumsum(0)
-    jaccard = 1. - intersection / union
+    jaccard = 1.0 - intersection / union
     if p > 1:  # cover 1-pixel case
         jaccard[1:p] = jaccard[1:p] - jaccard[0:-1]
     return jaccard
@@ -41,8 +41,12 @@ def _lovasz_hinge(logits, labels, per_image=True, ignore=None):
         ignore: void class id
     """
     if per_image:
-        loss = mean(_lovasz_hinge_flat(*_flatten_binary_scores(log.unsqueeze(0), lab.unsqueeze(0), ignore))
-                    for log, lab in zip(logits, labels))
+        loss = mean(
+            _lovasz_hinge_flat(
+                *_flatten_binary_scores(log.unsqueeze(0), lab.unsqueeze(0), ignore)
+            )
+            for log, lab in zip(logits, labels)
+        )
     else:
         loss = _lovasz_hinge_flat(*_flatten_binary_scores(logits, labels, ignore))
     return loss
@@ -57,9 +61,9 @@ def _lovasz_hinge_flat(logits, labels):
     """
     if len(labels) == 0:
         # only void pixels, the gradients should be 0
-        return logits.sum() * 0.
-    signs = 2. * labels.float() - 1.
-    errors = (1. - logits * Variable(signs))
+        return logits.sum() * 0.0
+    signs = 2.0 * labels.float() - 1.0
+    errors = 1.0 - logits * Variable(signs)
     errors_sorted, perm = torch.sort(errors, dim=0, descending=True)
     perm = perm.data
     gt_sorted = labels[perm]
@@ -76,7 +80,7 @@ def _flatten_binary_scores(scores, labels, ignore=None):
     labels = labels.view(-1)
     if ignore is None:
         return scores, labels
-    valid = (labels != ignore)
+    valid = labels != ignore
     vscores = scores[valid]
     vlabels = labels[valid]
     return vscores, vlabels
@@ -85,7 +89,7 @@ def _flatten_binary_scores(scores, labels, ignore=None):
 # --------------------------- MULTICLASS LOSSES ---------------------------
 
 
-def _lovasz_softmax(probas, labels, classes='present', per_image=False, ignore=None):
+def _lovasz_softmax(probas, labels, classes="present", per_image=False, ignore=None):
     """Multi-class Lovasz-Softmax loss
     Args:
         @param probas: [B, C, H, W] Variable, class probabilities at each prediction (between 0 and 1).
@@ -96,14 +100,21 @@ def _lovasz_softmax(probas, labels, classes='present', per_image=False, ignore=N
         @param ignore: void class labels
     """
     if per_image:
-        loss = mean(_lovasz_softmax_flat(*_flatten_probas(prob.unsqueeze(0), lab.unsqueeze(0), ignore), classes=classes)
-                    for prob, lab in zip(probas, labels))
+        loss = mean(
+            _lovasz_softmax_flat(
+                *_flatten_probas(prob.unsqueeze(0), lab.unsqueeze(0), ignore),
+                classes=classes
+            )
+            for prob, lab in zip(probas, labels)
+        )
     else:
-        loss = _lovasz_softmax_flat(*_flatten_probas(probas, labels, ignore), classes=classes)
+        loss = _lovasz_softmax_flat(
+            *_flatten_probas(probas, labels, ignore), classes=classes
+        )
     return loss
 
 
-def _lovasz_softmax_flat(probas, labels, classes='present'):
+def _lovasz_softmax_flat(probas, labels, classes="present"):
     """Multi-class Lovasz-Softmax loss
     Args:
         @param probas: [P, C] Variable, class probabilities at each prediction (between 0 and 1)
@@ -112,17 +123,17 @@ def _lovasz_softmax_flat(probas, labels, classes='present'):
     """
     if probas.numel() == 0:
         # only void pixels, the gradients should be 0
-        return probas * 0.
+        return probas * 0.0
     C = probas.size(1)
     losses = []
-    class_to_sum = list(range(C)) if classes in ['all', 'present'] else classes
+    class_to_sum = list(range(C)) if classes in ["all", "present"] else classes
     for c in class_to_sum:
         fg = (labels == c).float()  # foreground for class c
-        if classes == 'present' and fg.sum() == 0:
+        if classes == "present" and fg.sum() == 0:
             continue
         if C == 1:
             if len(classes) > 1:
-                raise ValueError('Sigmoid output possible only with 1 class')
+                raise ValueError("Sigmoid output possible only with 1 class")
             class_pred = probas[:, 0]
         else:
             class_pred = probas[:, c]
@@ -146,7 +157,7 @@ def _flatten_probas(probas, labels, ignore=None):
     labels = labels.view(-1)
     if ignore is None:
         return probas, labels
-    valid = (labels != ignore)
+    valid = labels != ignore
     vprobas = probas[valid.nonzero().squeeze()]
     vlabels = labels[valid]
     return vprobas, vlabels
@@ -167,8 +178,8 @@ def mean(values, ignore_nan=False, empty=0):
         n = 1
         acc = next(values)
     except StopIteration:
-        if empty == 'raise':
-            raise ValueError('Empty mean')
+        if empty == "raise":
+            raise ValueError("Empty mean")
         return empty
     for n, v in enumerate(values, 2):
         acc += v
@@ -184,7 +195,9 @@ class BinaryLovaszLoss(_Loss):
         self.per_image = per_image
 
     def forward(self, logits, target):
-        return _lovasz_hinge(logits, target, per_image=self.per_image, ignore=self.ignore)
+        return _lovasz_hinge(
+            logits, target, per_image=self.per_image, ignore=self.ignore
+        )
 
 
 class LovaszLoss(_Loss):
@@ -194,4 +207,6 @@ class LovaszLoss(_Loss):
         self.per_image = per_image
 
     def forward(self, logits, target):
-        return _lovasz_softmax(logits, target, per_image=self.per_image, ignore=self.ignore)
+        return _lovasz_softmax(
+            logits, target, per_image=self.per_image, ignore=self.ignore
+        )

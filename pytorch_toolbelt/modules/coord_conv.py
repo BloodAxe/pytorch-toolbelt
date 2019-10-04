@@ -21,26 +21,32 @@ def append_coords(input_tensor, with_r=False):
     xx_channel = xx_channel.repeat(batch_size, 1, 1, 1).transpose(2, 3)
     yy_channel = yy_channel.repeat(batch_size, 1, 1, 1).transpose(2, 3)
 
-    ret = torch.cat([
-        input_tensor,
-        xx_channel.type_as(input_tensor),
-        yy_channel.type_as(input_tensor)], dim=1)
+    ret = torch.cat(
+        [
+            input_tensor,
+            xx_channel.type_as(input_tensor),
+            yy_channel.type_as(input_tensor),
+        ],
+        dim=1,
+    )
 
     if with_r:
-        rr = torch.sqrt(torch.pow(xx_channel.type_as(input_tensor) - 0.5, 2) + torch.pow(yy_channel.type_as(input_tensor) - 0.5, 2))
+        rr = torch.sqrt(
+            torch.pow(xx_channel.type_as(input_tensor) - 0.5, 2)
+            + torch.pow(yy_channel.type_as(input_tensor) - 0.5, 2)
+        )
         ret = torch.cat([ret, rr], dim=1)
 
     return ret
 
 
-'''
+"""
 An alternative implementation for PyTorch with auto-infering the x-y dimensions.
 https://github.com/mkocabas/CoordConv-pytorch/blob/master/CoordConv.py
-'''
+"""
 
 
 class AddCoords(nn.Module):
-
     def __init__(self, with_r=False):
         super().__init__()
         self.with_r = with_r
@@ -54,7 +60,6 @@ class AddCoords(nn.Module):
 
 
 class CoordConv(nn.Module):
-
     def __init__(self, in_channels, out_channels, with_r=False, **kwargs):
         super().__init__()
         self.addcoords = AddCoords(with_r=with_r)

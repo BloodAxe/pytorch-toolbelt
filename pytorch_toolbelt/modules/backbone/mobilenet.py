@@ -10,7 +10,7 @@ def conv_bn(inp, oup, stride, activation: nn.Module):
     return nn.Sequential(
         nn.Conv2d(inp, oup, 3, stride, 1, bias=False),
         nn.BatchNorm2d(oup),
-        activation(inplace=True)
+        activation(inplace=True),
     )
 
 
@@ -18,7 +18,7 @@ def conv_1x1_bn(inp, oup, activation: nn.Module):
     return nn.Sequential(
         nn.Conv2d(inp, oup, 1, 1, 0, bias=False),
         nn.BatchNorm2d(oup),
-        activation(inplace=True)
+        activation(inplace=True),
     )
 
 
@@ -34,7 +34,9 @@ class InvertedResidual(nn.Module):
         if expand_ratio == 1:
             self.conv = nn.Sequential(
                 # dw
-                nn.Conv2d(hidden_dim, hidden_dim, 3, stride, 1, groups=hidden_dim, bias=False),
+                nn.Conv2d(
+                    hidden_dim, hidden_dim, 3, stride, 1, groups=hidden_dim, bias=False
+                ),
                 nn.BatchNorm2d(hidden_dim),
                 activation(inplace=True),
                 # pw-linear
@@ -48,7 +50,9 @@ class InvertedResidual(nn.Module):
                 nn.BatchNorm2d(hidden_dim),
                 activation(inplace=True),
                 # dw
-                nn.Conv2d(hidden_dim, hidden_dim, 3, stride, 1, groups=hidden_dim, bias=False),
+                nn.Conv2d(
+                    hidden_dim, hidden_dim, 3, stride, 1, groups=hidden_dim, bias=False
+                ),
                 nn.BatchNorm2d(hidden_dim),
                 activation(inplace=True),
                 # pw-linear
@@ -64,7 +68,9 @@ class InvertedResidual(nn.Module):
 
 
 class MobileNetV2(nn.Module):
-    def __init__(self, n_class=1000, input_size=224, width_mult=1., activation='relu6'):
+    def __init__(
+        self, n_class=1000, input_size=224, width_mult=1.0, activation="relu6"
+    ):
         super(MobileNetV2, self).__init__()
 
         act = get_activation_module(activation)
@@ -86,7 +92,9 @@ class MobileNetV2(nn.Module):
         # building first layer
         assert input_size % 32 == 0
         input_channel = int(input_channel * width_mult)
-        self.last_channel = int(last_channel * width_mult) if width_mult > 1.0 else last_channel
+        self.last_channel = (
+            int(last_channel * width_mult) if width_mult > 1.0 else last_channel
+        )
         self.layer0 = conv_bn(3, input_channel, 2, act)
 
         # building inverted residual blocks
@@ -96,21 +104,36 @@ class MobileNetV2(nn.Module):
             blocks = []
             for i in range(n):
                 if i == 0:
-                    blocks.append(block(input_channel, output_channel, s, expand_ratio=t, activation=act))
+                    blocks.append(
+                        block(
+                            input_channel,
+                            output_channel,
+                            s,
+                            expand_ratio=t,
+                            activation=act,
+                        )
+                    )
                 else:
-                    blocks.append(block(input_channel, output_channel, 1, expand_ratio=t, activation=act))
+                    blocks.append(
+                        block(
+                            input_channel,
+                            output_channel,
+                            1,
+                            expand_ratio=t,
+                            activation=act,
+                        )
+                    )
 
                 input_channel = output_channel
 
-            self.add_module(f'layer{layer_index + 1}', nn.Sequential(*blocks))
+            self.add_module(f"layer{layer_index + 1}", nn.Sequential(*blocks))
 
         # building last several layers
         self.final_layer = conv_1x1_bn(input_channel, self.last_channel, activation=act)
 
         # building classifier
         self.classifier = nn.Sequential(
-            nn.Dropout(0.2),
-            nn.Linear(self.last_channel, n_class),
+            nn.Dropout(0.2), nn.Linear(self.last_channel, n_class)
         )
 
         self._initialize_weights()
@@ -134,7 +157,7 @@ class MobileNetV2(nn.Module):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-                m.weight.data.normal_(0, math.sqrt(2. / n))
+                m.weight.data.normal_(0, math.sqrt(2.0 / n))
                 if m.bias is not None:
                     m.bias.data.zero_()
             elif isinstance(m, nn.BatchNorm2d):

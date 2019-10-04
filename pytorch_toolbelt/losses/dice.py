@@ -1,74 +1,58 @@
 from typing import List
 
 import torch
+import torch.nn.functional as F
+from pytorch_toolbelt.utils.torch_utils import to_tensor
 from torch import Tensor
 from torch.nn.modules.loss import _Loss
 
 from .functional import soft_dice_score
 
-__all__ = ['BinaryDiceLoss', 'BinaryDiceLogLoss', 'MulticlassDiceLoss']
+__all__ = ["DiceLoss"]
+
+BINARY_MODE = "binary"
+MULTICLASS_MODE = "multiclass"
+MULTILABEL_MODE = "multilabel"
 
 
-class BinaryDiceLoss(_Loss):
-    """Implementation of Dice loss for binary image segmentation task
+class DiceLoss(_Loss):
+    """
+    Implementation of Dice loss for image segmentation task.
+    It supports binary, multiclass and multilabel cases
     """
 
-    def __init__(self, from_logits=True, weight=None, smooth=1e-3):
-        super(BinaryDiceLoss, self).__init__()
-        self.from_logits = from_logits
-        self.weight = weight
-        self.smooth = smooth
-
-    def forward(self, y_pred: Tensor, y_true: Tensor) -> Tensor:
+    def __init__(
+        self,
+        mode: str,
+        classes: List[int] = None,
+        log_loss=False,
+        from_logits=True,
+        smooth=0,
+        eps=1e-7,
+    ):
         """
 
-        :param y_pred: NxCxHxW
-        :param y_true: NxHxW
-        :return: scalar
+        :param mode: Metric mode {'binary', 'multiclass', 'multilabel'}
+        :param classes: Optional list of classes that contribute in loss computation; By default, all channels are included.
+        :param log_loss: If True, loss computed as `-log(jaccard)`; otherwise `1 - jaccard`
+        :param from_logits: If True assumes input is raw logits
+        :param smooth:
+        :param eps: Small epsilon for numerical stability
         """
-        if y_true.sum() == 0:
-            return 0
+        assert mode in {BINARY_MODE, MULTILABEL_MODE, MULTICLASS_MODE}
+        super(DiceLoss, self).__init__()
+        self.mode = mode
+        if classes is not None:
+            assert (
+                mode != BINARY_MODE
+            ), "Masking classes is not supported with mode=binary"
+            classes = to_tensor(classes, dtype=torch.long)
 
-        dice = soft_dice_score(y_pred, y_true, from_logits=self.from_logits, smooth=self.smooth)
-        loss = (1.0 - dice)
-
-        return loss
-
-
-class BinaryDiceLogLoss(_Loss):
-    """Implementation of logarithic Dice loss for binary image segmentation task
-    """
-
-    def __init__(self, from_logits=True, weight=None, smooth=1e-3):
-        super(BinaryDiceLogLoss, self).__init__()
-        self.from_logits = from_logits
-        self.weight = weight
-        self.smooth = smooth
-
-    def forward(self, y_pred: Tensor, y_true: Tensor) -> Tensor:
-        """
-
-        :param y_pred: NxCxHxW
-        :param y_true: NxHxW
-        :return: scalar
-        """
-        if y_true.sum() == 0:
-            return 0
-
-        iou = soft_dice_score(y_pred, y_true, from_logits=self.from_logits, smooth=self.smooth)
-        loss = - torch.log(iou)
-        return loss
-
-
-class MulticlassDiceLoss(_Loss):
-    """Implementation of Dice loss for multiclass (semantic) image segmentation task
-    """
-
-    def __init__(self, classes: List[int] = None, from_logits=True, weight=None, reduction='elementwise_mean'):
-        super(MulticlassDiceLoss, self).__init__(reduction=reduction)
         self.classes = classes
         self.from_logits = from_logits
-        self.weight = weight
+        self.smooth = smooth
+        self.eps = eps
+        self.log_loss = log_loss
 
     def forward(self, y_pred: Tensor, y_true: Tensor) -> Tensor:
         """
@@ -77,41 +61,52 @@ class MulticlassDiceLoss(_Loss):
         :param y_true: NxHxW
         :return: scalar
         """
+        assert y_true.size(0) == y_pred.size(0)
+
         if self.from_logits:
-            y_pred = y_pred.softmax(dim=1)
-
-        n_classes = y_pred.size(1)
-        smooth = 1e-3
-
-        loss = torch.zeros(n_classes, dtype=torch.float, device=y_pred.device)
-
-        if self.classes is None:
-            classes = range(n_classes)
-        else:
-            classes = self.classes
-
-        if self.weight is None:
-            weights = [1] * n_classes
-        else:
-            weights = self.weight
-
-        for class_index, weight in zip(classes, weights):
-
-            dice_target = (y_true == class_index).float()
-            dice_output = y_pred[:, class_index, ...]
-
-            num_preds = dice_target.long().sum()
-
-            if num_preds == 0:
-                loss[class_index] = 0
+            # Apply activations to get [0..1] class probabilities
+            if self.mode == MULTICLASS_MODE:
+                y_pred = y_pred.softmax(dim=1)
             else:
-                dice = soft_dice_score(dice_output, dice_target, from_logits=False, smooth=smooth)
-                loss[class_index] = (1.0 - dice) * weight
+                y_pred = y_pred.sigmoid()
 
-        if self.reduction == 'elementwise_mean':
-            return loss.mean()
+        bs = y_true.size(0)
+        num_classes = y_pred.size(1)
+        dims = (0, 2)
 
-        if self.reduction == 'sum':
-            return loss.sum()
+        if self.mode == BINARY_MODE:
+            y_true = y_true.view(bs, 1, -1)
+            y_pred = y_pred.view(bs, 1, -1)
 
-        return loss
+        if self.mode == MULTICLASS_MODE:
+            y_true = y_true.view(bs, -1)
+            y_pred = y_pred.view(bs, num_classes, -1)
+
+            y_true = F.one_hot(y_true, num_classes)  # N,H*W -> N,H*W, C
+            y_true = y_true.permute(0, 2, 1)  # H, C, H*W
+
+        if self.mode == MULTILABEL_MODE:
+            y_true = y_true.view(bs, num_classes, -1)
+            y_pred = y_pred.view(bs, num_classes, -1)
+
+        scores = soft_dice_score(
+            y_pred, y_true.type(y_pred.dtype), self.smooth, self.eps, dims=dims
+        )
+
+        if self.log_loss:
+            loss = -torch.log(scores)
+        else:
+            loss = 1 - scores
+
+        # IoU loss is defined for non-empty classes
+        # So we zero contribution of channel that does not have true pixels
+        # NOTE: A better workaround would be to use loss term `mean(y_pred)`
+        # for this case, however it will be a modified jaccard loss
+
+        mask = (y_true.sum(dims) > 0).float()
+        loss = loss * mask
+
+        if self.classes is not None:
+            loss = loss[self.classes]
+
+        return loss.mean()
