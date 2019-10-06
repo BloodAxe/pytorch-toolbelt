@@ -126,3 +126,18 @@ merged_mask = tiler.crop_to_orignal_size(merged_mask)
 
 1. [Inria Sattelite Segmentation](https://github.com/BloodAxe/Catalyst-Inria-Segmentation-Example)
 1. [CamVid Semantic Segmentation](https://github.com/BloodAxe/Catalyst-CamVid-Segmentation-Example)
+
+
+## Citation
+
+```
+@misc{Khvedchenya_Eugene_2019_PyTorch_Toolbelt,
+  author = {Khvedchenya, Eugene},
+  title = {PyTorch Toolbelt},
+  year = {2019},
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  howpublished = {\url{https://github.com/BloodAxe/pytorch-toolbelt}},
+  commit = {cc5e9973cdb0dcbf1c6b6e1401bf44b9c69e13f3}
+}
+```
