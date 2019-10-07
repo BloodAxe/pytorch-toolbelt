@@ -2,7 +2,7 @@ from functools import partial
 
 from torch.nn.modules.loss import _Loss
 
-from .functional import sigmoid_focal_loss, reduced_focal_loss
+from .functional import focal_loss_with_logits
 
 __all__ = ["BinaryFocalLoss", "FocalLoss"]
 
@@ -31,14 +31,15 @@ class BinaryFocalLoss(_Loss):
         self.ignore_index = ignore_index
         if reduced:
             self.focal_loss = partial(
-                reduced_focal_loss,
+                focal_loss_with_logits,
+                alpha=None,
                 gamma=gamma,
                 threshold=threshold,
                 reduction=reduction,
             )
         else:
             self.focal_loss = partial(
-                sigmoid_focal_loss, gamma=gamma, alpha=alpha, reduction=reduction
+                focal_loss_with_logits, alpha=alpha, gamma=gamma, reduction=reduction
             )
 
     def forward(self, label_input, label_target):
@@ -87,7 +88,7 @@ class FocalLoss(_Loss):
                 cls_label_target = cls_label_target[not_ignored]
                 cls_label_input = cls_label_input[not_ignored]
 
-            loss += sigmoid_focal_loss(
+            loss += focal_loss_with_logits(
                 cls_label_input, cls_label_target, gamma=self.gamma, alpha=self.alpha
             )
         return loss

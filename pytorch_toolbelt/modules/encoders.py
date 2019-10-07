@@ -603,24 +603,34 @@ class DenseNetEncoder(EncoderModule):
         strides: List[int],
         channels: List[int],
         layers: List[int],
+        first_avg_pool=False,
     ):
+        if layers is None:
+            layers = [1, 2, 3, 4]
+
         super().__init__(channels, strides, layers)
+
+        def except_pool(block: nn.Module):
+            del block.pool
+            return block
 
         self.layer0 = nn.Sequential(
             densenet.features.conv0, densenet.features.norm0, densenet.features.relu0
         )
-        self.pool0 = densenet.features.pool0
+
+        self.avg_pool = nn.AvgPool2d(kernel_size=2, stride=2)
+        self.pool0 = self.avg_pool if first_avg_pool else densenet.features.pool0
 
         self.layer1 = nn.Sequential(
-            densenet.features.denseblock1, densenet.features.transition1
+            densenet.features.denseblock1, except_pool(densenet.features.transition1)
         )
 
         self.layer2 = nn.Sequential(
-            densenet.features.denseblock2, densenet.features.transition2
+            densenet.features.denseblock2, except_pool(densenet.features.transition2)
         )
 
         self.layer3 = nn.Sequential(
-            densenet.features.denseblock3, densenet.features.transition3
+            densenet.features.denseblock3, except_pool(densenet.features.transition3)
         )
 
         self.layer4 = nn.Sequential(densenet.features.denseblock4)
@@ -650,6 +660,9 @@ class DenseNetEncoder(EncoderModule):
             if layer == self.layer0:
                 # Fist maxpool operator is not a part of layer0 because we want that layer0 output to have stride of 2
                 output = self.pool0(output)
+            else:
+                output = self.avg_pool(output)
+
             input = output
 
         # Return only features that were requested
@@ -657,47 +670,50 @@ class DenseNetEncoder(EncoderModule):
 
 
 class DenseNet121Encoder(DenseNetEncoder):
-    def __init__(self, layers=None, pretrained=True, memory_efficient=False):
-        if layers is None:
-            layers = [1, 2, 3, 4]
+    def __init__(
+        self, layers=None, pretrained=True, memory_efficient=False, first_avg_pool=False
+    ):
         densenet = densenet121(pretrained=pretrained, memory_efficient=memory_efficient)
         strides = [2, 4, 8, 16, 32]
         channels = [64, 128, 256, 512, 1024]
-        super().__init__(densenet, strides, channels, layers)
+        super().__init__(densenet, strides, channels, layers, first_avg_pool)
 
 
 class DenseNet161Encoder(DenseNetEncoder):
-    def __init__(self, layers=None, pretrained=True, memory_efficient=False):
-        if layers is None:
-            layers = [1, 2, 3, 4]
+    def __init__(
+        self, layers=None, pretrained=True, memory_efficient=False, first_avg_pool=False
+    ):
         densenet = densenet161(pretrained=pretrained, memory_efficient=memory_efficient)
         strides = [2, 4, 8, 16, 32]
         channels = [96, 192, 384, 1056, 2208]
-        super().__init__(densenet, strides, channels, layers)
+        super().__init__(densenet, strides, channels, layers, first_avg_pool)
 
 
 class DenseNet169Encoder(DenseNetEncoder):
-    def __init__(self, layers=None, pretrained=True, memory_efficient=False):
-        if layers is None:
-            layers = [1, 2, 3, 4]
+    def __init__(
+        self, layers=None, pretrained=True, memory_efficient=False, first_avg_pool=False
+    ):
         densenet = densenet169(pretrained=pretrained, memory_efficient=memory_efficient)
         strides = [2, 4, 8, 16, 32]
         channels = [64, 128, 256, 640, 1664]
-        super().__init__(densenet, strides, channels, layers)
+        super().__init__(densenet, strides, channels, layers, first_avg_pool)
 
 
 class DenseNet201Encoder(DenseNetEncoder):
-    def __init__(self, layers=None, pretrained=True, memory_efficient=False):
-        if layers is None:
-            layers = [1, 2, 3, 4]
+    def __init__(
+        self, layers=None, pretrained=True, memory_efficient=False, first_avg_pool=False
+    ):
         densenet = densenet201(pretrained=pretrained, memory_efficient=memory_efficient)
         strides = [2, 4, 8, 16, 32]
         channels = [64, 128, 256, 896, 1920]
-        super().__init__(densenet, strides, channels, layers)
+        super().__init__(densenet, strides, channels, layers, first_avg_pool)
 
 
 class EfficientNetEncoder(EncoderModule):
     def __init__(self, efficientnet, filters, strides, layers):
+        if layers is None:
+            layers = [1, 2, 4, 6]
+
         super().__init__(filters, strides, layers)
 
         self.stem = efficientnet.stem
@@ -736,7 +752,7 @@ class EfficientNetEncoder(EncoderModule):
 
 
 class EfficientNetB0Encoder(EfficientNetEncoder):
-    def __init__(self, layers=[1, 2, 4, 6], **kwargs):
+    def __init__(self, layers=None, **kwargs):
         super().__init__(
             efficient_net_b0(num_classes=1, **kwargs),
             [16, 24, 40, 80, 112, 192, 320],
@@ -746,7 +762,7 @@ class EfficientNetB0Encoder(EfficientNetEncoder):
 
 
 class EfficientNetB1Encoder(EfficientNetEncoder):
-    def __init__(self, layers=[1, 2, 4, 6], **kwargs):
+    def __init__(self, layers=None, **kwargs):
         super().__init__(
             efficient_net_b1(num_classes=1, **kwargs),
             [16, 24, 40, 80, 112, 192, 320],
@@ -756,7 +772,7 @@ class EfficientNetB1Encoder(EfficientNetEncoder):
 
 
 class EfficientNetB2Encoder(EfficientNetEncoder):
-    def __init__(self, layers=[1, 2, 4, 6], **kwargs):
+    def __init__(self, layers=None, **kwargs):
         super().__init__(
             efficient_net_b2(num_classes=1, **kwargs),
             [16, 24, 48, 88, 120, 208, 352],
@@ -766,7 +782,7 @@ class EfficientNetB2Encoder(EfficientNetEncoder):
 
 
 class EfficientNetB3Encoder(EfficientNetEncoder):
-    def __init__(self, layers=[1, 2, 4, 6], **kwargs):
+    def __init__(self, layers=None, **kwargs):
         super().__init__(
             efficient_net_b3(num_classes=1, **kwargs),
             [24, 32, 48, 96, 136, 232, 384],
@@ -776,7 +792,7 @@ class EfficientNetB3Encoder(EfficientNetEncoder):
 
 
 class EfficientNetB4Encoder(EfficientNetEncoder):
-    def __init__(self, layers=[1, 2, 4, 6], **kwargs):
+    def __init__(self, layers=None, **kwargs):
         super().__init__(
             efficient_net_b4(num_classes=1, **kwargs),
             [24, 32, 56, 112, 160, 272, 448],
@@ -786,7 +802,7 @@ class EfficientNetB4Encoder(EfficientNetEncoder):
 
 
 class EfficientNetB5Encoder(EfficientNetEncoder):
-    def __init__(self, layers=[1, 2, 4, 6], **kwargs):
+    def __init__(self, layers=None, **kwargs):
         super().__init__(
             efficient_net_b5(num_classes=1, **kwargs),
             [24, 40, 64, 128, 176, 304, 512],
@@ -796,7 +812,7 @@ class EfficientNetB5Encoder(EfficientNetEncoder):
 
 
 class EfficientNetB6Encoder(EfficientNetEncoder):
-    def __init__(self, layers=[1, 2, 4, 6], **kwargs):
+    def __init__(self, layers=None, **kwargs):
         super().__init__(
             efficient_net_b6(num_classes=1, **kwargs),
             [32, 40, 72, 144, 200, 344, 576],
@@ -806,7 +822,7 @@ class EfficientNetB6Encoder(EfficientNetEncoder):
 
 
 class EfficientNetB7Encoder(EfficientNetEncoder):
-    def __init__(self, layers=[1, 2, 4, 6], **kwargs):
+    def __init__(self, layers=None, **kwargs):
         super().__init__(
             efficient_net_b7(num_classes=1, **kwargs),
             [32, 48, 80, 160, 224, 384, 640],

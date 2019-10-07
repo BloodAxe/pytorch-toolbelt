@@ -9,8 +9,8 @@ def test_sigmoid_focal_loss():
     input_bad = torch.Tensor([-1, 2, 0]).float()
     target = torch.Tensor([1, 0, 1])
 
-    loss_good = F.sigmoid_focal_loss(input_good, target)
-    loss_bad = F.sigmoid_focal_loss(input_bad, target)
+    loss_good = F.focal_loss_with_logits(input_good, target)
+    loss_bad = F.focal_loss_with_logits(input_bad, target)
     assert loss_good < loss_bad
 
 
