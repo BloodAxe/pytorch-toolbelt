@@ -32,8 +32,10 @@ from pytorch_toolbelt.modules.backbone.efficient_net import (
     efficient_net_b5,
     efficient_net_b7,
 )
+from pytorch_toolbelt.modules.backbone.inceptionv4 import InceptionV4
 from pytorch_toolbelt.modules.backbone.mobilenetv3 import MobileNetV3
-from pytorch_toolbelt.modules.backbone.wider_resnet import WiderResNet, WiderResNetA2
+from pytorch_toolbelt.modules.backbone.wider_resnet import WiderResNet, \
+    WiderResNetA2
 from .backbone.mobilenet import MobileNetV2
 from .backbone.senet import (
     SENet,
@@ -91,7 +93,8 @@ def _take(elements, indexes):
 
 
 class EncoderModule(nn.Module):
-    def __init__(self, channels: List[int], strides: List[int], layers: List[int]):
+    def __init__(self, channels: List[int], strides: List[int],
+                 layers: List[int]):
         super().__init__()
         assert len(channels) == len(strides)
 
@@ -135,7 +138,8 @@ class ResnetEncoder(EncoderModule):
 
         self.layer0 = nn.Sequential(
             OrderedDict(
-                [("conv1", resnet.conv1), ("bn1", resnet.bn1), ("relu", resnet.relu)]
+                [("conv1", resnet.conv1), ("bn1", resnet.bn1),
+                 ("relu", resnet.relu)]
             )
         )
         self.maxpool = resnet.maxpool
@@ -147,7 +151,8 @@ class ResnetEncoder(EncoderModule):
 
     @property
     def encoder_layers(self):
-        return [self.layer0, self.layer1, self.layer2, self.layer3, self.layer4]
+        return [self.layer0, self.layer1, self.layer2, self.layer3,
+                self.layer4]
 
     def forward(self, x):
         input = x
@@ -239,7 +244,8 @@ class SEResnetEncoder(EncoderModule):
 
     @property
     def encoder_layers(self):
-        return [self.layer0, self.layer1, self.layer2, self.layer3, self.layer4]
+        return [self.layer0, self.layer1, self.layer2, self.layer3,
+                self.layer4]
 
     @property
     def output_strides(self):
@@ -268,37 +274,45 @@ class SEResnetEncoder(EncoderModule):
 class SEResnet50Encoder(SEResnetEncoder):
     def __init__(self, pretrained=True, layers=None):
         encoder = se_resnet50(pretrained="imagenet" if pretrained else None)
-        super().__init__(encoder, [64, 256, 512, 1024, 2048], [2, 4, 8, 16, 32], layers)
+        super().__init__(encoder, [64, 256, 512, 1024, 2048],
+                         [2, 4, 8, 16, 32], layers)
 
 
 class SEResnet101Encoder(SEResnetEncoder):
     def __init__(self, pretrained=True, layers=None):
         encoder = se_resnet101(pretrained="imagenet" if pretrained else None)
-        super().__init__(encoder, [64, 256, 512, 1024, 2048], [2, 4, 8, 16, 32], layers)
+        super().__init__(encoder, [64, 256, 512, 1024, 2048],
+                         [2, 4, 8, 16, 32], layers)
 
 
 class SEResnet152Encoder(SEResnetEncoder):
     def __init__(self, pretrained=True, layers=None):
         encoder = se_resnet152(pretrained="imagenet" if pretrained else None)
-        super().__init__(encoder, [64, 256, 512, 1024, 2048], [2, 4, 8, 16, 32], layers)
+        super().__init__(encoder, [64, 256, 512, 1024, 2048],
+                         [2, 4, 8, 16, 32], layers)
 
 
 class SENet154Encoder(SEResnetEncoder):
     def __init__(self, pretrained=True, layers=None):
         encoder = senet154(pretrained="imagenet" if pretrained else None)
-        super().__init__(encoder, [64, 256, 512, 1024, 2048], [2, 4, 8, 16, 32], layers)
+        super().__init__(encoder, [64, 256, 512, 1024, 2048],
+                         [2, 4, 8, 16, 32], layers)
 
 
 class SEResNeXt50Encoder(SEResnetEncoder):
     def __init__(self, pretrained=True, layers=None):
-        encoder = se_resnext50_32x4d(pretrained="imagenet" if pretrained else None)
-        super().__init__(encoder, [64, 256, 512, 1024, 2048], [2, 4, 8, 16, 32], layers)
+        encoder = se_resnext50_32x4d(
+            pretrained="imagenet" if pretrained else None)
+        super().__init__(encoder, [64, 256, 512, 1024, 2048],
+                         [2, 4, 8, 16, 32], layers)
 
 
 class SEResNeXt101Encoder(SEResnetEncoder):
     def __init__(self, pretrained=True, layers=None):
-        encoder = se_resnext101_32x4d(pretrained="imagenet" if pretrained else None)
-        super().__init__(encoder, [64, 256, 512, 1024, 2048], [2, 4, 8, 16, 32], layers)
+        encoder = se_resnext101_32x4d(
+            pretrained="imagenet" if pretrained else None)
+        super().__init__(encoder, [64, 256, 512, 1024, 2048],
+                         [2, 4, 8, 16, 32], layers)
 
 
 class SqueezenetEncoder(EncoderModule):
@@ -355,7 +369,8 @@ class SqueezenetEncoder(EncoderModule):
 class MobilenetV2Encoder(EncoderModule):
     def __init__(self, layers=[2, 3, 5, 7], activation="relu6"):
         super().__init__(
-            [32, 16, 24, 32, 64, 96, 160, 320], [2, 2, 4, 8, 16, 16, 32, 32], layers
+            [32, 16, 24, 32, 64, 96, 160, 320], [2, 2, 4, 8, 16, 16, 32, 32],
+            layers
         )
         encoder = MobileNetV2(activation=activation)
 
@@ -384,7 +399,8 @@ class MobilenetV2Encoder(EncoderModule):
 
 class MobilenetV3Encoder(EncoderModule):
     def __init__(
-        self, input_channels=3, small=False, drop_prob=0.0, layers=[1, 2, 3, 4]
+            self, input_channels=3, small=False, drop_prob=0.0,
+            layers=[1, 2, 3, 4]
     ):
         super().__init__(
             [24, 24, 40, 96, 96] if small else [16, 40, 80, 160, 160],
@@ -432,13 +448,15 @@ class MobilenetV3Encoder(EncoderModule):
 
     @property
     def encoder_layers(self):
-        return [self.layer0, self.layer1, self.layer2, self.layer3, self.layer4]
+        return [self.layer0, self.layer1, self.layer2, self.layer3,
+                self.layer4]
 
 
 class WiderResnetEncoder(EncoderModule):
     def __init__(self, structure: List[int], layers: List[int], norm_act=ABN):
         super().__init__(
-            [64, 128, 256, 512, 1024, 2048, 4096], [1, 2, 4, 8, 16, 32, 32], layers
+            [64, 128, 256, 512, 1024, 2048, 4096], [1, 2, 4, 8, 16, 32, 32],
+            layers
         )
 
         encoder = WiderResNet(structure, classes=0, norm_act=norm_act)
@@ -520,10 +538,12 @@ class WiderResnet38Encoder(WiderResnetEncoder):
 class WiderResnetA2Encoder(EncoderModule):
     def __init__(self, structure: List[int], layers: List[int], norm_act=ABN):
         super().__init__(
-            [64, 128, 256, 512, 1024, 2048, 4096], [1, 2, 4, 8, 16, 32, 32], layers
+            [64, 128, 256, 512, 1024, 2048, 4096], [1, 2, 4, 8, 16, 32, 32],
+            layers
         )
 
-        encoder = WiderResNetA2(structure=structure, classes=0, norm_act=norm_act)
+        encoder = WiderResNetA2(structure=structure, classes=0,
+                                norm_act=norm_act)
         self.layer0 = encoder.mod1
         self.layer1 = encoder.mod2
         self.layer2 = encoder.mod3
@@ -598,12 +618,12 @@ class WiderResnet38A2Encoder(WiderResnetA2Encoder):
 
 class DenseNetEncoder(EncoderModule):
     def __init__(
-        self,
-        densenet: DenseNet,
-        strides: List[int],
-        channels: List[int],
-        layers: List[int],
-        first_avg_pool=False,
+            self,
+            densenet: DenseNet,
+            strides: List[int],
+            channels: List[int],
+            layers: List[int],
+            first_avg_pool=False,
     ):
         if layers is None:
             layers = [1, 2, 3, 4]
@@ -615,22 +635,26 @@ class DenseNetEncoder(EncoderModule):
             return block
 
         self.layer0 = nn.Sequential(
-            densenet.features.conv0, densenet.features.norm0, densenet.features.relu0
+            densenet.features.conv0, densenet.features.norm0,
+            densenet.features.relu0
         )
 
         self.avg_pool = nn.AvgPool2d(kernel_size=2, stride=2)
         self.pool0 = self.avg_pool if first_avg_pool else densenet.features.pool0
 
         self.layer1 = nn.Sequential(
-            densenet.features.denseblock1, except_pool(densenet.features.transition1)
+            densenet.features.denseblock1,
+            except_pool(densenet.features.transition1)
         )
 
         self.layer2 = nn.Sequential(
-            densenet.features.denseblock2, except_pool(densenet.features.transition2)
+            densenet.features.denseblock2,
+            except_pool(densenet.features.transition2)
         )
 
         self.layer3 = nn.Sequential(
-            densenet.features.denseblock3, except_pool(densenet.features.transition3)
+            densenet.features.denseblock3,
+            except_pool(densenet.features.transition3)
         )
 
         self.layer4 = nn.Sequential(densenet.features.denseblock4)
@@ -640,7 +664,8 @@ class DenseNetEncoder(EncoderModule):
 
     @property
     def encoder_layers(self):
-        return [self.layer0, self.layer1, self.layer2, self.layer3, self.layer4]
+        return [self.layer0, self.layer1, self.layer2, self.layer3,
+                self.layer4]
 
     @property
     def output_strides(self):
@@ -671,9 +696,11 @@ class DenseNetEncoder(EncoderModule):
 
 class DenseNet121Encoder(DenseNetEncoder):
     def __init__(
-        self, layers=None, pretrained=True, memory_efficient=False, first_avg_pool=False
+            self, layers=None, pretrained=True, memory_efficient=False,
+            first_avg_pool=False
     ):
-        densenet = densenet121(pretrained=pretrained, memory_efficient=memory_efficient)
+        densenet = densenet121(pretrained=pretrained,
+                               memory_efficient=memory_efficient)
         strides = [2, 4, 8, 16, 32]
         channels = [64, 128, 256, 512, 1024]
         super().__init__(densenet, strides, channels, layers, first_avg_pool)
@@ -681,9 +708,11 @@ class DenseNet121Encoder(DenseNetEncoder):
 
 class DenseNet161Encoder(DenseNetEncoder):
     def __init__(
-        self, layers=None, pretrained=True, memory_efficient=False, first_avg_pool=False
+            self, layers=None, pretrained=True, memory_efficient=False,
+            first_avg_pool=False
     ):
-        densenet = densenet161(pretrained=pretrained, memory_efficient=memory_efficient)
+        densenet = densenet161(pretrained=pretrained,
+                               memory_efficient=memory_efficient)
         strides = [2, 4, 8, 16, 32]
         channels = [96, 192, 384, 1056, 2208]
         super().__init__(densenet, strides, channels, layers, first_avg_pool)
@@ -691,9 +720,11 @@ class DenseNet161Encoder(DenseNetEncoder):
 
 class DenseNet169Encoder(DenseNetEncoder):
     def __init__(
-        self, layers=None, pretrained=True, memory_efficient=False, first_avg_pool=False
+            self, layers=None, pretrained=True, memory_efficient=False,
+            first_avg_pool=False
     ):
-        densenet = densenet169(pretrained=pretrained, memory_efficient=memory_efficient)
+        densenet = densenet169(pretrained=pretrained,
+                               memory_efficient=memory_efficient)
         strides = [2, 4, 8, 16, 32]
         channels = [64, 128, 256, 640, 1664]
         super().__init__(densenet, strides, channels, layers, first_avg_pool)
@@ -701,9 +732,11 @@ class DenseNet169Encoder(DenseNetEncoder):
 
 class DenseNet201Encoder(DenseNetEncoder):
     def __init__(
-        self, layers=None, pretrained=True, memory_efficient=False, first_avg_pool=False
+            self, layers=None, pretrained=True, memory_efficient=False,
+            first_avg_pool=False
     ):
-        densenet = densenet201(pretrained=pretrained, memory_efficient=memory_efficient)
+        densenet = densenet201(pretrained=pretrained,
+                               memory_efficient=memory_efficient)
         strides = [2, 4, 8, 16, 32]
         channels = [64, 128, 256, 896, 1920]
         super().__init__(densenet, strides, channels, layers, first_avg_pool)
@@ -829,3 +862,44 @@ class EfficientNetB7Encoder(EfficientNetEncoder):
             [2, 4, 8, 16, 16, 32, 32],
             layers,
         )
+
+
+class InceptionV4Encoder(EncoderModule):
+    def __init__(self, inceptionv4: InceptionV4, layers=None, **kwargs):
+        features = inceptionv4.features
+        self.layer0 = nn.Sequential(features[0:0 + 3])
+        self.layer1 = nn.Sequential(features[3:3 + 3])
+        self.layer2 = nn.Sequential(features[10:10 + 8])
+        self.layer3 = nn.Sequential(features[18:18 + 4])
+
+        channels = [1536]
+        strides = [32]
+        if layers is None:
+            layers = [1, 2, 3, 4]
+
+        super().__init__(channels, strides, layers)
+        self._output_strides = _take(strides, layers)
+        self._output_filters = _take(channels, layers)
+
+    def forward(self, x):
+        input = x
+        output_features = []
+        for layer in self.encoder_layers:
+            output = layer(input)
+            output_features.append(output)
+
+            # if layer == self.layer0:
+            #     # Fist maxpool operator is not a part of layer0 because we want that layer0 output to have stride of 2
+            #     output = self.pool0(output)
+            # else:
+            #     output = self.avg_pool(output)
+
+            input = output
+
+        # Return only features that were requested
+        return _take(output_features, self._layers)
+
+    @property
+    def encoder_layers(self):
+        return [self.layer0, self.layer1, self.layer2, self.layer3,
+                self.layer4]
