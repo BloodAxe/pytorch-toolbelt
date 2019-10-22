@@ -259,11 +259,11 @@ class MultiscaleTTAWrapper(nn.Module):
         for scale in self.scale_levels:
             dst_size = int(h * scale), int(w * scale)
             input_scaled = interpolate(
-                input, dst_size, mode="bilinear", align_corners=True
+                input, dst_size, mode="bilinear", align_corners=False
             )
             output_scaled = self.model(input_scaled)
             output_scaled = interpolate(
-                output_scaled, out_size, mode="bilinear", align_corners=True
+                output_scaled, out_size, mode="bilinear", align_corners=False
             )
             output += output_scaled
 

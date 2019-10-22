@@ -118,7 +118,7 @@ class UnetDecoderBlock(nn.Module):
 
     def forward(self, x, enc):
         lat_size = enc.size()[2:]
-        x = F.interpolate(x, size=lat_size, mode="bilinear", align_corners=True)
+        x = F.interpolate(x, size=lat_size, mode="bilinear", align_corners=False)
 
         x = torch.cat([x, enc], 1)
 

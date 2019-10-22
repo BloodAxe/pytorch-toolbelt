@@ -70,7 +70,7 @@ class FPNDecoder(DecoderModule):
         fpn_features=128,
         prediction_features=128,
         mode="bilinear",
-        align_corners=True,
+        align_corners=False,
         upsample_scale=None,
     ):
         """

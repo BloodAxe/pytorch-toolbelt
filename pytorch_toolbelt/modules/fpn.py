@@ -54,7 +54,7 @@ class FPNPredictionBlock(nn.Module):
                 y,
                 size=x.size()[2:],
                 mode=self.mode,
-                align_corners=True if self.mode == "bilinear" else None,
+                align_corners=False if self.mode == "bilinear" else None,
             )
 
         x = self.conv(x)
@@ -135,7 +135,7 @@ class UpsampleAddConv(nn.Module):
 
 
 class FPNFuse(nn.Module):
-    def __init__(self, mode="bilinear", align_corners=True):
+    def __init__(self, mode="bilinear", align_corners=False):
         super().__init__()
         self.mode = mode
         self.align_corners = align_corners
@@ -157,7 +157,7 @@ class FPNFuse(nn.Module):
 class FPNFuseSum(nn.Module):
     """Compute a sum of individual FPN layers"""
 
-    def __init__(self, mode="bilinear", align_corners=True):
+    def __init__(self, mode="bilinear", align_corners=False):
         super().__init__()
         self.mode = mode
         self.align_corners = align_corners

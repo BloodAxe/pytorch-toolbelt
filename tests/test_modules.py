@@ -110,3 +110,14 @@ def test_inceptionv4_encoder():
     out = net(x)
     for fm in out:
         print(fm.size())
+
+
+@torch.no_grad()
+@skip_if_no_cuda
+def test_densenet():
+    from torchvision.models import densenet121
+    net1 = E.DenseNet121Encoder()
+    net2 = densenet121(pretrained=False)
+    net2.classifier = None
+
+    print(count_parameters(net1), count_parameters(net2))
