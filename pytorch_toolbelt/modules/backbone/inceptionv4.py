@@ -1,3 +1,6 @@
+# Orignal source
+# https://github.com/Cadene/pretrained-models.pytorch/blob/master/pretrainedmodels/models/inceptionv4.py
+
 from __future__ import print_function, division, absolute_import
 
 import torch

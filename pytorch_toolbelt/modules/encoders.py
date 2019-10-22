@@ -85,6 +85,7 @@ __all__ = [
     "EfficientNetB5Encoder",
     "EfficientNetB6Encoder",
     "EfficientNetB7Encoder",
+    "InceptionV4Encoder"
 ]
 
 
@@ -866,18 +867,19 @@ class EfficientNetB7Encoder(EfficientNetEncoder):
 
 class InceptionV4Encoder(EncoderModule):
     def __init__(self, inceptionv4: InceptionV4, layers=None, **kwargs):
-        features = inceptionv4.features
-        self.layer0 = nn.Sequential(features[0:0 + 3])
-        self.layer1 = nn.Sequential(features[3:3 + 3])
-        self.layer2 = nn.Sequential(features[10:10 + 8])
-        self.layer3 = nn.Sequential(features[18:18 + 4])
-
-        channels = [1536]
-        strides = [32]
+        channels = [64, 384, 384, 1024, 1536]
+        strides = [2, 4, 8, 16, 32]
         if layers is None:
             layers = [1, 2, 3, 4]
-
+        features = inceptionv4.features
         super().__init__(channels, strides, layers)
+
+        self.layer0 = nn.Sequential(features[0:0 + 3])
+        self.layer1 = nn.Sequential(features[3:3 + 3])
+        self.layer2 = nn.Sequential(features[6:6 + 4])
+        self.layer3 = nn.Sequential(features[10:10 + 8])
+        self.layer4 = nn.Sequential(features[18:18 + 4])
+
         self._output_strides = _take(strides, layers)
         self._output_filters = _take(channels, layers)
 
@@ -887,13 +889,6 @@ class InceptionV4Encoder(EncoderModule):
         for layer in self.encoder_layers:
             output = layer(input)
             output_features.append(output)
-
-            # if layer == self.layer0:
-            #     # Fist maxpool operator is not a part of layer0 because we want that layer0 output to have stride of 2
-            #     output = self.pool0(output)
-            # else:
-            #     output = self.avg_pool(output)
-
             input = output
 
         # Return only features that were requested
@@ -901,5 +896,8 @@ class InceptionV4Encoder(EncoderModule):
 
     @property
     def encoder_layers(self):
-        return [self.layer0, self.layer1, self.layer2, self.layer3,
+        return [self.layer0,
+                self.layer1,
+                self.layer2,
+                self.layer3,
                 self.layer4]
