@@ -2,6 +2,7 @@ import pytest
 import torch
 
 import pytorch_toolbelt.modules.encoders as E
+from pytorch_toolbelt.modules.backbone.inceptionv4 import inceptionv4
 from pytorch_toolbelt.modules.fpn import HFF
 from pytorch_toolbelt.utils.torch_utils import maybe_cuda, count_parameters
 
@@ -15,7 +16,8 @@ skip_if_no_cuda = pytest.mark.skipif(
     [
         [E.Resnet34Encoder, {"pretrained": False}],
         [E.Resnet50Encoder, {"pretrained": False}],
-        [E.SEResNeXt50Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [E.SEResNeXt50Encoder,
+         {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
         [E.SEResnet50Encoder, {"pretrained": False}],
         [E.Resnet152Encoder, {"pretrained": False}],
         [E.Resnet101Encoder, {"pretrained": False}],
@@ -56,7 +58,7 @@ def test_encoders(encoder: E.EncoderModule, encoder_params):
     output = net(input)
     assert len(output) == len(net.output_filters)
     for feature_map, expected_stride, expected_channels in zip(
-        output, net.output_strides, net.output_filters
+            output, net.output_strides, net.output_filters
     ):
         assert feature_map.size(1) == expected_channels
         assert feature_map.size(2) * expected_stride == 256
@@ -90,3 +92,21 @@ def test_hff_static_size():
     output = hff(feature_maps)
     assert output.size(2) == 512
     assert output.size(3) == 512
+
+
+@torch.no_grad()
+@skip_if_no_cuda
+def test_inceptionv4_encoder():
+    backbone = inceptionv4(pretrained=False)
+    backbone.last_linear = None
+
+    net = E.InceptionV4Encoder(backbone, layers=[0, 1, 2, 3, 4]).cuda()
+
+    print(count_parameters(backbone))
+    print(count_parameters(net))
+
+    x = torch.randn((4, 3, 512, 512)).cuda()
+
+    out = net(x)
+    for fm in out:
+        print(fm.size())
