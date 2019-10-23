@@ -32,7 +32,8 @@ from pytorch_toolbelt.modules.backbone.efficient_net import (
     efficient_net_b5,
     efficient_net_b7,
 )
-from pytorch_toolbelt.modules.backbone.inceptionv4 import InceptionV4
+from pytorch_toolbelt.modules.backbone.inceptionv4 import InceptionV4, \
+    inceptionv4
 from pytorch_toolbelt.modules.backbone.mobilenetv3 import MobileNetV3
 from pytorch_toolbelt.modules.backbone.wider_resnet import WiderResNet, \
     WiderResNetA2
@@ -866,19 +867,20 @@ class EfficientNetB7Encoder(EfficientNetEncoder):
 
 
 class InceptionV4Encoder(EncoderModule):
-    def __init__(self, inceptionv4: InceptionV4, layers=None, **kwargs):
-        channels = [64, 384, 384, 1024, 1536]
-        strides = [2, 4, 8, 16, 32]
+    def __init__(self, pretrained=True, layers=None, **kwargs):
+        backbone = inceptionv4(pretrained="imagenet" if pretrained else None)
+        channels = [64, 192, 384, 1024, 1536]
+        strides = [2, 4, 8, 16, 32] # Note output strides are approximate
         if layers is None:
             layers = [1, 2, 3, 4]
-        features = inceptionv4.features
+        features = backbone.features
         super().__init__(channels, strides, layers)
 
-        self.layer0 = nn.Sequential(features[0:0 + 3])
-        self.layer1 = nn.Sequential(features[3:3 + 3])
-        self.layer2 = nn.Sequential(features[6:6 + 4])
-        self.layer3 = nn.Sequential(features[10:10 + 8])
-        self.layer4 = nn.Sequential(features[18:18 + 4])
+        self.layer0 = features[0:3]
+        self.layer1 = features[3:5]
+        self.layer2 = features[5:10]
+        self.layer3 = features[10:18]
+        self.layer4 = features[18:22]
 
         self._output_strides = _take(strides, layers)
         self._output_filters = _take(channels, layers)
