@@ -1,6 +1,6 @@
 from __future__ import absolute_import
-import torch
 
+import torch
 from torch import nn
 from torch.nn import functional as F
 
@@ -176,10 +176,15 @@ class FPNFuseSum(nn.Module):
 
 class HFF(nn.Module):
     """
-    Hierarchical feature fusion
-
+    Hierarchical feature fusion module.
     https://arxiv.org/pdf/1811.11431.pdf
     https://arxiv.org/pdf/1803.06815.pdf
+
+    What it does is easily explained in code:
+    feature_map_N - feature_map of the smallest resolution
+    feature_map_0 - feature_map of the highest resolution
+
+    >>> feature_map = feature_map_0 + up(feature_map[1] + up(feature_map[2] + up(feature_map[3] + ...))))
     """
 
     def __init__(

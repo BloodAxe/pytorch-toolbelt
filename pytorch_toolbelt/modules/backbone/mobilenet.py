@@ -1,7 +1,8 @@
 from __future__ import absolute_import
 
-import torch.nn as nn
 import math
+
+import torch.nn as nn
 
 from ..activations import get_activation_module
 

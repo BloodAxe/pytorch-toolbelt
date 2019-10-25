@@ -42,7 +42,8 @@ class GlobalMaxPool2d(nn.Module):
 
 class GWAP(nn.Module):
     """
-    Global Weighted Average Pooling from paper "Global Weighted Average Pooling Bridges Pixel-level Localization and Image-level Classification"
+    Global Weighted Average Pooling from paper "Global Weighted Average
+    Pooling Bridges Pixel-level Localization and Image-level Classification"
     """
 
     def __init__(self, features):

@@ -3,8 +3,9 @@ ResNet code gently borrowed from
 https://github.com/pytorch/vision/blob/master/torchvision/models/resnet.py
 """
 from __future__ import print_function, division, absolute_import
-from collections import OrderedDict
+
 import math
+from collections import OrderedDict
 
 import torch.nn as nn
 from torch.utils import model_zoo

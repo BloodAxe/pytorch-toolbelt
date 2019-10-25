@@ -2,11 +2,10 @@ from collections import OrderedDict
 from functools import partial
 
 import torch
-from torch import nn
-
 from pytorch_toolbelt.modules.abn import ABN
 from pytorch_toolbelt.modules.pooling import GlobalAvgPool2d
 from pytorch_toolbelt.utils.torch_utils import count_parameters
+from torch import nn
 
 
 class IdentityResidualBlock(nn.Module):

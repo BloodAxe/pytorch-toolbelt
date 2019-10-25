@@ -1,5 +1,5 @@
-"""Implementation of the CoordConv modules from https://arxiv.org/abs/1807.03247
-
+"""
+Implementation of the CoordConv modules from https://arxiv.org/abs/1807.03247
 """
 
 import torch
