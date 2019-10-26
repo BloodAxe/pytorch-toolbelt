@@ -364,28 +364,3 @@ class MobileNetV3(nn.Module):
         return x
 
 
-if __name__ == "__main__":
-    """Testing
-    """
-    from pytorch_toolbelt.utils.torch_utils import count_parameters
-
-    model1 = MobileNetV3()
-    print(model1, count_parameters(model1))
-
-    model2 = MobileNetV3(scale=0.35)
-    print(model2, count_parameters(model2))
-
-    model3 = MobileNetV3(in_channels=2, num_classes=10)
-    print(model3, count_parameters(model3))
-
-    x = torch.randn(1, 2, 224, 224)
-    print(model3(x))
-
-    model4_size = 32 * 10
-    model4 = MobileNetV3(num_classes=10)
-    print(model4, count_parameters(model4))
-    x2 = torch.randn(1, 3, model4_size, model4_size)
-    print(model4(x2))
-
-    model5 = MobileNetV3(scale=0.35, small=True)
-    print(model5, count_parameters(model5))

@@ -4,12 +4,13 @@ from copy import deepcopy
 from typing import List
 
 import torch
-from pytorch_toolbelt.modules import ABN, SpatialGate2d
-from pytorch_toolbelt.modules.activations import ACT_HARD_SWISH
-from pytorch_toolbelt.modules.agn import AGN
 from torch import nn
 from torch.nn import functional as F
 from torch.nn.init import kaiming_normal_
+
+from pytorch_toolbelt.modules import ABN, SpatialGate2d
+from pytorch_toolbelt.modules.activations import ACT_HARD_SWISH
+from pytorch_toolbelt.modules.agn import AGN
 
 
 def round_filters(filters, width_coefficient, depth_divisor, min_depth):

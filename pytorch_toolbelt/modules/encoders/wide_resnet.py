@@ -1,6 +1,6 @@
 from typing import List
 
-from pytorch_toolbelt.modules.abn import ABN
+from ..modules.abn import ABN
 from pytorch_toolbelt.modules.backbone.wider_resnet import WiderResNet, WiderResNetA2
 
 from .common import EncoderModule, _take

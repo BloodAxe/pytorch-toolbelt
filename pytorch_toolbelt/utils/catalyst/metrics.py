@@ -3,8 +3,8 @@ from functools import partial
 import numpy as np
 import torch
 from catalyst.dl import Callback, RunnerState, MetricCallback, CallbackOrder
-from pytorch_toolbelt.utils.catalyst.visualization import get_tensorboard_logger
-from pytorch_toolbelt.utils.torch_utils import to_numpy
+from .visualization import get_tensorboard_logger
+from ..torch_utils import to_numpy
 from pytorch_toolbelt.utils.visualization import (
     render_figure_to_tensor,
     plot_confusion_matrix,

@@ -1,6 +1,6 @@
 from torch import nn
 from .common import DecoderModule
-from ..fpn import FPNBottleneckBlock, UpsampleAddConv, FPNPredictionBlock
+from ..fpn import FPNBottleneckBlock, UpsampleAdd, FPNPredictionBlock
 
 
 class FPNDecoder(DecoderModule):
@@ -8,7 +8,7 @@ class FPNDecoder(DecoderModule):
         self,
         features,
         bottleneck=FPNBottleneckBlock,
-        upsample_add_block=UpsampleAddConv,
+        upsample_add_block=UpsampleAdd,
         prediction_block=FPNPredictionBlock,
         fpn_features=128,
         prediction_features=128,

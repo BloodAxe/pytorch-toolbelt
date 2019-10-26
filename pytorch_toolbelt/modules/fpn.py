@@ -39,7 +39,7 @@ class FPNBottleneckBlockBN(nn.Module):
 
 
 class FPNPredictionBlock(nn.Module):
-    def __init__(self, input_channels, output_channels, mode="nearest"):
+    def __init__(self, input_channels, output_channels, mode="nearest", align_corners=None):
         super().__init__()
         self.input_channels = input_channels
         self.output_channels = output_channels
@@ -47,16 +47,9 @@ class FPNPredictionBlock(nn.Module):
             self.input_channels, self.output_channels, kernel_size=3, padding=1
         )
         self.mode = mode
+        self.align_corners = align_corners
 
-    def forward(self, x, y=None):
-        if y is not None:
-            x = x + F.interpolate(
-                y,
-                size=x.size()[2:],
-                mode=self.mode,
-                align_corners=False if self.mode == "bilinear" else None,
-            )
-
+    def forward(self, x):
         x = self.conv(x)
         return x
 

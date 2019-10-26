@@ -1,4 +1,4 @@
-from pytorch_toolbelt.modules.backbone.efficient_net import (
+from ..backbone.efficient_net import (
     efficient_net_b0,
     efficient_net_b6,
     efficient_net_b1,
