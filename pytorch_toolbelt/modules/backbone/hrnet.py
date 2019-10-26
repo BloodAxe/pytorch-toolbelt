@@ -5,15 +5,13 @@ https://github.com/HRNet/HRNet-Semantic-Segmentation
 
 import os
 import sys
+from collections import OrderedDict
 from urllib.request import urlretrieve
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-model_urls = {
-    "hrnetv2_48": "http://sceneparsing.csail.mit.edu/model/pretrained_resnet/hrnetv2_w48-imagenet.pth"
-}
 
 HRNETV2_BN_MOMENTUM = 0.1
 
@@ -21,8 +19,7 @@ HRNETV2_BN_MOMENTUM = 0.1
 def hrnet_conv3x3(in_planes, out_planes, stride=1):
     """3x3 convolution with padding"""
     return nn.Conv2d(
-        in_planes, out_planes, kernel_size=3, stride=stride, padding=1,
-        bias=False
+        in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=False
     )
 
 
@@ -72,8 +69,7 @@ class HRNetBottleneck(nn.Module):
         self.conv3 = nn.Conv2d(
             planes, planes * self.expansion, kernel_size=1, bias=False
         )
-        self.bn3 = nn.BatchNorm2d(planes * self.expansion,
-                                  momentum=HRNETV2_BN_MOMENTUM)
+        self.bn3 = nn.BatchNorm2d(planes * self.expansion, momentum=HRNETV2_BN_MOMENTUM)
         self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
         self.stride = stride
@@ -103,14 +99,14 @@ class HRNetBottleneck(nn.Module):
 
 class HighResolutionModule(nn.Module):
     def __init__(
-            self,
-            num_branches,
-            blocks,
-            num_blocks,
-            num_inchannels,
-            num_channels,
-            fuse_method,
-            multi_scale_output=True,
+        self,
+        num_branches,
+        blocks,
+        num_blocks,
+        num_inchannels,
+        num_channels,
+        fuse_method,
+        multi_scale_output=True,
     ):
         super(HighResolutionModule, self).__init__()
         self._check_branches(
@@ -130,8 +126,7 @@ class HighResolutionModule(nn.Module):
         self.relu = nn.ReLU(inplace=True)
 
     def _check_branches(
-            self, num_branches, blocks, num_blocks, num_inchannels,
-            num_channels
+        self, num_branches, blocks, num_blocks, num_inchannels, num_channels
     ):
         if num_branches != len(num_blocks):
             error_msg = "NUM_BRANCHES({}) <> NUM_BLOCKS({})".format(
@@ -151,13 +146,12 @@ class HighResolutionModule(nn.Module):
             )
             raise ValueError(error_msg)
 
-    def _make_one_branch(self, branch_index, block, num_blocks, num_channels,
-                         stride=1):
+    def _make_one_branch(self, branch_index, block, num_blocks, num_channels, stride=1):
         downsample = None
         if (
-                stride != 1
-                or self.num_inchannels[branch_index]
-                != num_channels[branch_index] * block.expansion
+            stride != 1
+            or self.num_inchannels[branch_index]
+            != num_channels[branch_index] * block.expansion
         ):
             downsample = nn.Sequential(
                 nn.Conv2d(
@@ -182,12 +176,10 @@ class HighResolutionModule(nn.Module):
                 downsample,
             )
         )
-        self.num_inchannels[branch_index] = num_channels[
-                                                branch_index] * block.expansion
+        self.num_inchannels[branch_index] = num_channels[branch_index] * block.expansion
         for i in range(1, num_blocks[branch_index]):
             layers.append(
-                block(self.num_inchannels[branch_index],
-                      num_channels[branch_index])
+                block(self.num_inchannels[branch_index], num_channels[branch_index])
             )
 
         return nn.Sequential(*layers)
@@ -196,8 +188,7 @@ class HighResolutionModule(nn.Module):
         branches = []
 
         for i in range(num_branches):
-            branches.append(
-                self._make_one_branch(i, block, num_blocks, num_channels))
+            branches.append(self._make_one_branch(i, block, num_blocks, num_channels))
 
         return nn.ModuleList(branches)
 
@@ -340,13 +331,28 @@ class HRNetV2(nn.Module):
         }
 
         # stem net
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=2, padding=1,
-                               bias=False)
-        self.bn1 = nn.BatchNorm2d(64, momentum=HRNETV2_BN_MOMENTUM)
-        self.conv2 = nn.Conv2d(64, 64, kernel_size=3, stride=2, padding=1,
-                               bias=False)
-        self.bn2 = nn.BatchNorm2d(64, momentum=HRNETV2_BN_MOMENTUM)
-        self.relu = nn.ReLU(inplace=True)
+        self.layer0 = nn.Sequential(
+            OrderedDict(
+                [
+                    (
+                        "conv1",
+                        nn.Conv2d(
+                            3, 64, kernel_size=3, stride=2, padding=1, bias=False
+                        ),
+                    ),
+                    ("bn1", nn.BatchNorm2d(64, momentum=HRNETV2_BN_MOMENTUM)),
+                    ("relu", nn.ReLU(inplace=True)),
+                    (
+                        "conv2",
+                        nn.Conv2d(
+                            64, 64, kernel_size=3, stride=2, padding=1, bias=False
+                        ),
+                    ),
+                    ("bn2", nn.BatchNorm2d(64, momentum=HRNETV2_BN_MOMENTUM)),
+                    ("relu2", nn.ReLU(inplace=True)),
+                ]
+            )
+        )
 
         self.layer1 = self._make_layer(HRNetBottleneck, 64, 64, 4)
 
@@ -367,8 +373,7 @@ class HRNetV2(nn.Module):
         num_channels = [
             num_channels[i] * block.expansion for i in range(len(num_channels))
         ]
-        self.transition2 = self._make_transition_layer(pre_stage_channels,
-                                                       num_channels)
+        self.transition2 = self._make_transition_layer(pre_stage_channels, num_channels)
         self.stage3, pre_stage_channels = self._make_stage(
             self.stage3_cfg, num_channels
         )
@@ -379,14 +384,12 @@ class HRNetV2(nn.Module):
         num_channels = [
             num_channels[i] * block.expansion for i in range(len(num_channels))
         ]
-        self.transition3 = self._make_transition_layer(pre_stage_channels,
-                                                       num_channels)
+        self.transition3 = self._make_transition_layer(pre_stage_channels, num_channels)
         self.stage4, pre_stage_channels = self._make_stage(
             self.stage4_cfg, num_channels, multi_scale_output=True
         )
 
-    def _make_transition_layer(self, num_channels_pre_layer,
-                               num_channels_cur_layer):
+    def _make_transition_layer(self, num_channels_pre_layer, num_channels_cur_layer):
         num_branches_cur = len(num_channels_cur_layer)
         num_branches_pre = len(num_channels_pre_layer)
 
@@ -405,8 +408,7 @@ class HRNetV2(nn.Module):
                                 bias=False,
                             ),
                             nn.BatchNorm2d(
-                                num_channels_cur_layer[i],
-                                momentum=HRNETV2_BN_MOMENTUM
+                                num_channels_cur_layer[i], momentum=HRNETV2_BN_MOMENTUM
                             ),
                             nn.ReLU(inplace=True),
                         )
@@ -424,10 +426,8 @@ class HRNetV2(nn.Module):
                     )
                     conv3x3s.append(
                         nn.Sequential(
-                            nn.Conv2d(inchannels, outchannels, 3, 2, 1,
-                                      bias=False),
-                            nn.BatchNorm2d(outchannels,
-                                           momentum=HRNETV2_BN_MOMENTUM),
+                            nn.Conv2d(inchannels, outchannels, 3, 2, 1, bias=False),
+                            nn.BatchNorm2d(outchannels, momentum=HRNETV2_BN_MOMENTUM),
                             nn.ReLU(inplace=True),
                         )
                     )
@@ -446,8 +446,7 @@ class HRNetV2(nn.Module):
                     stride=stride,
                     bias=False,
                 ),
-                nn.BatchNorm2d(planes * block.expansion,
-                               momentum=HRNETV2_BN_MOMENTUM),
+                nn.BatchNorm2d(planes * block.expansion, momentum=HRNETV2_BN_MOMENTUM),
             )
 
         layers = []
@@ -458,8 +457,7 @@ class HRNetV2(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def _make_stage(self, layer_config, num_inchannels,
-                    multi_scale_output=True):
+    def _make_stage(self, layer_config, num_inchannels, multi_scale_output=True):
 
         blocks_dict = {"BASIC": HRNetBasicBlock, "BOTTLENECK": HRNetBottleneck}
 
@@ -493,12 +491,7 @@ class HRNetV2(nn.Module):
         return nn.Sequential(*modules), num_inchannels
 
     def forward(self, x, return_feature_maps=False):
-        x = self.conv1(x)
-        x = self.bn1(x)
-        x = self.relu(x)
-        x = self.conv2(x)
-        x = self.bn2(x)
-        x = self.relu(x)
+        x = self.layer0(x)
         x = self.layer1(x)
 
         x_list = []
@@ -543,21 +536,6 @@ class HRNetV2(nn.Module):
         return [x]
 
 
-def hrnetv2(pretrained=False, **kwargs):
+def hrnetv2(**kwargs):
     model = HRNetV2(**kwargs)
-    if pretrained:
-
-        def load_url(url, model_dir="./pretrained", map_location=None):
-            if not os.path.exists(model_dir):
-                os.makedirs(model_dir)
-            filename = url.split("/")[-1]
-            cached_file = os.path.join(model_dir, filename)
-            if not os.path.exists(cached_file):
-                sys.stderr.write(
-                    'Downloading: "{}" to {}\n'.format(url, cached_file))
-                urlretrieve(url, cached_file)
-            return torch.load(cached_file, map_location=map_location)
-
-        model.load_state_dict(load_url(model_urls["hrnetv2_48"]), strict=False)
-
     return model

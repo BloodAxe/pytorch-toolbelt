@@ -163,17 +163,23 @@ class MBConvBlock(nn.Module):
 
     def reset_parameters(self):
         if hasattr(self, "expand_conv"):
-            kaiming_normal_(self.expand_conv.weight,
-                            a=self.abn0.slope,
-                            nonlinearity=self.abn0.activation)
+            kaiming_normal_(
+                self.expand_conv.weight,
+                a=self.abn0.slope,
+                nonlinearity=self.abn0.activation,
+            )
 
-        kaiming_normal_(self.depthwise_conv.weight,
-                        a=self.abn1.slope,
-                        nonlinearity=self.abn1.activation)
+        kaiming_normal_(
+            self.depthwise_conv.weight,
+            a=self.abn1.slope,
+            nonlinearity=self.abn1.activation,
+        )
 
-        kaiming_normal_(self.project_conv.weight,
-                        a=self.abn1.slope,
-                        nonlinearity=self.abn2.activation)
+        kaiming_normal_(
+            self.project_conv.weight,
+            a=self.abn1.slope,
+            nonlinearity=self.abn2.activation,
+        )
 
     def forward(self, inputs, drop_connect_rate=None):
         """

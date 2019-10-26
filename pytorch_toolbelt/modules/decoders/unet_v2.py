@@ -2,11 +2,10 @@ from typing import List
 
 import torch
 import torch.nn.functional as F
-from pytorch_toolbelt.modules import ABN
-from pytorch_toolbelt.modules.decoders import DecoderModule
-from pytorch_toolbelt.modules.encoders import SEResnet101Encoder
-from pytorch_toolbelt.utils.torch_utils import count_parameters
 from torch import nn
+
+from ..abn import ABN
+from .common import DecoderModule
 
 __all__ = ["UNetDecoderV2", "UnetCentralBlockV2", "UnetDecoderBlockV2"]
 
@@ -114,7 +113,9 @@ class UNetDecoderV2(DecoderModule):
                 )
             )
 
-        self.center = UnetCentralBlockV2(features[-1], decoder_features[-1], mask_channels)
+        self.center = UnetCentralBlockV2(
+            features[-1], decoder_features[-1], mask_channels
+        )
         self.blocks = nn.ModuleList(blocks)
         self.output_filters = decoder_features
 
@@ -135,22 +136,3 @@ class UNetDecoderV2(DecoderModule):
         decoder_outputs = list(reversed(decoder_outputs))
 
         return decoder_outputs, dsv_list
-
-
-@torch.no_grad()
-def test_unetv2():
-    encoder = SEResnet101Encoder().cuda().eval()
-    decoder = (
-        UNetDecoderV2(encoder.output_filters, [128, 192, 256, 512], 5).cuda().eval()
-    )
-
-    print(count_parameters(encoder))
-    print(count_parameters(decoder))
-    print(decoder)
-
-    x = torch.rand((1, 3, 256, 512)).cuda()
-    fm = encoder(x)
-    fm2 = decoder(fm)
-
-    for fm, dsv in fm2:
-        print(fm.size(), dsv.size())

@@ -1,20 +1,19 @@
-import math
+from typing import List
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from .common import DecoderModule
 
 __all__ = ["DeeplabV3Decoder"]
 
 
-class DeeplabV3Decoder(nn.Module):
-    def __init__(
-        self,
-        high_level_features: int,
-        low_level_features: int,
-        num_classes: int,
-        dropout=0.5,
-    ):
+class DeeplabV3Decoder(DecoderModule):
+    def __init__(self, feature_maps: List[int], num_classes: int, dropout=0.5):
         super(DeeplabV3Decoder, self).__init__()
+
+        low_level_features = feature_maps[0]
+        high_level_features = feature_maps[-1]
 
         self.conv1 = nn.Conv2d(low_level_features, 48, 1, bias=False)
         self.bn1 = nn.BatchNorm2d(48)
@@ -40,18 +39,24 @@ class DeeplabV3Decoder(nn.Module):
         )
         self.reset_parameters()
 
-    def forward(self, x, low_level_feat):
+    def forward(self, feature_maps):
+        high_level_features = feature_maps[-1]
+        low_level_feat = feature_maps[0]
+
         low_level_feat = self.conv1(low_level_feat)
         low_level_feat = self.bn1(low_level_feat)
         low_level_feat = self.relu(low_level_feat)
 
-        x = F.interpolate(
-            x, size=low_level_feat.size()[2:], mode="bilinear", align_corners=True
+        high_level_features = F.interpolate(
+            high_level_features,
+            size=low_level_feat.size()[2:],
+            mode="bilinear",
+            align_corners=True,
         )
-        x = torch.cat((x, low_level_feat), dim=1)
-        x = self.last_conv(x)
+        high_level_features = torch.cat((high_level_features, low_level_feat), dim=1)
+        high_level_features = self.last_conv(high_level_features)
 
-        return x
+        return high_level_features
 
     def reset_parameters(self):
         for m in self.modules():

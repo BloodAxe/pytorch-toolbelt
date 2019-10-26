@@ -167,22 +167,16 @@ class Inception_B(nn.Module):
 
         self.branch1 = nn.Sequential(
             BasicConv2d(1024, 192, kernel_size=1, stride=1),
-            BasicConv2d(192, 224, kernel_size=(1, 7), stride=1,
-                        padding=(0, 3)),
-            BasicConv2d(224, 256, kernel_size=(7, 1), stride=1,
-                        padding=(3, 0)),
+            BasicConv2d(192, 224, kernel_size=(1, 7), stride=1, padding=(0, 3)),
+            BasicConv2d(224, 256, kernel_size=(7, 1), stride=1, padding=(3, 0)),
         )
 
         self.branch2 = nn.Sequential(
             BasicConv2d(1024, 192, kernel_size=1, stride=1),
-            BasicConv2d(192, 192, kernel_size=(7, 1), stride=1,
-                        padding=(3, 0)),
-            BasicConv2d(192, 224, kernel_size=(1, 7), stride=1,
-                        padding=(0, 3)),
-            BasicConv2d(224, 224, kernel_size=(7, 1), stride=1,
-                        padding=(3, 0)),
-            BasicConv2d(224, 256, kernel_size=(1, 7), stride=1,
-                        padding=(0, 3)),
+            BasicConv2d(192, 192, kernel_size=(7, 1), stride=1, padding=(3, 0)),
+            BasicConv2d(192, 224, kernel_size=(1, 7), stride=1, padding=(0, 3)),
+            BasicConv2d(224, 224, kernel_size=(7, 1), stride=1, padding=(3, 0)),
+            BasicConv2d(224, 256, kernel_size=(1, 7), stride=1, padding=(0, 3)),
         )
 
         self.branch3 = nn.Sequential(
@@ -210,10 +204,8 @@ class Reduction_B(nn.Module):
 
         self.branch1 = nn.Sequential(
             BasicConv2d(1024, 256, kernel_size=1, stride=1),
-            BasicConv2d(256, 256, kernel_size=(1, 7), stride=1,
-                        padding=(0, 3)),
-            BasicConv2d(256, 320, kernel_size=(7, 1), stride=1,
-                        padding=(3, 0)),
+            BasicConv2d(256, 256, kernel_size=(1, 7), stride=1, padding=(0, 3)),
+            BasicConv2d(256, 320, kernel_size=(7, 1), stride=1, padding=(3, 0)),
             BasicConv2d(320, 320, kernel_size=3, stride=2),
         )
 
@@ -293,7 +285,7 @@ class InceptionV4(nn.Module):
         self.features = nn.Sequential(
             BasicConv2d(3, 32, kernel_size=3, stride=2),  # 0, layer0
             BasicConv2d(32, 32, kernel_size=3, stride=1),  # 1, layer0
-            BasicConv2d(32, 64, kernel_size=3, stride=1, padding=1), # 2
+            BasicConv2d(32, 64, kernel_size=3, stride=1, padding=1),  # 2
             Mixed_3a(),  # 3
             Mixed_4a(),  # 4
             Mixed_5a(),  # 5
@@ -333,10 +325,11 @@ class InceptionV4(nn.Module):
 def inceptionv4(num_classes=1000, pretrained="imagenet"):
     if pretrained:
         settings = pretrained_settings["inceptionv4"][pretrained]
-        assert (num_classes == settings["num_classes"]), \
-            "num_classes should be {}, but is {}".format(
-                settings["num_classes"], num_classes
-            )
+        assert (
+            num_classes == settings["num_classes"]
+        ), "num_classes should be {}, but is {}".format(
+            settings["num_classes"], num_classes
+        )
 
         # both 'imagenet'&'imagenet+background' are loaded from same parameters
         model = InceptionV4(num_classes=1001)

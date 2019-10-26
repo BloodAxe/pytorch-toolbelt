@@ -11,4 +11,5 @@ from .mobilenet import *
 from .resnet import *
 from .seresnet import *
 from .squeezenet import *
+from .unet import *
 from .wide_resnet import *

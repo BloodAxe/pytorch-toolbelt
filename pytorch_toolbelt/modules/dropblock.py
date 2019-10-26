@@ -2,6 +2,8 @@ import torch
 import torch.functional as F
 from torch import nn
 
+__all__ = ["DropBlock2D", "DropBlock3D", "DropBlockScheduled"]
+
 
 class DropBlock2D(nn.Module):
     r"""Randomly zeroes 2D spatial blocks of the input tensor.

@@ -3,7 +3,7 @@ from typing import List, Tuple
 
 import torch
 from pytorch_toolbelt.modules import Identity, ABN
-from pytorch_toolbelt.modules.decoders import DecoderModule
+from .modules.decoders import DecoderModule
 from pytorch_toolbelt.utils.torch_utils import count_parameters
 
 
@@ -67,9 +67,9 @@ class FPNSumCenterBlock(nn.Module):
         x = torch.cat(
             [
                 x,
-                F.interpolate(p2, size=x_size, mode="bilinear", align_corners=True),
-                F.interpolate(p4, size=x_size, mode="bilinear", align_corners=True),
-                F.interpolate(p8, size=x_size, mode="bilinear", align_corners=True),
+                F.interpolate(p2, size=x_size, mode="bilinear", align_corners=False),
+                F.interpolate(p4, size=x_size, mode="bilinear", align_corners=False),
+                F.interpolate(p8, size=x_size, mode="bilinear", align_corners=False),
             ],
             dim=1,
         )

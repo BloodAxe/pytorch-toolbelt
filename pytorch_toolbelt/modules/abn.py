@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as functional
-from pytorch_toolbelt.modules.activations import (
+
+from .activations import (
     ACT_LEAKY_RELU,
     ACT_NONE,
     ACT_HARD_SIGMOID,

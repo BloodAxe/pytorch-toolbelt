@@ -5,6 +5,8 @@ Implementation of the CoordConv modules from https://arxiv.org/abs/1807.03247
 import torch
 import torch.nn as nn
 
+__all__ = ["append_coords", "AddCoords", "CoordConv"]
+
 
 def append_coords(input_tensor, with_r=False):
     batch_size, _, x_dim, y_dim = input_tensor.size()
@@ -40,13 +42,12 @@ def append_coords(input_tensor, with_r=False):
     return ret
 
 
-"""
-An alternative implementation for PyTorch with auto-infering the x-y dimensions.
-https://github.com/mkocabas/CoordConv-pytorch/blob/master/CoordConv.py
-"""
-
-
 class AddCoords(nn.Module):
+    """
+    An alternative implementation for PyTorch with auto-infering the x-y dimensions.
+    https://github.com/mkocabas/CoordConv-pytorch/blob/master/CoordConv.py
+    """
+
     def __init__(self, with_r=False):
         super().__init__()
         self.with_r = with_r

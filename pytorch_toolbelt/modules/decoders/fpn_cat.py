@@ -7,16 +7,9 @@ from pytorch_toolbelt.utils.torch_utils import count_parameters
 from torch import nn, Tensor
 
 from torch.nn import functional as F
-from pytorch_toolbelt.modules.decoders import (
-    FPNDecoder,
-    FPNBottleneckBlock,
-    FPNPredictionBlock,
-)
 from pytorch_toolbelt.modules.fpn import FPNFuse, UpsampleAdd
 
 __all__ = ["FPNCatDecoder"]
-
-from ..modules import DoubleConvBNRelu
 
 
 class FPNCatDecoder(DecoderModule):

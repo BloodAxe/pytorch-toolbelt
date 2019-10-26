@@ -5,9 +5,13 @@ import torch.nn
 import torch.nn.functional as F
 from torch import nn
 
+from .common import DecoderModule
 
-class PPMDecoder(nn.Module):
+
+class PPMDecoder(DecoderModule):
     """
+    Pyramid pooling decoder module
+
     https://github.com/CSAILVision/semantic-segmentation-pytorch/blob/42b7567a43b1dab568e2bbfcbc8872778fbda92a/models/models.py
     """
 
