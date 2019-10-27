@@ -74,7 +74,7 @@ class FPNCatDecoder(SegmentationDecoderModule):
             nn.Conv2d(features, features // 2, kernel_size=1),
             abn_block(features // 2),
             nn.Conv2d(features // 2, features // 4, kernel_size=3, padding=1, bias=False),
-            abn_block(features // 2),
+            abn_block(features // 4),
             nn.Conv2d(features // 4, features // 4, kernel_size=3, padding=1, bias=False),
             abn_block(features // 4),
             nn.Conv2d(features // 4, num_classes, kernel_size=1, bias=True),
