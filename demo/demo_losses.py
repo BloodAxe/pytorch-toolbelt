@@ -16,18 +16,14 @@ def main():
         # "dice_log": L.BinaryDiceLogLoss(),
         # "sdice": L.BinarySymmetricDiceLoss(),
         # "sdice_log": L.BinarySymmetricDiceLoss(log_loss=True),
-
         "bce+lovasz": L.JointLoss(BCEWithLogitsLoss(), L.BinaryLovaszLoss()),
         # "lovasz": L.BinaryLovaszLoss(),
         # "bce+jaccard": L.JointLoss(BCEWithLogitsLoss(),
         #                            L.BinaryJaccardLoss(), 1, 0.5),
-
         # "bce+log_jaccard": L.JointLoss(BCEWithLogitsLoss(),
         #                            L.BinaryJaccardLogLoss(), 1, 0.5),
-
         # "bce+log_dice": L.JointLoss(BCEWithLogitsLoss(),
         #                                L.BinaryDiceLogLoss(), 1, 0.5)
-
         # "reduced_focal": L.BinaryFocalLoss(reduced=True)
     }
 
@@ -55,5 +51,5 @@ def main():
     f.show()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

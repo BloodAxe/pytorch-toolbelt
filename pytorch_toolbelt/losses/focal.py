@@ -8,15 +8,7 @@ __all__ = ["BinaryFocalLoss", "FocalLoss"]
 
 
 class BinaryFocalLoss(_Loss):
-    def __init__(
-        self,
-        alpha=0.5,
-        gamma=2,
-        ignore_index=None,
-        reduction="mean",
-        reduced=False,
-        threshold=0.5,
-    ):
+    def __init__(self, alpha=0.5, gamma=2, ignore_index=None, reduction="mean", reduced=False, threshold=0.5):
         """
 
         :param alpha:
@@ -31,16 +23,10 @@ class BinaryFocalLoss(_Loss):
         self.ignore_index = ignore_index
         if reduced:
             self.focal_loss = partial(
-                focal_loss_with_logits,
-                alpha=None,
-                gamma=gamma,
-                threshold=threshold,
-                reduction=reduction,
+                focal_loss_with_logits, alpha=None, gamma=gamma, threshold=threshold, reduction=reduction
             )
         else:
-            self.focal_loss = partial(
-                focal_loss_with_logits, alpha=alpha, gamma=gamma, reduction=reduction
-            )
+            self.focal_loss = partial(focal_loss_with_logits, alpha=alpha, gamma=gamma, reduction=reduction)
 
     def forward(self, label_input, label_target):
         """Compute focal loss for binary classification problem.
@@ -88,7 +74,5 @@ class FocalLoss(_Loss):
                 cls_label_target = cls_label_target[not_ignored]
                 cls_label_input = cls_label_input[not_ignored]
 
-            loss += focal_loss_with_logits(
-                cls_label_input, cls_label_target, gamma=self.gamma, alpha=self.alpha
-            )
+            loss += focal_loss_with_logits(cls_label_input, cls_label_target, gamma=self.gamma, alpha=self.alpha)
         return loss

@@ -46,9 +46,9 @@ def load_readme():
 
 
 def get_test_requirements():
-    requirements = ['pytest', 'catalyst>=19.6.4']
+    requirements = ["pytest", "catalyst>=19.6.4"]
     if sys.version_info < (3, 3):
-        requirements.append('mock')
+        requirements.append("mock")
     return requirements
 
 
@@ -64,15 +64,15 @@ setup(
     packages=find_packages(exclude=EXCLUDE_FROM_PACKAGES),
     install_requires=DEPENDENCIES,
     python_requires=REQUIRES_PYTHON,
-    extras_require={'tests': get_test_requirements()},
+    extras_require={"tests": get_test_requirements()},
     include_package_data=True,
     keywords=["PyTorch", "Kaggle", "Deep Learning", "Machine Learning", "ResNet", "VGG", "ResNext", "Unet", "Focal"],
     scripts=[],
     license="License :: OSI Approved :: MIT License",
     classifiers=[
-        'Development Status :: 4 - Beta',
-        'Intended Audience :: Developers',
-        'Intended Audience :: Science/Research',
+        "Development Status :: 4 - Beta",
+        "Intended Audience :: Developers",
+        "Intended Audience :: Science/Research",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.6",
@@ -81,8 +81,8 @@ setup(
         "Topic :: Scientific/Engineering :: Mathematics",
         "Topic :: Scientific/Engineering :: Image Recognition",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
-        'Topic :: Software Development :: Libraries',
-        'Topic :: Software Development :: Libraries :: Python Modules',
+        "Topic :: Software Development :: Libraries",
+        "Topic :: Software Development :: Libraries :: Python Modules",
         "Topic :: Software Development :: Libraries :: Application Frameworks"
         # "Private :: Do Not Upload"
     ],

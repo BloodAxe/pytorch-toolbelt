@@ -28,9 +28,7 @@ class FPNBottleneckBlock(nn.Module):
 class FPNBottleneckBlockBN(nn.Module):
     def __init__(self, input_channels, output_channels):
         super().__init__()
-        self.conv = nn.Conv2d(
-            input_channels, output_channels, kernel_size=1, bias=False
-        )
+        self.conv = nn.Conv2d(input_channels, output_channels, kernel_size=1, bias=False)
         self.bn = nn.BatchNorm2d(output_channels)
 
     def forward(self, x):
@@ -39,15 +37,11 @@ class FPNBottleneckBlockBN(nn.Module):
 
 
 class FPNPredictionBlock(nn.Module):
-    def __init__(self, input_channels, output_channels, mode="nearest", align_corners=None):
+    def __init__(self, input_channels: int, output_channels: int):
         super().__init__()
         self.input_channels = input_channels
         self.output_channels = output_channels
-        self.conv = nn.Conv2d(
-            self.input_channels, self.output_channels, kernel_size=3, padding=1
-        )
-        self.mode = mode
-        self.align_corners = align_corners
+        self.conv = nn.Conv2d(self.input_channels, self.output_channels, kernel_size=3, padding=1)
 
     def forward(self, x):
         x = self.conv(x)
@@ -59,9 +53,7 @@ class UpsampleAdd(nn.Module):
     Compute pixelwise sum of first tensor and upsampled second tensor.
     """
 
-    def __init__(
-        self, filters: int, upsample_scale=None, mode="nearest", align_corners=None
-    ):
+    def __init__(self, filters: int, upsample_scale=None, mode="nearest", align_corners=None):
         super().__init__()
         self.interpolation_mode = mode
         self.upsample_scale = upsample_scale
@@ -71,17 +63,11 @@ class UpsampleAdd(nn.Module):
         if y is not None:
             if self.upsample_scale is not None:
                 y = F.interpolate(
-                    y,
-                    scale_factor=self.upsample_scale,
-                    mode=self.interpolation_mode,
-                    align_corners=self.align_corners,
+                    y, scale_factor=self.upsample_scale, mode=self.interpolation_mode, align_corners=self.align_corners
                 )
             else:
                 y = F.interpolate(
-                    y,
-                    size=(x.size(2), x.size(3)),
-                    mode=self.interpolation_mode,
-                    align_corners=self.align_corners,
+                    y, size=(x.size(2), x.size(3)), mode=self.interpolation_mode, align_corners=self.align_corners
                 )
 
             x = x + y
@@ -95,9 +81,7 @@ class UpsampleAddConv(nn.Module):
     to smooth aliasing artifacts
     """
 
-    def __init__(
-        self, filters: int, upsample_scale=None, mode="nearest", align_corners=None
-    ):
+    def __init__(self, filters: int, upsample_scale=None, mode="nearest", align_corners=None):
         super().__init__()
         self.interpolation_mode = mode
         self.upsample_scale = upsample_scale
@@ -108,17 +92,11 @@ class UpsampleAddConv(nn.Module):
         if y is not None:
             if self.upsample_scale is not None:
                 y = F.interpolate(
-                    y,
-                    scale_factor=self.upsample_scale,
-                    mode=self.interpolation_mode,
-                    align_corners=self.align_corners,
+                    y, scale_factor=self.upsample_scale, mode=self.interpolation_mode, align_corners=self.align_corners
                 )
             else:
                 y = F.interpolate(
-                    y,
-                    size=(x.size(2), x.size(3)),
-                    mode=self.interpolation_mode,
-                    align_corners=self.align_corners,
+                    y, size=(x.size(2), x.size(3)), mode=self.interpolation_mode, align_corners=self.align_corners
                 )
 
             x = x + y
@@ -138,11 +116,7 @@ class FPNFuse(nn.Module):
         dst_size = features[0].size()[-2:]
 
         for f in features:
-            layers.append(
-                F.interpolate(
-                    f, size=dst_size, mode=self.mode, align_corners=self.align_corners
-                )
-            )
+            layers.append(F.interpolate(f, size=dst_size, mode=self.mode, align_corners=self.align_corners))
 
         return torch.cat(layers, dim=1)
 
@@ -160,9 +134,7 @@ class FPNFuseSum(nn.Module):
         dst_size = features[0].size()[-2:]
 
         for f in features[1:]:
-            output = output + F.interpolate(
-                f, size=dst_size, mode=self.mode, align_corners=self.align_corners
-            )
+            output = output + F.interpolate(f, size=dst_size, mode=self.mode, align_corners=self.align_corners)
 
         return output
 
@@ -180,9 +152,7 @@ class HFF(nn.Module):
     >>> feature_map = feature_map_0 + up(feature_map[1] + up(feature_map[2] + up(feature_map[3] + ...))))
     """
 
-    def __init__(
-        self, sizes=None, upsample_scale=2, mode="nearest", align_corners=None
-    ):
+    def __init__(self, sizes=None, upsample_scale=2, mode="nearest", align_corners=None):
         super().__init__()
         self.sizes = sizes
         self.interpolation_mode = mode
@@ -195,9 +165,7 @@ class HFF(nn.Module):
         current_map = features[-1]
         for feature_map_index in reversed(range(num_feature_maps - 1)):
             if self.sizes is not None:
-                prev_upsampled = self._upsample(
-                    current_map, self.sizes[feature_map_index]
-                )
+                prev_upsampled = self._upsample(current_map, self.sizes[feature_map_index])
             else:
                 prev_upsampled = self._upsample(current_map)
 
@@ -215,9 +183,6 @@ class HFF(nn.Module):
             )
         else:
             x = F.interpolate(
-                x,
-                scale_factor=self.upsample_scale,
-                mode=self.interpolation_mode,
-                align_corners=self.align_corners,
+                x, scale_factor=self.upsample_scale, mode=self.interpolation_mode, align_corners=self.align_corners
             )
         return x

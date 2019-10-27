@@ -46,10 +46,7 @@ class SqueezenetEncoder(EncoderModule):
         # Fire(384, 64, 256, 256),
         # Fire(512, 64, 256, 256),
         self.layer3 = nn.Sequential(
-            squeezenet.features[9],
-            squeezenet.features[10],
-            squeezenet.features[11],
-            squeezenet.features[12],
+            squeezenet.features[9], squeezenet.features[10], squeezenet.features[11], squeezenet.features[12]
         )
 
     @property

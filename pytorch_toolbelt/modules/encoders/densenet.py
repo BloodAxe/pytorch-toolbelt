@@ -1,33 +1,16 @@
 from typing import List
 
 from torch import nn
-from torchvision.models import (
-    densenet121,
-    densenet161,
-    densenet169,
-    densenet201,
-    DenseNet,
-)
+from torchvision.models import densenet121, densenet161, densenet169, densenet201, DenseNet
 
 from .common import EncoderModule, _take
 
-__all__ = [
-    "DenseNetEncoder",
-    "DenseNet121Encoder",
-    "DenseNet169Encoder",
-    "DenseNet161Encoder",
-    "DenseNet201Encoder",
-]
+__all__ = ["DenseNetEncoder", "DenseNet121Encoder", "DenseNet169Encoder", "DenseNet161Encoder", "DenseNet201Encoder"]
 
 
 class DenseNetEncoder(EncoderModule):
     def __init__(
-        self,
-        densenet: DenseNet,
-        strides: List[int],
-        channels: List[int],
-        layers: List[int],
-        first_avg_pool=False,
+        self, densenet: DenseNet, strides: List[int], channels: List[int], layers: List[int], first_avg_pool=False
     ):
         if layers is None:
             layers = [1, 2, 3, 4]
@@ -38,24 +21,16 @@ class DenseNetEncoder(EncoderModule):
             del block.pool
             return block
 
-        self.layer0 = nn.Sequential(
-            densenet.features.conv0, densenet.features.norm0, densenet.features.relu0
-        )
+        self.layer0 = nn.Sequential(densenet.features.conv0, densenet.features.norm0, densenet.features.relu0)
 
         self.avg_pool = nn.AvgPool2d(kernel_size=2, stride=2)
         self.pool0 = self.avg_pool if first_avg_pool else densenet.features.pool0
 
-        self.layer1 = nn.Sequential(
-            densenet.features.denseblock1, except_pool(densenet.features.transition1)
-        )
+        self.layer1 = nn.Sequential(densenet.features.denseblock1, except_pool(densenet.features.transition1))
 
-        self.layer2 = nn.Sequential(
-            densenet.features.denseblock2, except_pool(densenet.features.transition2)
-        )
+        self.layer2 = nn.Sequential(densenet.features.denseblock2, except_pool(densenet.features.transition2))
 
-        self.layer3 = nn.Sequential(
-            densenet.features.denseblock3, except_pool(densenet.features.transition3)
-        )
+        self.layer3 = nn.Sequential(densenet.features.denseblock3, except_pool(densenet.features.transition3))
 
         self.layer4 = nn.Sequential(densenet.features.denseblock4)
 
@@ -94,9 +69,7 @@ class DenseNetEncoder(EncoderModule):
 
 
 class DenseNet121Encoder(DenseNetEncoder):
-    def __init__(
-        self, layers=None, pretrained=True, memory_efficient=False, first_avg_pool=False
-    ):
+    def __init__(self, layers=None, pretrained=True, memory_efficient=False, first_avg_pool=False):
         densenet = densenet121(pretrained=pretrained, memory_efficient=memory_efficient)
         strides = [2, 4, 8, 16, 32]
         channels = [64, 128, 256, 512, 1024]
@@ -104,9 +77,7 @@ class DenseNet121Encoder(DenseNetEncoder):
 
 
 class DenseNet161Encoder(DenseNetEncoder):
-    def __init__(
-        self, layers=None, pretrained=True, memory_efficient=False, first_avg_pool=False
-    ):
+    def __init__(self, layers=None, pretrained=True, memory_efficient=False, first_avg_pool=False):
         densenet = densenet161(pretrained=pretrained, memory_efficient=memory_efficient)
         strides = [2, 4, 8, 16, 32]
         channels = [96, 192, 384, 1056, 2208]
@@ -114,9 +85,7 @@ class DenseNet161Encoder(DenseNetEncoder):
 
 
 class DenseNet169Encoder(DenseNetEncoder):
-    def __init__(
-        self, layers=None, pretrained=True, memory_efficient=False, first_avg_pool=False
-    ):
+    def __init__(self, layers=None, pretrained=True, memory_efficient=False, first_avg_pool=False):
         densenet = densenet169(pretrained=pretrained, memory_efficient=memory_efficient)
         strides = [2, 4, 8, 16, 32]
         channels = [64, 128, 256, 640, 1664]
@@ -124,9 +93,7 @@ class DenseNet169Encoder(DenseNetEncoder):
 
 
 class DenseNet201Encoder(DenseNetEncoder):
-    def __init__(
-        self, layers=None, pretrained=True, memory_efficient=False, first_avg_pool=False
-    ):
+    def __init__(self, layers=None, pretrained=True, memory_efficient=False, first_avg_pool=False):
         densenet = densenet201(pretrained=pretrained, memory_efficient=memory_efficient)
         strides = [2, 4, 8, 16, 32]
         channels = [64, 128, 256, 896, 1920]

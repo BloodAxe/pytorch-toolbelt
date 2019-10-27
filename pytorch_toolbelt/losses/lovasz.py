@@ -42,9 +42,7 @@ def _lovasz_hinge(logits, labels, per_image=True, ignore=None):
     """
     if per_image:
         loss = mean(
-            _lovasz_hinge_flat(
-                *_flatten_binary_scores(log.unsqueeze(0), lab.unsqueeze(0), ignore)
-            )
+            _lovasz_hinge_flat(*_flatten_binary_scores(log.unsqueeze(0), lab.unsqueeze(0), ignore))
             for log, lab in zip(logits, labels)
         )
     else:
@@ -101,16 +99,11 @@ def _lovasz_softmax(probas, labels, classes="present", per_image=False, ignore=N
     """
     if per_image:
         loss = mean(
-            _lovasz_softmax_flat(
-                *_flatten_probas(prob.unsqueeze(0), lab.unsqueeze(0), ignore),
-                classes=classes
-            )
+            _lovasz_softmax_flat(*_flatten_probas(prob.unsqueeze(0), lab.unsqueeze(0), ignore), classes=classes)
             for prob, lab in zip(probas, labels)
         )
     else:
-        loss = _lovasz_softmax_flat(
-            *_flatten_probas(probas, labels, ignore), classes=classes
-        )
+        loss = _lovasz_softmax_flat(*_flatten_probas(probas, labels, ignore), classes=classes)
     return loss
 
 
@@ -195,9 +188,7 @@ class BinaryLovaszLoss(_Loss):
         self.per_image = per_image
 
     def forward(self, logits, target):
-        return _lovasz_hinge(
-            logits, target, per_image=self.per_image, ignore=self.ignore
-        )
+        return _lovasz_hinge(logits, target, per_image=self.per_image, ignore=self.ignore)
 
 
 class LovaszLoss(_Loss):
@@ -207,6 +198,4 @@ class LovaszLoss(_Loss):
         self.per_image = per_image
 
     def forward(self, logits, target):
-        return _lovasz_softmax(
-            logits, target, per_image=self.per_image, ignore=self.ignore
-        )
+        return _lovasz_softmax(logits, target, per_image=self.per_image, ignore=self.ignore)

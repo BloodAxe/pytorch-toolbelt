@@ -4,13 +4,7 @@ from typing import Optional
 import torch
 import torch.nn.functional as F
 
-__all__ = [
-    "focal_loss_with_logits",
-    "sigmoid_focal_loss",
-    "soft_jaccard_score",
-    "soft_dice_score",
-    "wing_loss",
-]
+__all__ = ["focal_loss_with_logits", "sigmoid_focal_loss", "soft_jaccard_score", "soft_dice_score", "wing_loss"]
 
 
 def focal_loss_with_logits(
@@ -78,21 +72,11 @@ sigmoid_focal_loss = focal_loss_with_logits
 
 
 # TODO: Mark as deprecated and emit warning
-def reduced_focal_loss(
-    input: torch.Tensor,
-    target: torch.Tensor,
-    threshold=0.5,
-    gamma=2.0,
-    reduction="mean",
-):
-    return focal_loss_with_logits(
-        input, target, alpha=None, gamma=gamma, reduction=reduction, threshold=threshold
-    )
+def reduced_focal_loss(input: torch.Tensor, target: torch.Tensor, threshold=0.5, gamma=2.0, reduction="mean"):
+    return focal_loss_with_logits(input, target, alpha=None, gamma=gamma, reduction=reduction, threshold=threshold)
 
 
-def soft_jaccard_score(
-    y_pred: torch.Tensor, y_true: torch.Tensor, smooth=0.0, eps=1e-7, dims=None
-) -> torch.Tensor:
+def soft_jaccard_score(y_pred: torch.Tensor, y_true: torch.Tensor, smooth=0.0, eps=1e-7, dims=None) -> torch.Tensor:
     """
 
     :param y_pred:
@@ -122,9 +106,7 @@ def soft_jaccard_score(
     return jaccard_score
 
 
-def soft_dice_score(
-    y_pred: torch.Tensor, y_true: torch.Tensor, smooth=0, eps=1e-7, dims=None
-) -> torch.Tensor:
+def soft_dice_score(y_pred: torch.Tensor, y_true: torch.Tensor, smooth=0, eps=1e-7, dims=None) -> torch.Tensor:
     """
 
     :param y_pred:
@@ -151,13 +133,7 @@ def soft_dice_score(
     return dice_score
 
 
-def wing_loss(
-    prediction: torch.Tensor,
-    target: torch.Tensor,
-    width=5,
-    curvature=0.5,
-    reduction="mean",
-):
+def wing_loss(prediction: torch.Tensor, target: torch.Tensor, width=5, curvature=0.5, reduction="mean"):
     """
     https://arxiv.org/pdf/1711.06753.pdf
     :param prediction:

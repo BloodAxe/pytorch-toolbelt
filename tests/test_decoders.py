@@ -6,9 +6,8 @@ from pytorch_toolbelt.modules.backbone.inceptionv4 import inceptionv4
 from pytorch_toolbelt.modules.decoders import FPNSumDecoder, FPNCatDecoder
 from pytorch_toolbelt.utils.torch_utils import maybe_cuda, count_parameters
 
-skip_if_no_cuda = pytest.mark.skipif(
-    not torch.cuda.is_available(), reason="Cuda is not available"
-)
+skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="Cuda is not available")
+
 
 @torch.no_grad()
 def test_fpn_sum():

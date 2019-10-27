@@ -5,13 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-__all__ = [
-    "GlobalAvgPool2d",
-    "GlobalMaxPool2d",
-    "GWAP",
-    "RMSPool",
-    "MILCustomPoolingModule",
-]
+__all__ = ["GlobalAvgPool2d", "GlobalMaxPool2d", "GWAP", "RMSPool", "MILCustomPoolingModule"]
 
 
 class GlobalAvgPool2d(nn.Module):
@@ -97,7 +91,5 @@ class MILCustomPoolingModule(nn.Module):
     def forward(self, x):
         weight = self.weight_generator(x)
         loss = self.classifier(x)
-        logits = torch.sum(weight * loss, dim=[2, 3]) / (
-            torch.sum(weight, dim=[2, 3]) + 1e-6
-        )
+        logits = torch.sum(weight * loss, dim=[2, 3]) / (torch.sum(weight, dim=[2, 3]) + 1e-6)
         return logits

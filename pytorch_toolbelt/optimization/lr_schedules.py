@@ -22,9 +22,7 @@ class OnceCycleLR(_LRScheduler):
         super().__init__(optimizer)
 
     def get_lr(self):
-        return [
-            base_lr * self.learning_rates[self.last_epoch] for base_lr in self.base_lrs
-        ]
+        return [base_lr * self.learning_rates[self.last_epoch] for base_lr in self.base_lrs]
 
 
 class CosineAnnealingLRWithDecay(_LRScheduler):

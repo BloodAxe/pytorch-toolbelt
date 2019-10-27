@@ -26,13 +26,7 @@ class AGN(nn.Module):
     """
 
     def __init__(
-        self,
-        num_features: int,
-        num_groups: int,
-        eps=1e-5,
-        momentum=0.1,
-        activation=ACT_LEAKY_RELU,
-        slope=0.01,
+        self, num_features: int, num_groups: int, eps=1e-5, momentum=0.1, activation=ACT_LEAKY_RELU, slope=0.01
     ):
         """Create an Activated Batch Normalization module
         Parameters
@@ -93,9 +87,7 @@ class AGN(nn.Module):
             raise KeyError(self.activation)
 
     def __repr__(self):
-        rep = (
-            "{name}({num_features},{num_groups}, eps={eps}" ", activation={activation}"
-        )
+        rep = "{name}({num_features},{num_groups}, eps={eps}" ", activation={activation}"
         if self.activation == "leaky_relu":
             rep += ", slope={slope})"
         else:

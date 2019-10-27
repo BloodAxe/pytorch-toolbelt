@@ -5,9 +5,8 @@ import pytorch_toolbelt.modules.encoders as E
 from pytorch_toolbelt.modules.backbone.inceptionv4 import inceptionv4
 from pytorch_toolbelt.utils.torch_utils import maybe_cuda, count_parameters
 
-skip_if_no_cuda = pytest.mark.skipif(
-    not torch.cuda.is_available(), reason="Cuda is not available"
-)
+skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="Cuda is not available")
+
 
 @pytest.mark.parametrize(
     ["encoder", "encoder_params"],
@@ -54,9 +53,7 @@ def test_encoders(encoder: E.EncoderModule, encoder_params):
     net = maybe_cuda(net)
     output = net(input)
     assert len(output) == len(net.output_filters)
-    for feature_map, expected_stride, expected_channels in zip(
-        output, net.output_strides, net.output_filters
-    ):
+    for feature_map, expected_stride, expected_channels in zip(output, net.output_strides, net.output_filters):
         assert feature_map.size(1) == expected_channels
         assert feature_map.size(2) * expected_stride == 256
         assert feature_map.size(3) * expected_stride == 256
@@ -90,3 +87,4 @@ def test_densenet():
     net2.classifier = None
 
     print(count_parameters(net1), count_parameters(net2))
+

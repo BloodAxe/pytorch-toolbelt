@@ -108,9 +108,7 @@ def tensor_from_mask_image(mask: np.ndarray) -> torch.Tensor:
     return tensor_from_rgb_image(mask)
 
 
-def rgb_image_from_tensor(
-    image: torch.Tensor, mean, std, max_pixel_value=255.0, dtype=np.uint8
-) -> np.ndarray:
+def rgb_image_from_tensor(image: torch.Tensor, mean, std, max_pixel_value=255.0, dtype=np.uint8) -> np.ndarray:
     image = np.moveaxis(to_numpy(image), 0, -1)
     mean = to_numpy(mean)
     std = to_numpy(std)
@@ -144,8 +142,6 @@ def transfer_weights(model: nn.Module, model_state_dict: collections.OrderedDict
     """
     for name, value in model_state_dict.items():
         try:
-            model.load_state_dict(
-                collections.OrderedDict([(name, value)]), strict=False
-            )
+            model.load_state_dict(collections.OrderedDict([(name, value)]), strict=False)
         except Exception as e:
             print(e)

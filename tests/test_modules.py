@@ -6,10 +6,7 @@ from pytorch_toolbelt.modules.backbone.inceptionv4 import inceptionv4
 from pytorch_toolbelt.modules.fpn import HFF
 from pytorch_toolbelt.utils.torch_utils import maybe_cuda, count_parameters
 
-skip_if_no_cuda = pytest.mark.skipif(
-    not torch.cuda.is_available(), reason="Cuda is not available"
-)
-
+skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="Cuda is not available")
 
 
 def test_hff_dynamic_size():
@@ -39,4 +36,3 @@ def test_hff_static_size():
     output = hff(feature_maps)
     assert output.size(2) == 512
     assert output.size(3) == 512
-

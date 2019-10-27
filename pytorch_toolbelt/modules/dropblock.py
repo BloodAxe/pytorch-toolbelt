@@ -30,9 +30,7 @@ class DropBlock2D(nn.Module):
     def forward(self, x):
         # shape: (bsize, channels, height, width)
 
-        assert (
-            x.dim() == 4
-        ), "Expected input with 4 dimensions (bsize, channels, height, width)"
+        assert x.dim() == 4, "Expected input with 4 dimensions (bsize, channels, height, width)"
 
         if not self.training or self.drop_prob == 0.0:
             return x
@@ -64,9 +62,7 @@ class DropBlock2D(nn.Module):
         if self.block_size % 2 == 0:
             block_mask = block_mask[:, :, :-1, :-1]
 
-        keeped = block_mask.numel() - block_mask.sum().to(
-            torch.float32
-        )  # prevent overflow in float16
+        keeped = block_mask.numel() - block_mask.sum().to(torch.float32)  # prevent overflow in float16
         block_mask = 1 - block_mask.squeeze(1)
 
         return block_mask, keeped
@@ -97,9 +93,7 @@ class DropBlock3D(DropBlock2D):
     def forward(self, x):
         # shape: (bsize, channels, depth, height, width)
 
-        assert (
-            x.dim() == 5
-        ), "Expected input with 5 dimensions (bsize, channels, depth, height, width)"
+        assert x.dim() == 5, "Expected input with 5 dimensions (bsize, channels, depth, height, width)"
 
         if not self.training or self.drop_prob == 0.0:
             return x

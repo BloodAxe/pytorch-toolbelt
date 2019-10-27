@@ -67,15 +67,11 @@ class LPRegularizationCallback(CriterionCallback):
     def on_loader_start(self, state: RunnerState):
         self.is_needed = not self.on_train_only or state.loader_name.startswith("train")
         if self.is_needed:
-            state.metrics.epoch_values[state.loader_name][
-                f"l{self.p}_weight_decay"
-            ] = self.multiplier
+            state.metrics.epoch_values[state.loader_name][f"l{self.p}_weight_decay"] = self.multiplier
 
     def on_epoch_start(self, state: RunnerState):
         training_progress = float(state.epoch) / float(state.num_epochs)
-        self.multiplier = self.get_multiplier(
-            training_progress, self.schedule, self.start_wd, self.end_wd
-        )
+        self.multiplier = self.get_multiplier(training_progress, self.schedule, self.start_wd, self.end_wd)
 
     def on_batch_end(self, state: RunnerState):
         if not self.is_needed:

@@ -21,15 +21,7 @@ class JaccardLoss(_Loss):
     It supports binary, multi-class and multi-label cases.
     """
 
-    def __init__(
-        self,
-        mode: str,
-        classes: List[int] = None,
-        log_loss=False,
-        from_logits=True,
-        smooth=0,
-        eps=1e-7,
-    ):
+    def __init__(self, mode: str, classes: List[int] = None, log_loss=False, from_logits=True, smooth=0, eps=1e-7):
         """
 
         :param mode: Metric mode {'binary', 'multiclass', 'multilabel'}
@@ -43,9 +35,7 @@ class JaccardLoss(_Loss):
         super(JaccardLoss, self).__init__()
         self.mode = mode
         if classes is not None:
-            assert (
-                mode != BINARY_MODE
-            ), "Masking classes is not supported with mode=binary"
+            assert mode != BINARY_MODE, "Masking classes is not supported with mode=binary"
             classes = to_tensor(classes, dtype=torch.long)
 
         self.classes = classes
@@ -89,9 +79,7 @@ class JaccardLoss(_Loss):
             y_true = y_true.view(bs, num_classes, -1)
             y_pred = y_pred.view(bs, num_classes, -1)
 
-        scores = soft_jaccard_score(
-            y_pred, y_true.type(y_pred.dtype), self.smooth, self.eps, dims=dims
-        )
+        scores = soft_jaccard_score(y_pred, y_true.type(y_pred.dtype), self.smooth, self.eps, dims=dims)
 
         if self.log_loss:
             loss = -torch.log(scores)

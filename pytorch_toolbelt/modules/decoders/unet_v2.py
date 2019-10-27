@@ -15,13 +15,9 @@ class UnetCentralBlockV2(nn.Module):
         super().__init__()
         self.bottleneck = nn.Conv2d(in_dec_filters, out_filters, kernel_size=1)
 
-        self.conv1 = nn.Conv2d(
-            out_filters, out_filters, kernel_size=3, padding=1, stride=2, bias=False
-        )
+        self.conv1 = nn.Conv2d(out_filters, out_filters, kernel_size=3, padding=1, stride=2, bias=False)
         self.abn1 = abn_block(out_filters)
-        self.conv2 = nn.Conv2d(
-            out_filters, out_filters, kernel_size=3, padding=1, bias=False
-        )
+        self.conv2 = nn.Conv2d(out_filters, out_filters, kernel_size=3, padding=1, bias=False)
         self.abn2 = abn_block(out_filters)
         self.dsv = nn.Conv2d(out_filters, mask_channels, kernel_size=1)
 
@@ -54,17 +50,11 @@ class UnetDecoderBlockV2(nn.Module):
     ):
         super(UnetDecoderBlockV2, self).__init__()
 
-        self.bottleneck = nn.Conv2d(
-            in_dec_filters + in_enc_filters, out_filters, kernel_size=1
-        )
+        self.bottleneck = nn.Conv2d(in_dec_filters + in_enc_filters, out_filters, kernel_size=1)
 
-        self.conv1 = nn.Conv2d(
-            out_filters, out_filters, kernel_size=3, stride=1, padding=1, bias=False
-        )
+        self.conv1 = nn.Conv2d(out_filters, out_filters, kernel_size=3, stride=1, padding=1, bias=False)
         self.abn1 = abn_block(out_filters)
-        self.conv2 = nn.Conv2d(
-            out_filters, out_filters, kernel_size=3, stride=1, padding=1, bias=False
-        )
+        self.conv2 = nn.Conv2d(out_filters, out_filters, kernel_size=3, stride=1, padding=1, bias=False)
         self.abn2 = abn_block(out_filters)
 
         self.pre_drop = nn.Dropout2d(pre_dropout_rate, inplace=True)
@@ -98,24 +88,17 @@ class UNetDecoderV2(DecoderModule):
         super().__init__()
 
         if not isinstance(decoder_features, list):
-            decoder_features = [
-                decoder_features * (2 ** i) for i in range(len(features))
-            ]
+            decoder_features = [decoder_features * (2 ** i) for i in range(len(features))]
 
         blocks = []
         for block_index, in_enc_features in enumerate(features[:-1]):
             blocks.append(
                 UnetDecoderBlockV2(
-                    decoder_features[block_index + 1],
-                    in_enc_features,
-                    decoder_features[block_index],
-                    mask_channels,
+                    decoder_features[block_index + 1], in_enc_features, decoder_features[block_index], mask_channels
                 )
             )
 
-        self.center = UnetCentralBlockV2(
-            features[-1], decoder_features[-1], mask_channels
-        )
+        self.center = UnetCentralBlockV2(features[-1], decoder_features[-1], mask_channels)
         self.blocks = nn.ModuleList(blocks)
         self.output_filters = decoder_features
 
@@ -125,9 +108,7 @@ class UNetDecoderV2(DecoderModule):
         decoder_outputs = [output]
         dsv_list = [dsv]
 
-        for decoder_block, encoder_output in zip(
-            reversed(self.blocks), reversed(feature_maps[:-1])
-        ):
+        for decoder_block, encoder_output in zip(reversed(self.blocks), reversed(feature_maps[:-1])):
             output, dsv = decoder_block(output, encoder_output)
             decoder_outputs.append(output)
             dsv_list.append(dsv)

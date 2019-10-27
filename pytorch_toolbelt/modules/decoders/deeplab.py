@@ -20,14 +20,7 @@ class DeeplabV3Decoder(DecoderModule):
         self.relu = nn.ReLU(inplace=True)
 
         self.last_conv = nn.Sequential(
-            nn.Conv2d(
-                high_level_features + 48,
-                256,
-                kernel_size=3,
-                stride=1,
-                padding=1,
-                bias=False,
-            ),
+            nn.Conv2d(high_level_features + 48, 256, kernel_size=3, stride=1, padding=1, bias=False),
             nn.BatchNorm2d(256),
             nn.ReLU(inplace=True),
             nn.Dropout(dropout),
@@ -48,10 +41,7 @@ class DeeplabV3Decoder(DecoderModule):
         low_level_feat = self.relu(low_level_feat)
 
         high_level_features = F.interpolate(
-            high_level_features,
-            size=low_level_feat.size()[2:],
-            mode="bilinear",
-            align_corners=True,
+            high_level_features, size=low_level_feat.size()[2:], mode="bilinear", align_corners=True
         )
         high_level_features = torch.cat((high_level_features, low_level_feat), dim=1)
         high_level_features = self.last_conv(high_level_features)

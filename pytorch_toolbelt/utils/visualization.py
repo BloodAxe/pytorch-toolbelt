@@ -7,13 +7,7 @@ from pytorch_toolbelt.utils.torch_utils import tensor_from_rgb_image
 
 
 def plot_confusion_matrix(
-    cm,
-    class_names,
-    figsize=(16, 16),
-    normalize=False,
-    title="Confusion matrix",
-    fname=None,
-    noshow=False,
+    cm, class_names, figsize=(16, 16), normalize=False, title="Confusion matrix", fname=None, noshow=False
 ):
     """Render the confusion matrix and return matplotlib's figure with it.
     Normalization can be applied by setting `normalize=True`.
@@ -44,11 +38,7 @@ def plot_confusion_matrix(
     thresh = cm.max() / 2.0
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
         plt.text(
-            j,
-            i,
-            format(cm[i, j], fmt),
-            horizontalalignment="center",
-            color="white" if cm[i, j] > thresh else "black",
+            j, i, format(cm[i, j], fmt), horizontalalignment="center", color="white" if cm[i, j] > thresh else "black"
         )
 
     plt.tight_layout()

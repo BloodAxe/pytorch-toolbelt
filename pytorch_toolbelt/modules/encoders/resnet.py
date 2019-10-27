@@ -26,11 +26,7 @@ class ResnetEncoder(EncoderModule):
             layers = [1, 2, 3, 4]
         super().__init__(filters, strides, layers)
 
-        self.layer0 = nn.Sequential(
-            OrderedDict(
-                [("conv1", resnet.conv1), ("bn1", resnet.bn1), ("relu", resnet.relu)]
-            )
-        )
+        self.layer0 = nn.Sequential(OrderedDict([("conv1", resnet.conv1), ("bn1", resnet.bn1), ("relu", resnet.relu)]))
         self.maxpool = resnet.maxpool
 
         self.layer1 = resnet.layer1
@@ -60,49 +56,24 @@ class ResnetEncoder(EncoderModule):
 
 class Resnet18Encoder(ResnetEncoder):
     def __init__(self, pretrained=True, layers=None):
-        super().__init__(
-            resnet18(pretrained=pretrained),
-            [64, 64, 128, 256, 512],
-            [2, 4, 8, 16, 32],
-            layers,
-        )
+        super().__init__(resnet18(pretrained=pretrained), [64, 64, 128, 256, 512], [2, 4, 8, 16, 32], layers)
 
 
 class Resnet34Encoder(ResnetEncoder):
     def __init__(self, pretrained=True, layers=None):
-        super().__init__(
-            resnet34(pretrained=pretrained),
-            [64, 64, 128, 256, 512],
-            [2, 4, 8, 16, 32],
-            layers,
-        )
+        super().__init__(resnet34(pretrained=pretrained), [64, 64, 128, 256, 512], [2, 4, 8, 16, 32], layers)
 
 
 class Resnet50Encoder(ResnetEncoder):
     def __init__(self, pretrained=True, layers=None):
-        super().__init__(
-            resnet50(pretrained=pretrained),
-            [64, 256, 512, 1024, 2048],
-            [2, 4, 8, 16, 32],
-            layers,
-        )
+        super().__init__(resnet50(pretrained=pretrained), [64, 256, 512, 1024, 2048], [2, 4, 8, 16, 32], layers)
 
 
 class Resnet101Encoder(ResnetEncoder):
     def __init__(self, pretrained=True, layers=None):
-        super().__init__(
-            resnet101(pretrained=pretrained),
-            [64, 256, 512, 1024, 2048],
-            [2, 4, 8, 16, 32],
-            layers,
-        )
+        super().__init__(resnet101(pretrained=pretrained), [64, 256, 512, 1024, 2048], [2, 4, 8, 16, 32], layers)
 
 
 class Resnet152Encoder(ResnetEncoder):
     def __init__(self, pretrained=True, layers=None):
-        super().__init__(
-            resnet152(pretrained=pretrained),
-            [64, 256, 512, 1024, 2048],
-            [2, 4, 8, 16, 32],
-            layers,
-        )
+        super().__init__(resnet152(pretrained=pretrained), [64, 256, 512, 1024, 2048], [2, 4, 8, 16, 32], layers)

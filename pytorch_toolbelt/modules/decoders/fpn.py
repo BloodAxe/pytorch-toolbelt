@@ -34,9 +34,7 @@ class FPNDecoder(DecoderModule):
         if isinstance(fpn_features, list) and len(fpn_features) != len(features):
             raise ValueError()
 
-        if isinstance(prediction_features, list) and len(prediction_features) != len(
-            features
-        ):
+        if isinstance(prediction_features, list) and len(prediction_features) != len(features):
             raise ValueError()
 
         if not isinstance(fpn_features, list):
@@ -51,19 +49,12 @@ class FPNDecoder(DecoderModule):
         ]
 
         integrators = [
-            upsample_add_block(
-                output_channels,
-                upsample_scale=upsample_scale,
-                mode=mode,
-                align_corners=align_corners,
-            )
+            upsample_add_block(output_channels, upsample_scale=upsample_scale, mode=mode, align_corners=align_corners)
             for output_channels in fpn_features
         ]
         predictors = [
             prediction_block(input_channels, output_channels)
-            for input_channels, output_channels in zip(
-                fpn_features, prediction_features
-            )
+            for input_channels, output_channels in zip(fpn_features, prediction_features)
         ]
 
         self.bottlenecks = nn.ModuleList(bottlenecks)
@@ -76,10 +67,7 @@ class FPNDecoder(DecoderModule):
         fpn_outputs = []
         prev_fpn = None
         for feature_map, bottleneck_module, upsample_add, output_module in zip(
-            reversed(features),
-            reversed(self.bottlenecks),
-            reversed(self.integrators),
-            reversed(self.predictors),
+            reversed(features), reversed(self.bottlenecks), reversed(self.integrators), reversed(self.predictors)
         ):
             curr_fpn = bottleneck_module(feature_map)
             curr_fpn = upsample_add(curr_fpn, prev_fpn)

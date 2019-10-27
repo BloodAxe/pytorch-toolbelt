@@ -38,12 +38,7 @@ def test_fliplr_image2mask():
 
 
 def test_d4_image2label():
-    input = (
-        torch.tensor([[1, 2, 3, 4], [5, 6, 7, 8], [9, 0, 1, 2], [3, 4, 5, 6]])
-        .unsqueeze(0)
-        .unsqueeze(0)
-        .float()
-    )
+    input = torch.tensor([[1, 2, 3, 4], [5, 6, 7, 8], [9, 0, 1, 2], [3, 4, 5, 6]]).unsqueeze(0).unsqueeze(0).float()
     model = SumAll()
 
     output = tta.d4_image2label(model, input)
@@ -53,12 +48,7 @@ def test_d4_image2label():
 
 
 def test_fliplr_image2label():
-    input = (
-        torch.tensor([[1, 2, 3, 4], [5, 6, 7, 8], [9, 0, 1, 2], [3, 4, 5, 6]])
-        .unsqueeze(0)
-        .unsqueeze(0)
-        .float()
-    )
+    input = torch.tensor([[1, 2, 3, 4], [5, 6, 7, 8], [9, 0, 1, 2], [3, 4, 5, 6]]).unsqueeze(0).unsqueeze(0).float()
     model = SumAll()
 
     output = tta.fliplr_image2label(model, input)
@@ -68,45 +58,20 @@ def test_fliplr_image2label():
 
 
 def test_fivecrop_image2label():
-    input = (
-        torch.tensor([[1, 2, 3, 4], [5, 6, 7, 8], [9, 0, 1, 2], [3, 4, 5, 6]])
-        .unsqueeze(0)
-        .unsqueeze(0)
-        .float()
-    )
+    input = torch.tensor([[1, 2, 3, 4], [5, 6, 7, 8], [9, 0, 1, 2], [3, 4, 5, 6]]).unsqueeze(0).unsqueeze(0).float()
     model = SumAll()
 
     output = tta.fivecrop_image2label(model, input, (2, 2))
-    expected = (
-        (1 + 2 + 5 + 6)
-        + (3 + 4 + 7 + 8)
-        + (9 + 0 + 3 + 4)
-        + (1 + 2 + 5 + 6)
-        + (6 + 7 + 0 + 1)
-    ) / 5
+    expected = ((1 + 2 + 5 + 6) + (3 + 4 + 7 + 8) + (9 + 0 + 3 + 4) + (1 + 2 + 5 + 6) + (6 + 7 + 0 + 1)) / 5
 
     assert int(output) == expected
 
 
 def test_tencrop_image2label():
-    input = (
-        torch.tensor([[1, 2, 3, 4], [5, 6, 7, 8], [9, 0, 1, 2], [3, 4, 5, 6]])
-        .unsqueeze(0)
-        .unsqueeze(0)
-        .float()
-    )
+    input = torch.tensor([[1, 2, 3, 4], [5, 6, 7, 8], [9, 0, 1, 2], [3, 4, 5, 6]]).unsqueeze(0).unsqueeze(0).float()
     model = SumAll()
 
     output = tta.tencrop_image2label(model, input, (2, 2))
-    expected = (
-        2
-        * (
-            (1 + 2 + 5 + 6)
-            + (3 + 4 + 7 + 8)
-            + (9 + 0 + 3 + 4)
-            + (1 + 2 + 5 + 6)
-            + (6 + 7 + 0 + 1)
-        )
-    ) / 10
+    expected = (2 * ((1 + 2 + 5 + 6) + (3 + 4 + 7 + 8) + (9 + 0 + 3 + 4) + (1 + 2 + 5 + 6) + (6 + 7 + 0 + 1))) / 10
 
     assert int(output) == expected

@@ -15,13 +15,7 @@ class PPMDecoder(DecoderModule):
     https://github.com/CSAILVision/semantic-segmentation-pytorch/blob/42b7567a43b1dab568e2bbfcbc8872778fbda92a/models/models.py
     """
 
-    def __init__(
-        self,
-        feature_maps: List[int],
-        num_classes=150,
-        channels=512,
-        pool_scales=(1, 2, 3, 6),
-    ):
+    def __init__(self, feature_maps: List[int], num_classes=150, channels=512, pool_scales=(1, 2, 3, 6)):
         super(PPMDecoder, self).__init__()
 
         fc_dim = feature_maps[-1]
@@ -38,13 +32,7 @@ class PPMDecoder(DecoderModule):
         self.ppm = nn.ModuleList(self.ppm)
 
         self.conv_last = nn.Sequential(
-            nn.Conv2d(
-                fc_dim + len(pool_scales) * channels,
-                channels,
-                kernel_size=3,
-                padding=1,
-                bias=False,
-            ),
+            nn.Conv2d(fc_dim + len(pool_scales) * channels, channels, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(channels),
             nn.ReLU(inplace=True),
             nn.Dropout2d(0.1),
@@ -58,9 +46,7 @@ class PPMDecoder(DecoderModule):
         ppm_out = [last_fm]
         for pool_scale in self.ppm:
             input_pooled = pool_scale(last_fm)
-            input_pooled = F.interpolate(
-                input_pooled, size=input_size[2:], mode="bilinear", align_corners=False
-            )
+            input_pooled = F.interpolate(input_pooled, size=input_size[2:], mode="bilinear", align_corners=False)
             ppm_out.append(input_pooled)
         ppm_out = torch.cat(ppm_out, dim=1)
 

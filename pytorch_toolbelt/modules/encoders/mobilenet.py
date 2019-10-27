@@ -7,9 +7,7 @@ __all__ = ["MobilenetV2Encoder", "MobilenetV3Encoder"]
 
 class MobilenetV2Encoder(EncoderModule):
     def __init__(self, layers=[2, 3, 5, 7], activation="relu6"):
-        super().__init__(
-            [32, 16, 24, 32, 64, 96, 160, 320], [2, 2, 4, 8, 16, 16, 32, 32], layers
-        )
+        super().__init__([32, 16, 24, 32, 64, 96, 160, 320], [2, 2, 4, 8, 16, 16, 32, 32], layers)
         encoder = MobileNetV2(activation=activation)
 
         self.layer0 = encoder.layer0
@@ -23,30 +21,13 @@ class MobilenetV2Encoder(EncoderModule):
 
     @property
     def encoder_layers(self):
-        return [
-            self.layer0,
-            self.layer1,
-            self.layer2,
-            self.layer3,
-            self.layer4,
-            self.layer5,
-            self.layer6,
-            self.layer7,
-        ]
+        return [self.layer0, self.layer1, self.layer2, self.layer3, self.layer4, self.layer5, self.layer6, self.layer7]
 
 
 class MobilenetV3Encoder(EncoderModule):
-    def __init__(
-        self, input_channels=3, small=False, drop_prob=0.0, layers=[1, 2, 3, 4]
-    ):
-        super().__init__(
-            [24, 24, 40, 96, 96] if small else [16, 40, 80, 160, 160],
-            [4, 8, 16, 32, 32],
-            layers,
-        )
-        encoder = MobileNetV3(
-            in_channels=input_channels, small=small, drop_prob=drop_prob
-        )
+    def __init__(self, input_channels=3, small=False, drop_prob=0.0, layers=[1, 2, 3, 4]):
+        super().__init__([24, 24, 40, 96, 96] if small else [16, 40, 80, 160, 160], [4, 8, 16, 32, 32], layers)
+        encoder = MobileNetV3(in_channels=input_channels, small=small, drop_prob=drop_prob)
 
         self.conv1 = encoder.conv1
         self.bn1 = encoder.bn1

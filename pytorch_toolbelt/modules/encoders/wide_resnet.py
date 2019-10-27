@@ -1,7 +1,7 @@
 from typing import List
 
-from ..modules.abn import ABN
-from pytorch_toolbelt.modules.backbone.wider_resnet import WiderResNet, WiderResNetA2
+from ..abn import ABN
+from ..backbone.wider_resnet import WiderResNet, WiderResNetA2
 
 from .common import EncoderModule, _take
 
@@ -19,9 +19,7 @@ __all__ = [
 
 class WiderResnetEncoder(EncoderModule):
     def __init__(self, structure: List[int], layers: List[int], norm_act=ABN):
-        super().__init__(
-            [64, 128, 256, 512, 1024, 2048, 4096], [1, 2, 4, 8, 16, 32, 32], layers
-        )
+        super().__init__([64, 128, 256, 512, 1024, 2048, 4096], [1, 2, 4, 8, 16, 32, 32], layers)
 
         encoder = WiderResNet(structure, classes=0, norm_act=norm_act)
         self.layer0 = encoder.mod1
@@ -40,15 +38,7 @@ class WiderResnetEncoder(EncoderModule):
 
     @property
     def encoder_layers(self):
-        return [
-            self.layer0,
-            self.layer1,
-            self.layer2,
-            self.layer3,
-            self.layer4,
-            self.layer5,
-            self.layer6,
-        ]
+        return [self.layer0, self.layer1, self.layer2, self.layer3, self.layer4, self.layer5, self.layer6]
 
     def forward(self, input):
         output_features = []
@@ -101,9 +91,7 @@ class WiderResnet38Encoder(WiderResnetEncoder):
 
 class WiderResnetA2Encoder(EncoderModule):
     def __init__(self, structure: List[int], layers: List[int], norm_act=ABN):
-        super().__init__(
-            [64, 128, 256, 512, 1024, 2048, 4096], [1, 2, 4, 8, 16, 32, 32], layers
-        )
+        super().__init__([64, 128, 256, 512, 1024, 2048, 4096], [1, 2, 4, 8, 16, 32, 32], layers)
 
         encoder = WiderResNetA2(structure=structure, classes=0, norm_act=norm_act)
         self.layer0 = encoder.mod1
@@ -119,15 +107,7 @@ class WiderResnetA2Encoder(EncoderModule):
 
     @property
     def encoder_layers(self):
-        return [
-            self.layer0,
-            self.layer1,
-            self.layer2,
-            self.layer3,
-            self.layer4,
-            self.layer5,
-            self.layer6,
-        ]
+        return [self.layer0, self.layer1, self.layer2, self.layer3, self.layer4, self.layer5, self.layer6]
 
     def forward(self, input):
         output_features = []

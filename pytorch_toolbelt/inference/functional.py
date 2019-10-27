@@ -62,11 +62,7 @@ def pad_image_tensor(image_tensor: Tensor, pad_size: int = 32):
     :return: Tuple of output tensor and pad params. Second argument can be used to reverse pad operation of model output
     """
     rows, cols = image_tensor.size(2), image_tensor.size(3)
-    if (
-        isinstance(pad_size, Sized)
-        and isinstance(pad_size, Iterable)
-        and len(pad_size) == 2
-    ):
+    if isinstance(pad_size, Sized) and isinstance(pad_size, Iterable) and len(pad_size) == 2:
         pad_height, pad_width = [int(val) for val in pad_size]
     elif isinstance(pad_size, int):
         pad_height = pad_width = pad_size
@@ -109,9 +105,7 @@ def unpad_image_tensor(image_tensor, pad):
 
 def unpad_xyxy_bboxes(bboxes_tensor: torch.Tensor, pad, dim=-1):
     pad_left, pad_right, pad_top, pad_btm = pad
-    pad = torch.tensor(
-        [pad_left, pad_top, pad_left, pad_top], dtype=bboxes_tensor.dtype
-    ).to(bboxes_tensor.device)
+    pad = torch.tensor([pad_left, pad_top, pad_left, pad_top], dtype=bboxes_tensor.dtype).to(bboxes_tensor.device)
 
     if dim == -1:
         dim = len(bboxes_tensor.size()) - 1

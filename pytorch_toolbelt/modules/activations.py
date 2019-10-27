@@ -20,6 +20,7 @@ __all__ = [
     "HardSwish",
     "Swish",
     "get_activation_module",
+    "sanitize_activation_name"
 ]
 
 # Activation names
@@ -107,3 +108,13 @@ def get_activation_module(activation_name: str, **kwargs) -> nn.Module:
         return partial(HardSwish, **kwargs)
 
     raise ValueError(f"Activation '{activation_name}' is not supported")
+
+
+def sanitize_activation_name(activation_name):
+    """
+    Return reasonable activation name for initialization in `kaiming_uniform_` for hipster activations
+    """
+    if activation_name in {"swish", "mish"}:
+        return "leaky_relu"
+
+    return activation_name

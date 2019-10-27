@@ -5,10 +5,7 @@ import torch
 from catalyst.dl import Callback, RunnerState, MetricCallback, CallbackOrder
 from .visualization import get_tensorboard_logger
 from ..torch_utils import to_numpy
-from pytorch_toolbelt.utils.visualization import (
-    render_figure_to_tensor,
-    plot_confusion_matrix,
-)
+from pytorch_toolbelt.utils.visualization import render_figure_to_tensor, plot_confusion_matrix
 from sklearn.metrics import f1_score, confusion_matrix
 
 __all__ = [
@@ -50,11 +47,7 @@ class PixelAccuracyCallback(MetricCallback):
     """
 
     def __init__(
-        self,
-        input_key: str = "targets",
-        output_key: str = "logits",
-        prefix: str = "accuracy",
-        ignore_index=None,
+        self, input_key: str = "targets", output_key: str = "logits", prefix: str = "accuracy", ignore_index=None
     ):
         """
         :param input_key: input key to use for iou calculation;
@@ -150,11 +143,7 @@ class MacroF1Callback(Callback):
     """
 
     def __init__(
-        self,
-        input_key: str = "targets",
-        output_key: str = "logits",
-        prefix: str = "macro_f1",
-        ignore_index=None,
+        self, input_key: str = "targets", output_key: str = "logits", prefix: str = "macro_f1", ignore_index=None
     ):
         """
         :param input_key: input key to use for precision calculation;
@@ -163,9 +152,7 @@ class MacroF1Callback(Callback):
             specifies our `y_pred`.
         """
         super().__init__(CallbackOrder.Metric)
-        self.metric_fn = lambda outputs, targets: f1_score(
-            targets, outputs, average="macro"
-        )
+        self.metric_fn = lambda outputs, targets: f1_score(targets, outputs, average="macro")
         self.prefix = prefix
         self.output_key = output_key
         self.input_key = input_key
@@ -208,12 +195,7 @@ class MacroF1Callback(Callback):
 
 
 def binary_dice_iou_score(
-    y_pred: torch.Tensor,
-    y_true: torch.Tensor,
-    mode="dice",
-    threshold=None,
-    nan_score_on_empty=False,
-    eps=1e-7,
+    y_pred: torch.Tensor, y_true: torch.Tensor, mode="dice", threshold=None, nan_score_on_empty=False, eps=1e-7
 ) -> float:
     """
     Compute IoU score between two image tensors
@@ -360,10 +342,7 @@ class IoUMetricsCallback(Callback):
 
         if self.mode == BINARY_MODE:
             self.score_fn = partial(
-                binary_dice_iou_score,
-                threshold=0.0,
-                nan_score_on_empty=nan_score_on_empty,
-                mode=metric,
+                binary_dice_iou_score, threshold=0.0, nan_score_on_empty=nan_score_on_empty, mode=metric
             )
 
         if self.mode == MULTICLASS_MODE:
@@ -395,9 +374,7 @@ class IoUMetricsCallback(Callback):
         batch_size = targets.size(0)
         score_per_image = []
         for image_index in range(batch_size):
-            score_per_class = self.score_fn(
-                y_pred=outputs[image_index], y_true=targets[image_index]
-            )
+            score_per_class = self.score_fn(y_pred=outputs[image_index], y_true=targets[image_index])
             score_per_image.append(score_per_class)
 
         mean_score = np.nanmean(score_per_image)
@@ -419,6 +396,4 @@ class IoUMetricsCallback(Callback):
 
             scores_per_class = np.nanmean(scores, axis=0)
             for class_name, score_per_class in zip(class_names, scores_per_class):
-                state.metrics.epoch_values[state.loader_name][
-                    self.prefix + "_" + class_name
-                ] = float(score_per_class)
+                state.metrics.epoch_values[state.loader_name][self.prefix + "_" + class_name] = float(score_per_class)

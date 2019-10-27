@@ -43,15 +43,7 @@ class EfficientNetEncoder(EncoderModule):
 
     @property
     def encoder_layers(self):
-        return [
-            self.block0,
-            self.block1,
-            self.block2,
-            self.block3,
-            self.block4,
-            self.block5,
-            self.block6,
-        ]
+        return [self.block0, self.block1, self.block2, self.block3, self.block4, self.block5, self.block6]
 
     def forward(self, x):
         input = self.stem(x)

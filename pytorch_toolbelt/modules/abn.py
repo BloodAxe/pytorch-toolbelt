@@ -25,15 +25,7 @@ class ABN(nn.Module):
     This gathers a `BatchNorm2d` and an activation function in a single module
     """
 
-    def __init__(
-        self,
-        num_features,
-        eps=1e-5,
-        momentum=0.1,
-        affine=True,
-        activation="leaky_relu",
-        slope=0.01,
-    ):
+    def __init__(self, num_features, eps=1e-5, momentum=0.1, affine=True, activation="leaky_relu", slope=0.01):
         """Create an Activated Batch Normalization module
         Parameters
         ----------
@@ -76,14 +68,7 @@ class ABN(nn.Module):
 
     def forward(self, x):
         x = functional.batch_norm(
-            x,
-            self.running_mean,
-            self.running_var,
-            self.weight,
-            self.bias,
-            self.training,
-            self.momentum,
-            self.eps,
+            x, self.running_mean, self.running_var, self.weight, self.bias, self.training, self.momentum, self.eps
         )
 
         if self.activation == ACT_RELU:
@@ -108,10 +93,7 @@ class ABN(nn.Module):
             raise KeyError(self.activation)
 
     def __repr__(self):
-        rep = (
-            "{name}({num_features}, eps={eps}, momentum={momentum},"
-            " affine={affine}, activation={activation}"
-        )
+        rep = "{name}({num_features}, eps={eps}, momentum={momentum}," " affine={affine}, activation={activation}"
         if self.activation == "leaky_relu":
             rep += ", slope={slope})"
         else:
