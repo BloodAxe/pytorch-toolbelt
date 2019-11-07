@@ -326,12 +326,13 @@ class IoUMetricsCallback(Callback):
         output_key: str = "logits",
         nan_score_on_empty=True,
         prefix: str = None,
+        threshold: float = 0.0
     ):
         """
         :param mode: One of: 'binary', 'multiclass', 'multilabel'.
         :param input_key: input key to use for precision calculation; specifies our `y_true`.
         :param output_key: output key to use for precision calculation; specifies our `y_pred`.
-        :param accuracy_for_empty:
+        :param threshold: Optional binarization threshold to apply on `y_pred`.
         """
         super().__init__(CallbackOrder.Metric)
         assert mode in {BINARY_MODE, MULTILABEL_MODE, MULTICLASS_MODE}
@@ -361,7 +362,7 @@ class IoUMetricsCallback(Callback):
         if self.mode == BINARY_MODE:
             self.score_fn = partial(
                 binary_dice_iou_score,
-                threshold=0.0,
+                threshold=threshold,
                 nan_score_on_empty=nan_score_on_empty,
                 mode=metric,
             )
@@ -370,7 +371,7 @@ class IoUMetricsCallback(Callback):
             self.score_fn = partial(
                 multiclass_dice_iou_score,
                 mode=metric,
-                threshold=0.0,
+                threshold=threshold,
                 nan_score_on_empty=nan_score_on_empty,
                 classes_of_interest=self.classes_of_interest,
             )
@@ -379,7 +380,7 @@ class IoUMetricsCallback(Callback):
             self.score_fn = partial(
                 multilabel_dice_iou_score,
                 mode=metric,
-                threshold=0.0,
+                threshold=threshold,
                 nan_score_on_empty=nan_score_on_empty,
                 classes_of_interest=self.classes_of_interest,
             )
