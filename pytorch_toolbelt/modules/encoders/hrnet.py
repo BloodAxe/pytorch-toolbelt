@@ -26,7 +26,7 @@ class HRNetV2Encoder34(EncoderModule):
 class HRNetV2Encoder48(EncoderModule):
     def __init__(self, pretrained=False):
         super().__init__([720], [4], [0])
-        self.hrnet = hrnetv2(pretrained=False)
+        self.hrnet = hrnetv2(width=48, pretrained=False)
 
     def forward(self, x):
         return self.hrnet(x)

@@ -1,4 +1,4 @@
-from .common import EncoderModule, _take
+from .common import EncoderModule, _take, make_n_channel_input
 from ..backbone.inceptionv4 import inceptionv4
 
 __all__ = ["InceptionV4Encoder"]
@@ -37,3 +37,6 @@ class InceptionV4Encoder(EncoderModule):
     @property
     def encoder_layers(self):
         return [self.layer0, self.layer1, self.layer2, self.layer3, self.layer4]
+
+    def change_input_channels(self, input_channels: int, mode="auto"):
+        self.layer0[0] = make_n_channel_input(self.layer0[0], input_channels, mode)

@@ -8,7 +8,7 @@ from torch.nn.modules.loss import _Loss
 
 from .functional import soft_jaccard_score
 
-__all__ = ["JaccardLoss"]
+__all__ = ["JaccardLoss", "BINARY_MODE", "MULTICLASS_MODE", "MULTILABEL_MODE"]
 
 BINARY_MODE = "binary"
 MULTICLASS_MODE = "multiclass"

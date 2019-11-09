@@ -1,9 +1,10 @@
+from collections import OrderedDict
 from typing import List
 
 from torch import nn
 from torchvision.models import densenet121, densenet161, densenet169, densenet201, DenseNet
 
-from .common import EncoderModule, _take
+from .common import EncoderModule, _take, make_n_channel_input
 
 __all__ = ["DenseNetEncoder", "DenseNet121Encoder", "DenseNet169Encoder", "DenseNet161Encoder", "DenseNet201Encoder"]
 
@@ -21,7 +22,15 @@ class DenseNetEncoder(EncoderModule):
             del block.pool
             return block
 
-        self.layer0 = nn.Sequential(densenet.features.conv0, densenet.features.norm0, densenet.features.relu0)
+        self.layer0 = nn.Sequential(
+            OrderedDict(
+                [
+                    ("conv0", densenet.features.conv0),
+                    ("bn0", densenet.features.norm0),
+                    ("act0", densenet.features.relu0),
+                ]
+            )
+        )
 
         self.avg_pool = nn.AvgPool2d(kernel_size=2, stride=2)
         self.pool0 = self.avg_pool if first_avg_pool else densenet.features.pool0
@@ -66,6 +75,9 @@ class DenseNetEncoder(EncoderModule):
 
         # Return only features that were requested
         return _take(output_features, self._layers)
+
+    def change_input_channels(self, input_channels: int, mode="auto"):
+        self.layer0.conv0 = make_n_channel_input(self.layer0.conv0, input_channels, mode)
 
 
 class DenseNet121Encoder(DenseNetEncoder):

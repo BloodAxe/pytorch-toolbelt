@@ -8,7 +8,7 @@ from collections import OrderedDict
 from torch import nn
 from torchvision.models import resnet50, resnet34, resnet18, resnet101, resnet152
 
-from .common import EncoderModule, _take
+from .common import EncoderModule, _take, make_n_channel_input
 
 __all__ = [
     "ResnetEncoder",
@@ -26,7 +26,9 @@ class ResnetEncoder(EncoderModule):
             layers = [1, 2, 3, 4]
         super().__init__(filters, strides, layers)
 
-        self.layer0 = nn.Sequential(OrderedDict([("conv1", resnet.conv1), ("bn1", resnet.bn1), ("relu", resnet.relu)]))
+        self.layer0 = nn.Sequential(OrderedDict([("conv0", resnet.conv1),
+                                                 ("bn0", resnet.bn1),
+                                                 ("act0", resnet.relu)]))
         self.maxpool = resnet.maxpool
 
         self.layer1 = resnet.layer1
@@ -52,6 +54,9 @@ class ResnetEncoder(EncoderModule):
 
         # Return only features that were requested
         return _take(output_features, self._layers)
+
+    def change_input_channels(self, input_channels: int, mode="auto"):
+        self.layer0.conv0 = make_n_channel_input(self.layer0.conv0, input_channels, mode)
 
 
 class Resnet18Encoder(ResnetEncoder):

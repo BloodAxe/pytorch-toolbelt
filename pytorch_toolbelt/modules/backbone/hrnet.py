@@ -224,7 +224,7 @@ class HighResolutionModule(nn.Module):
 
 
 class HRNetV2(nn.Module):
-    def __init__(self, width=48, **kwargs):
+    def __init__(self, input_channels=3, width=48, **kwargs):
         super(HRNetV2, self).__init__()
         blocks_dict = {"BASIC": HRNetBasicBlock, "BOTTLENECK": HRNetBottleneck}
 
@@ -260,7 +260,7 @@ class HRNetV2(nn.Module):
         self.layer0 = nn.Sequential(
             OrderedDict(
                 [
-                    ("conv1", nn.Conv2d(3, 64, kernel_size=3, stride=2, padding=1, bias=False)),
+                    ("conv1", nn.Conv2d(input_channels, 64, kernel_size=3, stride=2, padding=1, bias=False)),
                     ("bn1", nn.BatchNorm2d(64, momentum=HRNETV2_BN_MOMENTUM)),
                     ("relu", nn.ReLU(inplace=True)),
                     ("conv2", nn.Conv2d(64, 64, kernel_size=3, stride=2, padding=1, bias=False)),

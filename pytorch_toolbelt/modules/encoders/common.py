@@ -7,9 +7,41 @@ from typing import List
 
 from torch import nn
 
+import warnings
+import torch.nn.functional as F
+
+__all__ = ["EncoderModule", "_take", "make_n_channel_input"]
+
 
 def _take(elements, indexes):
     return list([elements[i] for i in indexes])
+
+
+def make_n_channel_input(conv: nn.Conv2d, in_channels: int, mode="auto"):
+    if conv.in_channels == in_channels:
+        warnings.warn("make_n_channel_input call is spurious")
+        return conv
+
+    new_conv = nn.Conv2d(
+        in_channels,
+        out_channels=conv.out_channels,
+        kernel_size=conv.kernel_size,
+        stride=conv.stride,
+        padding=conv.padding,
+        dilation=conv.dilation,
+        groups=conv.groups,
+        bias=conv.bias is not None,
+        padding_mode=conv.padding_mode,
+    )
+
+    w = conv.weight
+    if in_channels > conv.in_channels:
+        w = F.pad(w, pad=[0, 0, 0, in_channels-conv.in_channels], mode='circular')
+    else:
+        w = w[:, 0:in_channels, ...]
+
+    new_conv.weight = nn.Parameter(w[:, 0:1, ...], requires_grad=True)
+    return new_conv
 
 
 class EncoderModule(nn.Module):
@@ -41,9 +73,18 @@ class EncoderModule(nn.Module):
         return self._output_filters
 
     @property
-    def encoder_layers(self):
+    def encoder_layers(self) -> List[nn.Module]:
         raise NotImplementedError
 
     def set_trainable(self, trainable):
         for param in self.parameters():
             param.requires_grad = bool(trainable)
+
+    def change_input_channels(self, input_channels: int, mode="auto"):
+        """
+        Change number of channels expected in the input tensor. By default,
+        all encoders assume 3-channel image in BCHW notation with C=3.
+        This method changes first convolution to have user-defined number of
+        channels as input.
+        """
+        raise NotImplementedError
