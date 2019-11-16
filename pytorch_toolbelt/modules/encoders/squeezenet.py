@@ -1,7 +1,9 @@
+from collections import OrderedDict
+
 from torch import nn
 from torchvision.models import squeezenet1_1
 
-from .common import EncoderModule
+from .common import EncoderModule, make_n_channel_input
 
 __all__ = ["SqueezenetEncoder"]
 
@@ -15,10 +17,13 @@ class SqueezenetEncoder(EncoderModule):
         # nn.ReLU(inplace=True),
         # nn.MaxPool2d(kernel_size=3, stride=2, ceil_mode=True),
         self.layer0 = nn.Sequential(
-            squeezenet.features[0],
-            squeezenet.features[1],
-            # squeezenet.features[2],
-            nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
+            OrderedDict(
+                [
+                    ("conv1", squeezenet.features[0]),
+                    ("relu1", nn.ReLU(inplace=True)),
+                    ("pool1", nn.MaxPool2d(kernel_size=3, stride=2, padding=1)),
+                ]
+            )
         )
 
         # Fire(64, 16, 64, 64),
@@ -52,3 +57,6 @@ class SqueezenetEncoder(EncoderModule):
     @property
     def encoder_layers(self):
         return [self.layer0, self.layer1, self.layer2, self.layer3]
+
+    def change_input_channels(self, input_channels: int, mode="auto"):
+        self.layer0.conv1 = make_n_channel_input(self.layer0.conv1, input_channels, mode)

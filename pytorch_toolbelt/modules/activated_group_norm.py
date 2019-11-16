@@ -1,21 +1,8 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as functional
+import torch.nn.functional as F
 
-from .activations import (
-    ACT_LEAKY_RELU,
-    ACT_NONE,
-    ACT_HARD_SIGMOID,
-    ACT_HARD_SWISH,
-    ACT_SWISH,
-    ACT_SELU,
-    ACT_ELU,
-    ACT_RELU6,
-    ACT_RELU,
-    hard_swish,
-    hard_sigmoid,
-    swish,
-)
+from .activations import *
 
 __all__ = ["AGN"]
 
@@ -54,8 +41,8 @@ class AGN(nn.Module):
         self.activation = activation
         self.slope = slope
 
-        self.weight = nn.Parameter(torch.ones(num_features))
-        self.bias = nn.Parameter(torch.zeros(num_features))
+        self.weight = nn.Parameter(torch.ones(num_features), requires_grad=True)
+        self.bias = nn.Parameter(torch.zeros(num_features), requires_grad=True)
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -63,20 +50,22 @@ class AGN(nn.Module):
         nn.init.zeros_(self.bias)
 
     def forward(self, x):
-        x = functional.group_norm(x, self.num_groups, self.weight, self.bias, self.eps)
+        x = F.group_norm(x, self.num_groups, self.weight, self.bias, self.eps)
 
         if self.activation == ACT_RELU:
-            return functional.relu(x, inplace=True)
+            return F.relu(x, inplace=True)
         elif self.activation == ACT_RELU6:
-            return functional.relu6(x, inplace=True)
+            return F.relu6(x, inplace=True)
         elif self.activation == ACT_LEAKY_RELU:
-            return functional.leaky_relu(x, negative_slope=self.slope, inplace=True)
+            return F.leaky_relu(x, negative_slope=self.slope, inplace=True)
         elif self.activation == ACT_ELU:
-            return functional.elu(x, inplace=True)
+            return F.elu(x, inplace=True)
         elif self.activation == ACT_SELU:
-            return functional.selu(x, inplace=True)
+            return F.selu(x, inplace=True)
         elif self.activation == ACT_SWISH:
             return swish(x)
+        elif self.activation == ACT_MISH:
+            return mish(x)
         elif self.activation == ACT_HARD_SWISH:
             return hard_swish(x, inplace=True)
         elif self.activation == ACT_HARD_SIGMOID:

@@ -26,9 +26,7 @@ class ResnetEncoder(EncoderModule):
             layers = [1, 2, 3, 4]
         super().__init__(filters, strides, layers)
 
-        self.layer0 = nn.Sequential(OrderedDict([("conv0", resnet.conv1),
-                                                 ("bn0", resnet.bn1),
-                                                 ("act0", resnet.relu)]))
+        self.layer0 = nn.Sequential(OrderedDict([("conv0", resnet.conv1), ("bn0", resnet.bn1), ("act0", resnet.relu)]))
         self.maxpool = resnet.maxpool
 
         self.layer1 = resnet.layer1

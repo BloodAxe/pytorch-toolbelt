@@ -1,30 +1,15 @@
-from torch import nn
+from .common import EncoderModule, make_n_channel_input
+from ..activated_batch_norm import ABN
+from ..unet import UnetEncoderBlock
 
-
-from ..abn import ABN
-
-from .common import EncoderModule, _take
-
-__all__ = ["UnetEncoderBlock", "UnetEncoder"]
-
-
-class UnetEncoderBlock(nn.Module):
-    def __init__(self, in_dec_filters, out_filters, abn_block=ABN, stride=1, **kwargs):
-        super().__init__()
-        self.conv1 = nn.Conv2d(in_dec_filters, out_filters, kernel_size=3, padding=1, stride=1, bias=False, **kwargs)
-        self.bn1 = abn_block(out_filters)
-        self.conv2 = nn.Conv2d(out_filters, out_filters, kernel_size=3, padding=1, stride=stride, bias=False, **kwargs)
-        self.bn2 = abn_block(out_filters)
-
-    def forward(self, x):
-        x = self.conv1(x)
-        x = self.bn1(x)
-        x = self.conv2(x)
-        x = self.bn2(x)
-        return x
+__all__ = ["UnetEncoder"]
 
 
 class UnetEncoder(EncoderModule):
+    """
+    Vanilla U-Net encoder
+    """
+
     def __init__(self, input_channels=3, features=32, num_layers=4, growth_factor=2, abn_block=ABN):
         feature_maps = [features * growth_factor * (i + 1) for i in range(num_layers)]
         strides = [2 * (i + 1) for i in range(num_layers)]
@@ -41,3 +26,6 @@ class UnetEncoder(EncoderModule):
     @property
     def encoder_layers(self):
         return [self[f"layer{layer}"] for layer in range(self.num_layers)]
+
+    def change_input_channels(self, input_channels: int, mode="auto"):
+        self.layer0.conv1 = make_n_channel_input(self.layer0.conv1, input_channels, mode)

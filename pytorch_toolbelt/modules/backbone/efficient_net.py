@@ -8,8 +8,8 @@ from torch import nn
 from torch.nn import functional as F
 from torch.nn.init import kaiming_normal_, kaiming_uniform_
 
-from ..abn import ABN
-from ..agn import AGN
+from ..activated_batch_norm import ABN
+from ..activated_group_norm import AGN
 from ..activations import ACT_HARD_SWISH, sanitize_activation_name
 from ..scse import SpatialGate2d
 

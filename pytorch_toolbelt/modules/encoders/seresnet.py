@@ -2,6 +2,8 @@
 
 Encodes listed here provides easy way to swap backbone of classification/segmentation/detection model.
 """
+from torch import Tensor
+from typing import List
 
 from .common import EncoderModule, _take, make_n_channel_input
 
@@ -60,7 +62,7 @@ class SEResnetEncoder(EncoderModule):
     def output_filters(self):
         return self._output_filters
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> List[Tensor]:
         input = x
         output_features = []
         for layer in self.encoder_layers:

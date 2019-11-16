@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
-from .abn import *
+from .activated_batch_norm import *
+from .activated_group_norm import *
 from .dsconv import *
 from .fpn import *
 from .hypercolumn import *

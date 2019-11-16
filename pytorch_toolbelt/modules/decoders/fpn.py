@@ -1,4 +1,6 @@
 from torch import nn
+from typing import List
+
 from .common import DecoderModule
 from ..fpn import FPNBottleneckBlock, UpsampleAdd, FPNPredictionBlock
 
@@ -6,7 +8,7 @@ from ..fpn import FPNBottleneckBlock, UpsampleAdd, FPNPredictionBlock
 class FPNDecoder(DecoderModule):
     def __init__(
         self,
-        features,
+        features: List[int],
         bottleneck=FPNBottleneckBlock,
         upsample_add_block=UpsampleAdd,
         prediction_block=FPNPredictionBlock,
@@ -18,7 +20,7 @@ class FPNDecoder(DecoderModule):
     ):
         """
 
-        :param features:
+        :param features: Number of features for feature maps from encoder
         :param prediction_block:
         :param bottleneck:
         :param fpn_features:

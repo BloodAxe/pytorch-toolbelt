@@ -4,7 +4,7 @@ from torch import nn, Tensor
 
 from .common import SegmentationDecoderModule
 from .fpn import FPNDecoder
-from ..abn import ABN
+from ..activated_batch_norm import ABN
 from ..fpn import FPNFuse, UpsampleAdd
 
 __all__ = ["FPNCatDecoder"]
@@ -38,14 +38,14 @@ class FPNCatDecoder(SegmentationDecoderModule):
     """
 
     def __init__(
-            self,
-            feature_maps: List[int],
-            num_classes: int,
-            fpn_channels=128,
-            dropout=0.0,
-            abn_block=ABN,
-            upsample_add=UpsampleAdd,
-            prediction_block=FPNSumDecoderBlock,
+        self,
+        feature_maps: List[int],
+        num_classes: int,
+        fpn_channels=128,
+        dropout=0.0,
+        abn_block=ABN,
+        upsample_add=UpsampleAdd,
+        prediction_block=FPNSumDecoderBlock,
     ):
         super().__init__()
 

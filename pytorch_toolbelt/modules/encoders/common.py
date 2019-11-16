@@ -36,7 +36,7 @@ def make_n_channel_input(conv: nn.Conv2d, in_channels: int, mode="auto"):
 
     w = conv.weight
     if in_channels > conv.in_channels:
-        w = F.pad(w, pad=[0, 0, 0, in_channels-conv.in_channels], mode='circular')
+        w = F.pad(w, pad=[0, 0, 0, in_channels - conv.in_channels], mode="circular")
     else:
         w = w[:, 0:in_channels, ...]
 

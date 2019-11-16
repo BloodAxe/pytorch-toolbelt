@@ -2,7 +2,7 @@ from itertools import repeat
 from typing import List, Tuple
 
 import torch
-from ..abn import ABN
+from ..activated_batch_norm import ABN
 from ..identity import Identity
 from .common import SegmentationDecoderModule
 
@@ -115,9 +115,16 @@ class FPNSumDecoder(SegmentationDecoderModule):
 
     """
 
-    def __init__(self, feature_maps: List[int], num_classes: int, fpn_channels=256, dropout=0.0, abn_block=ABN,
-                 center_block=FPNSumCenterBlock,
-                 decoder_block=FPNSumDecoderBlock):
+    def __init__(
+        self,
+        feature_maps: List[int],
+        num_classes: int,
+        fpn_channels=256,
+        dropout=0.0,
+        abn_block=ABN,
+        center_block=FPNSumCenterBlock,
+        decoder_block=FPNSumDecoderBlock,
+    ):
         super().__init__()
 
         self.center = center_block(

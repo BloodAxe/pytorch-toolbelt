@@ -1,9 +1,9 @@
 from typing import List
 
-from ..abn import ABN
+from ..activated_batch_norm import ABN
 from ..backbone.wider_resnet import WiderResNet, WiderResNetA2
 
-from .common import EncoderModule, _take
+from .common import EncoderModule, _take, make_n_channel_input
 
 __all__ = [
     "WiderResnetEncoder",
@@ -21,7 +21,7 @@ class WiderResnetEncoder(EncoderModule):
     def __init__(self, structure: List[int], layers: List[int], norm_act=ABN):
         super().__init__([64, 128, 256, 512, 1024, 2048, 4096], [1, 2, 4, 8, 16, 32, 32], layers)
 
-        encoder = WiderResNet(structure, classes=0, norm_act=norm_act)
+        encoder: WiderResNet = WiderResNet(structure, classes=0, norm_act=norm_act)
         self.layer0 = encoder.mod1
         self.layer1 = encoder.mod2
         self.layer2 = encoder.mod3
@@ -66,6 +66,9 @@ class WiderResnetEncoder(EncoderModule):
 
         # Return only features that were requested
         return _take(output_features, self._layers)
+
+    def change_input_channels(self, input_channels: int, mode="auto"):
+        self.layer0.conv1 = make_n_channel_input(self.layer0.conv1, input_channels, mode)
 
 
 class WiderResnet16Encoder(WiderResnetEncoder):
@@ -135,6 +138,9 @@ class WiderResnetA2Encoder(EncoderModule):
 
         # Return only features that were requested
         return _take(output_features, self._layers)
+
+    def change_input_channels(self, input_channels: int, mode="auto"):
+        self.layer0.conv1 = make_n_channel_input(self.layer0.conv1, input_channels, mode)
 
 
 class WiderResnet16A2Encoder(WiderResnetA2Encoder):

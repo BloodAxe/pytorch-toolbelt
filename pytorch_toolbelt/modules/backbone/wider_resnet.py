@@ -2,7 +2,7 @@ from collections import OrderedDict
 from functools import partial
 
 import torch
-from ..abn import ABN
+from ..activated_batch_norm import ABN
 from ..pooling import GlobalAvgPool2d
 from torch import nn
 
@@ -282,4 +282,3 @@ def wider_resnet_20_a2(num_classes=0, norm_act=ABN):
 
 def wider_resnet_38_a2(num_classes=0, norm_act=ABN):
     return WiderResNetA2(structure=[3, 3, 6, 3, 1, 1], norm_act=norm_act, classes=num_classes)
-
