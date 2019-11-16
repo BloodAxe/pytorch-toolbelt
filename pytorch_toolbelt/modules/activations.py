@@ -138,7 +138,7 @@ def get_activation_module(activation_name: str, **kwargs) -> nn.Module:
     ACTIVATIONS = {
         "relu": nn.ReLU,
         "relu6": nn.ReLU6,
-        "leaky_rely": nn.LeakyReLU,
+        "leaky_relu": nn.LeakyReLU,
         "elu": nn.ELU,
         "selu": nn.SELU,
         "celu": nn.CELU,
