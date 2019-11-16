@@ -35,10 +35,10 @@ skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="Cuda
         [E.EfficientNetB5Encoder, {}],
         [E.EfficientNetB6Encoder, {}],
         [E.EfficientNetB7Encoder, {}],
-        [E.DenseNet121Encoder, {}],
-        [E.DenseNet161Encoder, {}],
-        [E.DenseNet169Encoder, {}],
-        [E.DenseNet201Encoder, {}],
+        [E.DenseNet121Encoder, {"pretrained": False}],
+        [E.DenseNet161Encoder, {"pretrained": False}],
+        [E.DenseNet169Encoder, {"pretrained": False}],
+        [E.DenseNet201Encoder, {"pretrained": False}],
     ],
 )
 @torch.no_grad()
@@ -65,7 +65,8 @@ def test_inceptionv4_encoder():
     backbone = inceptionv4(pretrained=False)
     backbone.last_linear = None
 
-    net = E.InceptionV4Encoder(backbone, layers=[0, 1, 2, 3, 4]).cuda()
+    net = E.InceptionV4Encoder(pretrained=False,
+                               layers=[0, 1, 2, 3, 4]).cuda()
 
     print(count_parameters(backbone))
     print(count_parameters(net))
@@ -82,7 +83,7 @@ def test_inceptionv4_encoder():
 def test_densenet():
     from torchvision.models import densenet121
 
-    net1 = E.DenseNet121Encoder()
+    net1 = E.DenseNet121Encoder(pretrained=False)
     net2 = densenet121(pretrained=False)
     net2.classifier = None
 
