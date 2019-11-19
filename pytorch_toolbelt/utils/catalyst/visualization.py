@@ -7,7 +7,7 @@ import numpy as np
 import torch
 from catalyst.dl import Callback, RunnerState, CallbackOrder
 from catalyst.dl.callbacks import TensorboardLogger
-from tensorboardX import SummaryWriter
+from catalyst.utils.tensorboard import SummaryWriter
 
 from pytorch_toolbelt.utils.torch_utils import rgb_image_from_tensor, to_numpy
 from pytorch_toolbelt.utils.torch_utils import tensor_from_rgb_image
