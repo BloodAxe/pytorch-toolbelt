@@ -15,6 +15,7 @@ from pytorch_toolbelt.utils.torch_utils import tensor_from_rgb_image
 __all__ = [
     "get_tensorboard_logger",
     "ShowPolarBatchesCallback",
+    "ShowEmbeddingsCallback",
     "draw_binary_segmentation_predictions",
     "draw_semantic_segmentation_predictions",
 ]
@@ -132,6 +133,51 @@ class ShowPolarBatchesCallback(Callback):
                 plt.tight_layout()
                 plt.axis("off")
                 plt.show()
+
+
+
+class ShowEmbeddingsCallback(Callback):
+    def __init__(self, embedding_key, input_key, targets_key, prefix='embedding',
+                 mean=(0.485, 0.456, 0.406),
+                 std=(0.229, 0.224, 0.225)
+                 ):
+        super().__init__(CallbackOrder.Other)
+        self.prefix = prefix
+        self.embedding_key = embedding_key
+        self.input_key = input_key
+        self.targets_key = targets_key
+        self.mean = torch.tensor(mean).view((1, 3, 1, 1))
+        self.std = torch.tensor(std).view((1, 3, 1, 1))
+
+        self.embeddings = []
+        self.images = []
+        self.targets = []
+
+    def on_loader_start(self, state: RunnerState):
+        self.embeddings = []
+        self.images = []
+        self.targets = []
+
+    def on_loader_end(self, state: RunnerState):
+        logger = get_tensorboard_logger(state)
+        logger.add_embedding(mat=torch.cat(self.embeddings, dim=0),
+                             metadata=self.targets,
+                             label_img=torch.cat(self.images, dim=0),
+                             global_step=state.epoch,
+                             tag=self.prefix
+                             )
+
+    def on_batch_end(self, state: RunnerState):
+        embedding = state.output[self.embedding_key].detach().cpu()
+        image = state.input[self.input_key].detach().cpu()
+        targets = state.input[self.targets_key].detach().cpu().tolist()
+
+        image = F.interpolate(image, size=(256, 256))
+        image = image * self.std + self.mean
+
+        self.images.append(image)
+        self.embeddings.append(embedding)
+        self.targets.extend(targets)
 
 
 def draw_binary_segmentation_predictions(
