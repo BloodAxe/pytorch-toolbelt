@@ -6,3 +6,5 @@ from .dice import *
 from .lovasz import *
 from .joint_loss import *
 from .wing_loss import *
+from .soft_bce import *
+from .soft_ce import *
