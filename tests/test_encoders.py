@@ -65,8 +65,7 @@ def test_inceptionv4_encoder():
     backbone = inceptionv4(pretrained=False)
     backbone.last_linear = None
 
-    net = E.InceptionV4Encoder(pretrained=False,
-                               layers=[0, 1, 2, 3, 4]).cuda()
+    net = E.InceptionV4Encoder(pretrained=False, layers=[0, 1, 2, 3, 4]).cuda()
 
     print(count_parameters(backbone))
     print(count_parameters(net))
@@ -88,4 +87,3 @@ def test_densenet():
     net2.classifier = None
 
     print(count_parameters(net1), count_parameters(net2))
-

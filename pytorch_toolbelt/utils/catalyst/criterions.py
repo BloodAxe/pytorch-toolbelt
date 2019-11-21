@@ -96,7 +96,6 @@ class LPRegularizationCallback(CriterionCallback):
         _add_loss_to_state(self.prefix, state, lp_reg)
 
 
-
 class TSACriterionCallback(CriterionCallback):
     """
     Criterion callback with training signal annealing support.
@@ -107,12 +106,19 @@ class TSACriterionCallback(CriterionCallback):
         Unsupervised Data Augmentation for Consistency Training
         https://arxiv.org/abs/1904.12848
     """
-    def __init__(self, num_classes, num_epochs,
-                 input_key: str = "targets",
-                 output_key: str = "logits",
-                 prefix: str = "loss",
-                 criterion_key: str = None,
-                 loss_key: str = None, multiplier: float = 1.0, unsupervised_label=-100):
+
+    def __init__(
+        self,
+        num_classes,
+        num_epochs,
+        input_key: str = "targets",
+        output_key: str = "logits",
+        prefix: str = "loss",
+        criterion_key: str = None,
+        loss_key: str = None,
+        multiplier: float = 1.0,
+        unsupervised_label=-100,
+    ):
         super().__init__(input_key, output_key, prefix, criterion_key, loss_key, multiplier)
         self.num_epochs = num_epochs
         self.num_classes = num_classes
@@ -136,8 +142,8 @@ class TSACriterionCallback(CriterionCallback):
 
     def on_epoch_start(self, state: RunnerState):
         if state.loader_name == "train":
-            self.tsa_threshold = self.get_tsa_threshold(state.epoch, 'exp_schedule', 1. / self.num_classes, 1.0)
-            state.metrics.epoch_values['train']['tsa_threshold'] = self.tsa_threshold
+            self.tsa_threshold = self.get_tsa_threshold(state.epoch, "exp_schedule", 1.0 / self.num_classes, 1.0)
+            state.metrics.epoch_values["train"]["tsa_threshold"] = self.tsa_threshold
 
     def _compute_loss(self, state: RunnerState, criterion):
 
@@ -156,7 +162,7 @@ class TSACriterionCallback(CriterionCallback):
             sup_probs = logits.detach().softmax(dim=1)
             correct_label_probs = torch.sum(one_hot_targets * sup_probs, dim=1)
             larger_than_threshold = correct_label_probs > self.tsa_threshold
-            loss_mask = 1. - larger_than_threshold.float()
+            loss_mask = 1.0 - larger_than_threshold.float()
 
         loss = criterion(logits, targets)
         loss = loss * loss_mask

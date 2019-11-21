@@ -92,8 +92,6 @@ class ASPP(nn.Module):
                 m.bias.data.zero_()
 
 
-
-
 class DeeplabV3Decoder(DecoderModule):
     def __init__(self, feature_maps: List[int], num_classes: int, dropout=0.5):
         super(DeeplabV3Decoder, self).__init__()
