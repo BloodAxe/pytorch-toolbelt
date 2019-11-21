@@ -3,6 +3,8 @@ import pytest
 
 from pytorch_toolbelt.modules.activations import get_activation_module
 
+skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="Cuda is not available")
+
 
 @pytest.mark.parametrize(
     "activation_name",
@@ -19,6 +21,7 @@ def test_activations(activation_name):
     "activation_name",
     ["none", "relu", "relu6", "leaky_relu", "elu", "selu", "celu", "mish", "swish", "hard_sigmoid", "hard_swish"],
 )
+@skip_if_no_cuda
 def test_activations_cuda(activation_name):
     act = get_activation_module(activation_name)
     x = torch.randn(128).float().cuda()

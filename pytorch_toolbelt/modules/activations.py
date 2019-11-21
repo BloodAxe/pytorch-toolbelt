@@ -62,7 +62,7 @@ class SwishFunction(torch.autograd.Function):
 
 def mish(input):
     """
-    Applies the mish function element-wise:
+    Apply the mish function element-wise:
     mish(x) = x * tanh(softplus(x)) = x * tanh(ln(1 + exp(x)))
     See additional documentation for mish class.
     Credit: https://github.com/digantamisra98/Mish
