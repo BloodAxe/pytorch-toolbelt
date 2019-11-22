@@ -94,7 +94,7 @@ class FPNSumDecoderBlock(nn.Module):
         :param encoder_fm:
         :return:
         """
-        decoder_fm = F.interpolate(decoder_fm, size=encoder_fm.size()[2:], mode="bilinear", align_corners=True)
+        decoder_fm = F.interpolate(decoder_fm, size=encoder_fm.size()[2:], mode="bilinear", align_corners=False)
 
         encoder_fm = self.skip(encoder_fm)
         x = decoder_fm + encoder_fm
@@ -140,7 +140,7 @@ class FPNSumDecoder(SegmentationDecoderModule):
             ]
         )
 
-        self.final_block = nn.Sequential(nn.Conv2d(fpn_channels, num_classes, kernel_size=1))
+        self.final_block = nn.Conv2d(fpn_channels, num_classes, kernel_size=1)
 
     def forward(self, feature_maps: List[Tensor]) -> Tuple[Tensor, Tensor]:
         last_feature_map = feature_maps[-1]
