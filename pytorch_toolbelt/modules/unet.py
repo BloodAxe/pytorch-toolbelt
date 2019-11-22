@@ -58,6 +58,10 @@ class UnetDecoderBlock(nn.Module):
     ):
         super(UnetDecoderBlock, self).__init__()
 
+        self.scale_factor = scale_factor
+        self.scale_mode = scale_mode
+        self.align_corners = align_corners
+
         self.pre_drop = nn.Dropout2d(pre_dropout_rate, inplace=True)
 
         self.conv1 = nn.Conv2d(
@@ -68,10 +72,6 @@ class UnetDecoderBlock(nn.Module):
         self.abn2 = abn_block(out_filters)
 
         self.post_drop = nn.Dropout2d(post_dropout_rate, inplace=False)
-
-        self.scale_factor = scale_factor
-        self.scale_mode = scale_mode
-        self.align_corners = align_corners
 
     def forward(self, x: torch.Tensor, enc: torch.Tensor) -> torch.Tensor:
         if self.scale_factor is not None:
@@ -85,9 +85,12 @@ class UnetDecoderBlock(nn.Module):
         x = torch.cat([x, enc], 1)
 
         x = self.pre_drop(x)
+
         x = self.conv1(x)
         x = self.abn1(x)
+
         x = self.conv2(x)
         x = self.abn2(x)
+
         x = self.post_drop(x)
         return x

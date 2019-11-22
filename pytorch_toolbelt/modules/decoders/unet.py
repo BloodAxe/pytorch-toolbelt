@@ -18,30 +18,28 @@ class UNetDecoder(DecoderModule):
         if not isinstance(decoder_features, list):
             decoder_features = [decoder_features * (2 ** i) for i in range(len(feature_maps))]
 
+        self.center = UnetCentralBlock(in_dec_filters=feature_maps[-1], out_filters=decoder_features[-1])
+
         blocks = []
         for block_index, in_enc_features in enumerate(feature_maps[:-1]):
             blocks.append(
                 UnetDecoderBlock(
-                    decoder_features[block_index + 1], in_enc_features, decoder_features[block_index], mask_channels
+                    in_dec_filters=decoder_features[block_index + 1],
+                    in_enc_filters=in_enc_features,
+                    out_filters=decoder_features[block_index],
                 )
             )
 
-        self.center = UnetCentralBlock(feature_maps[-1], decoder_features[-1], mask_channels)
         self.blocks = nn.ModuleList(blocks)
         self.output_filters = decoder_features
 
-    def forward(self, feature_maps):
+        self.final = nn.Conv2d(decoder_features[0], mask_channels, kernel_size=1)
 
-        output, dsv = self.center(feature_maps[-1])
-        decoder_outputs = [output]
-        dsv_list = [dsv]
+    def forward(self, feature_maps: List[torch.Tensor]) -> torch.Tensor:
+        output = self.center(feature_maps[-1])
 
         for decoder_block, encoder_output in zip(reversed(self.blocks), reversed(feature_maps[:-1])):
-            output, dsv = decoder_block(output, encoder_output)
-            decoder_outputs.append(output)
-            dsv_list.append(dsv)
+            output = decoder_block(output, encoder_output)
 
-        dsv_list = list(reversed(dsv_list))
-        decoder_outputs = list(reversed(decoder_outputs))
-
-        return decoder_outputs, dsv_list
+        output = self.final(output)
+        return output
