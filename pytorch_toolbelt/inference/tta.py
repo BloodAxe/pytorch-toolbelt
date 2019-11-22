@@ -188,10 +188,11 @@ def d4_image2mask(model: nn.Module, image: Tensor) -> Tensor:
     output = model(image)
 
     for aug, deaug in zip(
-        [F.torch_rot90, F.torch_rot180, F.torch_rot270], [F.torch_rot270, F.torch_rot180, F.torch_rot90]
+        [F.torch_rot90, F.torch_rot180, F.torch_rot270],
+        [F.torch_rot270, F.torch_rot180, F.torch_rot90]
     ):
         x = deaug(model(aug(image)))
-        output = output + x
+        output += x
 
     image = F.torch_transpose(image)
 
@@ -200,7 +201,7 @@ def d4_image2mask(model: nn.Module, image: Tensor) -> Tensor:
         [F.torch_none, F.torch_rot270, F.torch_rot180, F.torch_rot90],
     ):
         x = deaug(model(aug(image)))
-        output = output + F.torch_transpose(x)
+        output += F.torch_transpose(x)
 
     one_over_8 = float(1.0 / 8.0)
     return output * one_over_8
