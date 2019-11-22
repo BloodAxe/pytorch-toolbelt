@@ -82,14 +82,16 @@ class DeeplabV3Decoder(DecoderModule):
         self.abn1 = abn_block(48)
 
         self.last_conv = nn.Sequential(
-            nn.Conv2d(high_level_bottleneck + low_level_bottleneck, high_level_bottleneck, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.Conv2d(high_level_bottleneck + low_level_bottleneck, high_level_bottleneck, kernel_size=3, padding=1, bias=False),
             abn_block(high_level_bottleneck),
             nn.Dropout(dropout),
-            nn.Conv2d(high_level_bottleneck, high_level_bottleneck, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.Conv2d(high_level_bottleneck, high_level_bottleneck, kernel_size=3, padding=1, bias=False),
             abn_block(high_level_bottleneck),
             nn.Dropout(dropout * 0.2),  # 5 times smaller dropout rate
-            nn.Conv2d(high_level_bottleneck, num_classes, kernel_size=1, stride=1),
+            nn.Conv2d(high_level_bottleneck, num_classes, kernel_size=1),
         )
+
+        self.dsv = nn.Conv2d(high_level_bottleneck, num_classes, kernel_size=1)
 
     def forward(self, feature_maps):
         low_level_feat = feature_maps[0]
@@ -99,10 +101,12 @@ class DeeplabV3Decoder(DecoderModule):
         high_level_features = feature_maps[-1]
         high_level_features = self.aspp(high_level_features)
 
+        dsv = self.dsv(high_level_features)
+
         high_level_features = F.interpolate(
             high_level_features, size=low_level_feat.size()[2:], mode="bilinear", align_corners=False
         )
         high_level_features = torch.cat([high_level_features, low_level_feat], dim=1)
         high_level_features = self.last_conv(high_level_features)
 
-        return high_level_features
+        return high_level_features, dsv
