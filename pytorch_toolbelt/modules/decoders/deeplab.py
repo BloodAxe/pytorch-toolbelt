@@ -79,7 +79,7 @@ class DeeplabV3Decoder(DecoderModule):
         self.aspp = ASPP(feature_maps[-1], output_stride, high_level_bottleneck, dropout=dropout, abn_block=abn_block)
 
         self.conv1 = nn.Conv2d(feature_maps[0], low_level_bottleneck, 1, bias=False)
-        self.abn1 = abn_block(48)
+        self.abn1 = abn_block(low_level_bottleneck)
 
         self.last_conv = nn.Sequential(
             nn.Conv2d(high_level_bottleneck + low_level_bottleneck, high_level_bottleneck, kernel_size=3, padding=1, bias=False),
