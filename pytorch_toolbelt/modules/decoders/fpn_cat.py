@@ -10,7 +10,7 @@ from ..fpn import FPNFuse, UpsampleAdd
 __all__ = ["FPNCatDecoder"]
 
 
-class FPNSumDecoderBlock(nn.Module):
+class FPNCatDecoderBlock(nn.Module):
     """
     Simple prediction block composed of (Conv + BN + Activation) repeated twice
     """
@@ -45,7 +45,7 @@ class FPNCatDecoder(SegmentationDecoderModule):
         dropout=0.0,
         abn_block=ABN,
         upsample_add=UpsampleAdd,
-        prediction_block=FPNSumDecoderBlock,
+        prediction_block=FPNCatDecoderBlock,
     ):
         super().__init__()
 
