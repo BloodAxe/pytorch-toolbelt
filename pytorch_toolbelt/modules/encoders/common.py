@@ -40,7 +40,7 @@ def make_n_channel_input(conv: nn.Conv2d, in_channels: int, mode="auto"):
     else:
         w = w[:, 0:in_channels, ...]
 
-    new_conv.weight = nn.Parameter(w[:, 0:1, ...], requires_grad=True)
+    new_conv.weight = nn.Parameter(w, requires_grad=True)
     return new_conv
 
 
