@@ -1,4 +1,5 @@
-from typing import List, Tuple
+from functools import partial
+from typing import List, Tuple, Optional, Union
 
 from torch import nn, Tensor
 
@@ -7,7 +8,7 @@ from .fpn import FPNDecoder
 from ..activated_batch_norm import ABN
 from ..fpn import FPNFuse, UpsampleAdd
 
-__all__ = ["FPNCatDecoder"]
+__all__ = ["FPNCatDecoderBlock", "FPNCatDecoder"]
 
 
 class FPNCatDecoderBlock(nn.Module):
@@ -40,13 +41,28 @@ class FPNCatDecoder(SegmentationDecoderModule):
     def __init__(
         self,
         feature_maps: List[int],
-        num_classes: int,
+        output_channels: int,
         fpn_channels=128,
+        dsv_channels: Optional[int] = None,
         dropout=0.0,
         abn_block=ABN,
         upsample_add=UpsampleAdd,
         prediction_block=FPNCatDecoderBlock,
+        final_block=partial(nn.Conv2d, kernel_size=1),
     ):
+        """
+
+        Args:
+            feature_maps:
+            output_channels:
+            fpn_channels:
+            dsv_channels:
+            dropout:
+            abn_block:
+            upsample_add:
+            prediction_block:
+            final_block:
+        """
         super().__init__()
 
         self.fpn = FPNDecoder(
@@ -61,35 +77,33 @@ class FPNCatDecoder(SegmentationDecoderModule):
         self.dropout = nn.Dropout2d(dropout, inplace=True)
 
         # dsv blocks are for deep supervision
-        self.dsv = nn.ModuleList(
-            [
-                nn.Conv2d(fpn_features, num_classes, kernel_size=1)
-                for fpn_features in [fpn_channels] * len(feature_maps)
-            ]
-        )
+        if dsv_channels is not None:
+            self.dsv = nn.ModuleList(
+                [
+                    nn.Conv2d(fpn_features, dsv_channels, kernel_size=1)
+                    for fpn_features in [fpn_channels] * len(feature_maps)
+                ]
+            )
+        else:
+            self.dsv = None
 
         features = sum(self.fpn.output_filters)
 
-        self.final_block = nn.Sequential(
-            nn.Conv2d(features, features // 2, kernel_size=1),
-            abn_block(features // 2),
-            nn.Conv2d(features // 2, features // 4, kernel_size=3, padding=1, bias=False),
-            abn_block(features // 4),
-            nn.Conv2d(features // 4, features // 4, kernel_size=3, padding=1, bias=False),
-            abn_block(features // 4),
-            nn.Conv2d(features // 4, num_classes, kernel_size=1, bias=True),
-        )
+        self.final_block = final_block(features, output_channels)
 
-    def forward(self, feature_maps: List[Tensor]) -> Tuple[Tensor, List[Tensor]]:
+    def forward(self, feature_maps: List[Tensor]) -> Union[Tensor, Tuple[Tensor, List[Tensor]]]:
         fpn_maps = self.fpn(feature_maps)
 
         fused = self.fuse(fpn_maps)
         fused = self.dropout(fused)
-
-        dsv_masks = []
-        for dsv_block, fpn in zip(self.dsv, fpn_maps):
-            dsv = dsv_block(fpn)
-            dsv_masks.append(dsv)
-
         x = self.final_block(fused)
-        return x, dsv_masks
+
+        if self.dsv is not None:
+            dsv_masks = []
+            for dsv_block, fpn in zip(self.dsv, fpn_maps):
+                dsv = dsv_block(fpn)
+                dsv_masks.append(dsv)
+
+            return x, dsv_masks
+
+        return x

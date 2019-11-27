@@ -4,12 +4,16 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
+from ..modules.activated_batch_norm import ABN
+
 __all__ = [
     "FPNBottleneckBlock",
     "FPNBottleneckBlockBN",
     "FPNPredictionBlock",
     "FPNFuse",
     "FPNFuseSum",
+    "FPNFinalBottleneckBlock",
+    "FPNFinalTransposeConvBlock",
     "UpsampleAdd",
     "UpsampleAddConv",
 ]
@@ -45,6 +49,72 @@ class FPNPredictionBlock(nn.Module):
 
     def forward(self, x):
         x = self.conv(x)
+        return x
+
+
+class FPNFinalBottleneckBlock(nn.Module):
+    def __init__(self, input_channels: int, output_channels: int, reduction=4, abn_block=ABN):
+        super().__init__()
+
+        features = input_channels // reduction
+
+        self.bottleneck = nn.Conv2d(input_channels, features, kernel_size=1, bias=False)
+
+        self.conv1 = nn.Conv2d(features, features, kernel_size=3, padding=1, bias=False)
+        self.abn1 = abn_block(features)
+
+        self.conv2 = nn.Conv2d(features, features, kernel_size=3, padding=1, bias=False)
+        self.abn2 = abn_block(features)
+
+        self.final = nn.Conv2d(features, output_channels, kernel_size=1, bias=True)
+
+    def forward(self, x):
+        x = self.bottleneck(x)
+
+        x = self.conv1(x)
+        x = self.abn1(x)
+
+        x = self.conv2(x)
+        x = self.abn2(x)
+
+        x = self.final(x)
+        return x
+
+
+class FPNFinalTransposeConvBlock(nn.Module):
+    def __init__(self, input_channels: int, output_channels: int, reduction=4, abn_block=ABN):
+        """
+
+        Args:
+            input_channels:
+            output_channels:
+            reduction:
+            abn_block:
+        """
+        super().__init__()
+
+        features = input_channels // reduction
+
+        self.bottleneck = nn.Conv2d(input_channels, features, kernel_size=1, bias=False)
+
+        self.conv1 = nn.ConvTranspose2d(features, features, kernel_size=3, stride=2, padding=1, bias=False)
+        self.abn1 = abn_block(features)
+
+        self.conv2 = nn.ConvTranspose2d(features, features, kernel_size=3, stride=2, padding=1, bias=False)
+        self.abn2 = abn_block(features)
+
+        self.final = nn.Conv2d(features, output_channels, kernel_size=1, bias=True)
+
+    def forward(self, x):
+        x = self.bottleneck(x)
+
+        x = self.conv1(x)
+        x = self.abn1(x)
+
+        x = self.conv2(x)
+        x = self.abn2(x)
+
+        x = self.final(x)
         return x
 
 

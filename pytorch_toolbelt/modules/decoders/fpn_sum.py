@@ -1,5 +1,6 @@
+from functools import partial
 from itertools import repeat
-from typing import List, Tuple
+from typing import List, Tuple, Optional, Union
 
 import torch
 from ..activated_batch_norm import ABN
@@ -14,7 +15,24 @@ __all__ = ["FPNSumDecoder", "FPNSumDecoderBlock", "FPNSumCenterBlock"]
 
 
 class FPNSumCenterBlock(nn.Module):
-    def __init__(self, encoder_features: int, decoder_features: int, num_classes: int, abn_block=ABN, dropout=0.0):
+    def __init__(
+        self,
+        encoder_features: int,
+        decoder_features: int,
+        dsv_channels: Optional[int] = None,
+        abn_block=ABN,
+        dropout=0.0,
+    ):
+        """
+        Center FPN block that aggregates multi-scale context using strided average poolings
+
+        Args:
+            encoder_features: Number of input features
+            decoder_features: Number of output features
+            dsv_channels: Number of output features for deep supervision (usually number of channels in final mask)
+            abn_block: Block for Activation + BatchNorm2d
+            dropout: Dropout rate after context fusion
+        """
         super().__init__()
         self.bottleneck = nn.Conv2d(encoder_features, encoder_features // 2, kernel_size=1)
 
@@ -33,9 +51,12 @@ class FPNSumCenterBlock(nn.Module):
         self.conv1 = nn.Conv2d(decoder_features, decoder_features, kernel_size=3, padding=1, bias=False)
         self.abn1 = abn_block(decoder_features)
 
-        self.dsv = nn.Conv2d(decoder_features, num_classes, kernel_size=1)
+        if dsv_channels is not None:
+            self.dsv = nn.Conv2d(decoder_features, dsv_channels, kernel_size=1)
+        else:
+            self.dsv = None
 
-    def forward(self, x: Tensor) -> Tuple[Tensor, Tensor]:
+    def forward(self, x: Tensor) -> Union[Tensor, Tuple[Tensor, Tensor]]:
         x = self.bottleneck(x)
 
         p2 = self.proj2(self.pool2(x))
@@ -59,9 +80,11 @@ class FPNSumCenterBlock(nn.Module):
         x = self.conv1(x)
         x = self.abn1(x)
 
-        dsv = self.dsv(x)
+        if self.dsv is not None:
+            dsv = self.dsv(x)
+            return x, dsv
 
-        return x, dsv
+        return x
 
 
 class FPNSumDecoderBlock(nn.Module):
@@ -70,10 +93,20 @@ class FPNSumDecoderBlock(nn.Module):
         encoder_features: int,
         decoder_features: int,
         output_features: int,
-        num_classes: int,
+        dsv_channels: Optional[int] = None,
         abn_block=ABN,
         dropout=0.0,
     ):
+        """
+
+        Args:
+            encoder_features:
+            decoder_features:
+            output_features:
+            dsv_channels:
+            abn_block:
+            dropout:
+        """
         super().__init__()
         self.skip = nn.Conv2d(encoder_features, decoder_features, kernel_size=1)
         if decoder_features == output_features:
@@ -81,79 +114,104 @@ class FPNSumDecoderBlock(nn.Module):
         else:
             self.reduction = nn.Conv2d(decoder_features, output_features, kernel_size=1)
 
-        self.dropout = nn.Dropout2d(dropout, inplace=True)
         self.conv1 = nn.Conv2d(output_features, output_features, kernel_size=3, padding=1, bias=False)
         self.abn1 = abn_block(output_features)
+        self.drop1 = nn.Dropout2d(dropout, inplace=True)
 
-        self.dsv = nn.Conv2d(output_features, num_classes, kernel_size=1)
+        if dsv_channels is not None:
+            self.dsv = nn.Conv2d(decoder_features, dsv_channels, kernel_size=1)
+        else:
+            self.dsv = None
 
-    def forward(self, decoder_fm: Tensor, encoder_fm: Tensor) -> Tuple[Tensor, Tensor]:
-        """
-
-        :param decoder_fm:
-        :param encoder_fm:
-        :return:
-        """
+    def forward(self, decoder_fm: Tensor, encoder_fm: Tensor) -> Union[Tensor, Tuple[Tensor, Tensor]]:
         decoder_fm = F.interpolate(decoder_fm, size=encoder_fm.size()[2:], mode="bilinear", align_corners=False)
 
         encoder_fm = self.skip(encoder_fm)
         x = decoder_fm + encoder_fm
 
         x = self.reduction(x)
-        x = self.dropout(x)
 
         x = self.conv1(x)
         x = self.abn1(x)
+        x = self.drop1(x)
 
-        dsv = self.dsv(x)
+        if self.dsv is not None:
+            dsv = self.dsv(x)
+            return x, dsv
 
-        return x, dsv
+        return x
 
 
 class FPNSumDecoder(SegmentationDecoderModule):
-    """
-
-    """
-
     def __init__(
         self,
         feature_maps: List[int],
-        num_classes: int,
+        output_channels: int,
+        dsv_channels: Optional[int] = None,
         fpn_channels=256,
         dropout=0.0,
         abn_block=ABN,
         center_block=FPNSumCenterBlock,
         decoder_block=FPNSumDecoderBlock,
+        final_block=partial(nn.Conv2d, kernel_size=1),
     ):
+        """
+
+        Args:
+            feature_maps:
+            output_channels:
+            dsv_channels:
+            fpn_channels:
+            dropout:
+            abn_block:
+            center_block:
+            decoder_block:
+            final_block:
+        """
         super().__init__()
 
         self.center = center_block(
-            feature_maps[-1], fpn_channels, num_classes=num_classes, dropout=dropout, abn_block=abn_block
+            feature_maps[-1], fpn_channels, dsv_channels=dsv_channels, dropout=dropout, abn_block=abn_block
         )
 
         self.fpn_modules = nn.ModuleList(
             [
                 decoder_block(
-                    encoder_fm, decoder_fm, decoder_fm, num_classes=num_classes, dropout=dropout, abn_block=abn_block
+                    encoder_fm, decoder_fm, decoder_fm, dsv_channels=dsv_channels, dropout=dropout, abn_block=abn_block
                 )
                 for decoder_fm, encoder_fm in zip(repeat(fpn_channels), reversed(feature_maps[:-1]))
             ]
         )
 
-        self.final_block = nn.Conv2d(fpn_channels, num_classes, kernel_size=1)
+        self.final_block = final_block(fpn_channels, output_channels)
+        self.dsv_channels = dsv_channels
 
-    def forward(self, feature_maps: List[Tensor]) -> Tuple[Tensor, Tensor]:
+    def forward(self, feature_maps: List[Tensor]) -> Union[Tensor, Tuple[Tensor, List[Tensor]]]:
         last_feature_map = feature_maps[-1]
         feature_maps = reversed(feature_maps[:-1])
 
         dsv_masks = []
-        x, dsv = self.center(last_feature_map)
 
-        dsv_masks.append(dsv)
+        output = self.center(last_feature_map)
 
-        for transition_unit, encoder_fm in zip(self.fpn_modules, feature_maps):
-            x, dsv = transition_unit(x, encoder_fm)
+        if self.dsv_channels:
+            x, dsv = output
             dsv_masks.append(dsv)
+        else:
+            x = output
+
+        for fpn_block, encoder_fm in zip(self.fpn_modules, feature_maps):
+            output = fpn_block(x, encoder_fm)
+
+            if self.dsv_channels:
+                x, dsv = output
+                dsv_masks.append(dsv)
+            else:
+                x = output
 
         x = self.final_block(x)
-        return x, dsv_masks
+
+        if self.dsv_channels:
+            return x, dsv_masks
+
+        return x

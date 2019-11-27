@@ -2,6 +2,8 @@ from torch import nn
 
 __all__ = ["DecoderModule", "SegmentationDecoderModule"]
 
+from typing import List
+
 
 class DecoderModule(nn.Module):
     def __init__(self):
