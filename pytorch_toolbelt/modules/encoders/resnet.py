@@ -55,6 +55,7 @@ class ResnetEncoder(EncoderModule):
 
     def change_input_channels(self, input_channels: int, mode="auto"):
         self.layer0.conv0 = make_n_channel_input(self.layer0.conv0, input_channels, mode)
+        return self
 
 
 class Resnet18Encoder(ResnetEncoder):
