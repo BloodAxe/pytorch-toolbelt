@@ -39,8 +39,8 @@ class FPNSumCenterBlock(nn.Module):
         x = self.bottleneck(x)
 
         p2 = self.proj2(self.pool2(x))
-        p4 = self.proj2(self.pool4(x))
-        p8 = self.proj2(self.pool8(x))
+        p4 = self.proj4(self.pool4(x))
+        p8 = self.proj8(self.pool8(x))
 
         x_size = x.size()[2:]
         x = torch.cat(
