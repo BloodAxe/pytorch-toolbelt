@@ -21,7 +21,7 @@ class FPNCatDecoderBlock(nn.Module):
         self.abn1 = abn_block(output_features)
         self.conv2 = nn.Conv2d(output_features, output_features, kernel_size=3, padding=1, bias=False)
         self.abn2 = abn_block(output_features)
-        self.drop2 = nn.Dropout(dropout)
+        self.drop2 = nn.Dropout2d(dropout)
 
     def forward(self, x: Tensor) -> Tensor:
         x = self.conv1(x)
