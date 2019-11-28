@@ -409,12 +409,7 @@ class HRNetV2(nn.Module):
         x2 = F.interpolate(x[2], size=(x0_h, x0_w), mode="bilinear", align_corners=False)
         x3 = F.interpolate(x[3], size=(x0_h, x0_w), mode="bilinear", align_corners=False)
 
-        x = torch.cat([x[0], x1, x2, x3], 1)
+        x = torch.cat([x[0], x1, x2, x3], dim=1)
 
-        # x = self.last_layer(x)
         return [x]
 
-
-def hrnetv2(**kwargs):
-    model = HRNetV2(**kwargs)
-    return model
