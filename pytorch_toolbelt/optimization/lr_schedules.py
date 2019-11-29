@@ -2,7 +2,10 @@ import math
 import numpy as np
 from torch import nn
 
-from torch.optim.lr_scheduler import _LRScheduler
+from torch.optim.lr_scheduler import _LRScheduler, LambdaLR
+from torch.optim.optimizer import Optimizer
+
+__all__ = ["OnceCycleLR", "CosineAnnealingLRWithDecay", "PolyLR"]
 
 
 def set_learning_rate(optimizer, lr):
@@ -69,25 +72,49 @@ class CosineAnnealingLRWithDecay(_LRScheduler):
         return [compute_lr(base_lr) for base_lr in self.base_lrs]
 
 
+class PolyLR(LambdaLR):
+    def __init__(self, optimizer: Optimizer, max_epoch, gamma=0.9):
+        def poly_lr(epoch):
+            return (1.0 - float(epoch) / max_epoch) ** gamma
+
+        super().__init__(optimizer, poly_lr)
+
+
 if __name__ == "__main__":
     import matplotlib as mpl
 
     mpl.use("module://backend_interagg")
     import matplotlib.pyplot as plt
 
-    from torch.optim import SGD
+    from torch.optim import SGD, Optimizer
 
     net = nn.Conv2d(1, 1, 1)
-    opt = SGD(net.parameters(), lr=1e-2)
+    opt = SGD(net.parameters(), lr=1e-3)
 
-    scheduler = OnceCycleLR(opt, 800, min_lr_factor=0.01)
-    # scheduler = CosineAnnealingLRWithDecay(opt, 80, gamma=0.999)
-
-    lrs = []
-    for epoch in range(800):
-        scheduler.step(epoch)
-        lrs.append(scheduler.get_lr()[0])
+    epochs = 100
 
     plt.figure()
-    plt.plot(range(800), lrs)
+
+    scheduler = OnceCycleLR(opt, epochs, min_lr_factor=0.01)
+    lrs = []
+    for epoch in range(epochs):
+        scheduler.step(epoch)
+        lrs.append(scheduler.get_lr()[0])
+    plt.plot(range(epochs), lrs, label="1cycle")
+
+    scheduler = CosineAnnealingLRWithDecay(opt, epochs / 5, gamma=0.99)
+    lrs = []
+    for epoch in range(epochs):
+        scheduler.step(epoch)
+        lrs.append(scheduler.get_lr()[0])
+    plt.plot(range(epochs), lrs, label="cosine")
+
+    scheduler = PolyLR(opt, epochs, gamma=0.9)
+    lrs = []
+    for epoch in range(epochs):
+        scheduler.step(epoch)
+        lrs.append(scheduler.get_lr()[0])
+    plt.plot(range(epochs), lrs, label="poly")
+
+    plt.legend()
     plt.show()
