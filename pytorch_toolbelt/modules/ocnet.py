@@ -45,8 +45,9 @@ class _SelfAttentionBlock(nn.Module):
         self.W = nn.Conv2d(
             in_channels=self.value_channels, out_channels=self.out_channels, kernel_size=1, stride=1, padding=0
         )
-        nn.init.constant(self.W.weight, 0)
-        nn.init.constant(self.W.bias, 0)
+        # Eugene Khvedchenya: Original implementation initialized weight of context convolution with zeros, which does not make sense to me
+        # nn.init.constant(self.W.weight, 0)
+        nn.init.constant_(self.W.bias, 0)
 
     def forward(self, x):
         batch_size, h, w = x.size(0), x.size(2), x.size(3)
@@ -68,7 +69,7 @@ class _SelfAttentionBlock(nn.Module):
         context = context.view(batch_size, self.value_channels, *x.size()[2:])
         context = self.W(context)
         if self.scale > 1:
-            context = F.interpolate(input=context, size=(h, w), mode="bilinear")
+            context = F.interpolate(input=context, size=(h, w), mode="bilinear", align_corners=False)
         return context
 
 
