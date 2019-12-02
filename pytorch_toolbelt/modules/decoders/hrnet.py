@@ -17,7 +17,7 @@ class HRNetDecoder(DecoderModule):
             nn.Conv2d(in_channels=features, out_channels=features, kernel_size=1, stride=1, padding=0),
             nn.BatchNorm2d(features, momentum=HRNETV2_BN_MOMENTUM),
             nn.ReLU(inplace=True),
-            nn.Dropout(dropout),
+            nn.Dropout2d(dropout),
             nn.Conv2d(in_channels=features, out_channels=output_channels, kernel_size=3, stride=1, padding=1),
         )
 
