@@ -12,7 +12,7 @@ __all__ = ["UNetDecoder"]
 
 
 class UNetDecoder(DecoderModule):
-    def __init__(self, feature_maps: List[int], decoder_features: int, mask_channels: int):
+    def __init__(self, feature_maps: List[int], decoder_features: int, mask_channels: int, dropout=0.):
         super().__init__()
 
         if not isinstance(decoder_features, list):
@@ -33,6 +33,7 @@ class UNetDecoder(DecoderModule):
         self.blocks = nn.ModuleList(blocks)
         self.output_filters = decoder_features
 
+        self.final_drop = nn.Dropout2d(dropout)
         self.final = nn.Conv2d(decoder_features[0], mask_channels, kernel_size=1)
 
     def forward(self, feature_maps: List[torch.Tensor]) -> torch.Tensor:
@@ -41,5 +42,6 @@ class UNetDecoder(DecoderModule):
         for decoder_block, encoder_output in zip(reversed(self.blocks), reversed(feature_maps[:-1])):
             output = decoder_block(output, encoder_output)
 
+        output = self.final_drop(output)
         output = self.final(output)
         return output
