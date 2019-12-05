@@ -3,6 +3,9 @@ from functools import partial
 import numpy as np
 import torch
 from catalyst.dl import Callback, RunnerState, MetricCallback, CallbackOrder
+from torchnet.meter import ConfusionMeter
+from typing import List
+
 from .visualization import get_tensorboard_logger
 from ..torch_utils import to_numpy
 from pytorch_toolbelt.utils.visualization import render_figure_to_tensor, plot_confusion_matrix
@@ -75,7 +78,8 @@ class ConfusionMatrixCallback(Callback):
         input_key: str = "targets",
         output_key: str = "logits",
         prefix: str = "confusion_matrix",
-        class_names=None,
+        class_names: List[str] = None,
+        num_classes: int = None,
         ignore_index=None,
     ):
         """
@@ -88,41 +92,41 @@ class ConfusionMatrixCallback(Callback):
         super().__init__(CallbackOrder.Metric)
         self.prefix = prefix
         self.class_names = class_names
+        self.num_classes = num_classes \
+            if class_names is None \
+            else len(class_names)
         self.output_key = output_key
         self.input_key = input_key
-        self.outputs = []
-        self.targets = []
         self.ignore_index = ignore_index
+        self.confusion_matrix = None
 
     def on_loader_start(self, state):
-        self.outputs = []
-        self.targets = []
+        self.confusion_matrix = ConfusionMeter(self.num_classes)
 
     def on_batch_end(self, state: RunnerState):
-        outputs = to_numpy(state.output[self.output_key])
-        targets = to_numpy(state.input[self.input_key])
+        outputs = state.output[self.output_key].detach().argmax(dim=1).cpu()
+        targets = state.input[self.input_key].detach().cpu()
 
-        outputs = np.argmax(outputs, axis=1)
+        # Flatten
+        outputs = outputs.view(-1)
+        targets = targets.view(-1)
 
         if self.ignore_index is not None:
             mask = targets != self.ignore_index
             outputs = outputs[mask]
             targets = targets[mask]
 
-        self.outputs.extend(outputs)
-        self.targets.extend(targets)
+        self.confusion_matrix.add(predicted=outputs, target=targets)
 
     def on_loader_end(self, state):
-        targets = np.array(self.targets)
-        outputs = np.array(self.outputs)
 
         if self.class_names is None:
-            class_names = [str(i) for i in range(targets.shape[1])]
+            class_names = [str(i) for i in range(self.num_classes)]
         else:
             class_names = self.class_names
 
         num_classes = len(class_names)
-        cm = confusion_matrix(y_true=targets, y_pred=outputs, labels=range(num_classes))
+        cm = self.confusion_matrix.value()
 
         fig = plot_confusion_matrix(
             cm,
