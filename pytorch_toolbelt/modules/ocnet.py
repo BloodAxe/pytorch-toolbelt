@@ -159,7 +159,7 @@ class ASPObjectContextBlock(nn.Module):
                 key_channels=out_features // 2,
                 value_channels=out_features,
                 dropout=dropout,
-                sizes=([1]),
+                sizes=([2]),
             ),
         )
         self.conv2 = nn.Sequential(
