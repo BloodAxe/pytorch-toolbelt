@@ -85,7 +85,7 @@ class ConfusionMatrixCallback(Callback):
             specifies our `y_pred`.
         :param ignore_index: same meaning as in nn.CrossEntropyLoss
         """
-        super().__init__(CallbackOrder.Logger)
+        super().__init__(CallbackOrder.Metric)
         self.prefix = prefix
         self.class_names = class_names
         self.output_key = output_key
