@@ -122,7 +122,7 @@ class ConfusionMatrixCallback(Callback):
             class_names = self.class_names
 
         num_classes = len(class_names)
-        cm = confusion_matrix(targets, outputs, labels=range(num_classes))
+        cm = confusion_matrix(y_true=targets, y_pred=outputs, labels=range(num_classes))
 
         fig = plot_confusion_matrix(
             cm,
