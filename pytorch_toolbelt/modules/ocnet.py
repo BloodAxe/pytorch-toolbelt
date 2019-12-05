@@ -132,7 +132,7 @@ class ObjectContextBlock(nn.Module):
             [self._make_stage(in_channels, out_channels, key_channels, value_channels, size) for size in sizes]
         )
         self.conv_bn_dropout = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, kernel_size=1, padding=0), abn_block(out_channels)
+            nn.Conv2d(in_channels, out_channels, kernel_size=1, padding=0, bias=False), abn_block(out_channels)
         )
 
     def _make_stage(self, in_channels, output_channels, key_channels, value_channels, size):
@@ -148,18 +148,18 @@ class ObjectContextBlock(nn.Module):
 
 
 class ASPObjectContextBlock(nn.Module):
-    def __init__(self, features, out_features=256, dilations=(12, 24, 36), abn_block=ABN):
+    def __init__(self, features, out_features=256, dilations=(12, 24, 36), abn_block=ABN, dropout=0.1):
         super(ASPObjectContextBlock, self).__init__()
         self.context = nn.Sequential(
-            nn.Conv2d(features, out_features, kernel_size=3, padding=1, dilation=1, bias=True),
+            nn.Conv2d(features, out_features, kernel_size=3, padding=1, dilation=1, bias=False),
             abn_block(out_features),
             ObjectContextBlock(
                 in_channels=out_features,
                 out_channels=out_features,
                 key_channels=out_features // 2,
                 value_channels=out_features,
-                dropout=0,
-                sizes=([2]),
+                dropout=dropout,
+                sizes=([1]),
             ),
         )
         self.conv2 = nn.Sequential(
@@ -182,7 +182,7 @@ class ASPObjectContextBlock(nn.Module):
         self.conv_bn_dropout = nn.Sequential(
             nn.Conv2d(out_features * 5, out_features * 2, kernel_size=1, padding=0, dilation=1, bias=False),
             abn_block(out_features * 2),
-            nn.Dropout2d(0.1),
+            nn.Dropout2d(dropout),
         )
 
     def _cat_each(self, feat1, feat2, feat3, feat4, feat5):
@@ -243,7 +243,7 @@ class _PyramidSelfAttentionBlock(nn.Module):
             self.out_channels = in_channels
         self.f_key = nn.Sequential(
             nn.Conv2d(
-                in_channels=self.in_channels, out_channels=self.key_channels, kernel_size=1, stride=1, padding=0
+                in_channels=self.in_channels, out_channels=self.key_channels, kernel_size=1, stride=1, padding=0, bias=False
             ),
             abn_block(self.key_channels),
         )
@@ -254,7 +254,7 @@ class _PyramidSelfAttentionBlock(nn.Module):
         self.W = nn.Conv2d(
             in_channels=self.value_channels, out_channels=self.out_channels, kernel_size=1, stride=1, padding=0
         )
-        nn.init.constant(self.W.weight, 0)
+        # nn.init.constant(self.W.weight, 0)
         nn.init.constant(self.W.bias, 0)
 
     def forward(self, x):
@@ -341,12 +341,12 @@ class PyramidObjectContextBlock(nn.Module):
             [self._make_stage(in_channels, out_channels, in_channels // 2, in_channels, size) for size in sizes]
         )
         self.conv_bn_dropout = nn.Sequential(
-            nn.Conv2d(2 * in_channels * self.group, out_channels, kernel_size=1, padding=0),
+            nn.Conv2d(2 * in_channels * self.group, out_channels, kernel_size=1, padding=0, bias=False),
             abn_block(out_channels),
             nn.Dropout2d(dropout),
         )
         self.up_dr = nn.Sequential(
-            nn.Conv2d(in_channels, in_channels * self.group, kernel_size=1, padding=0),
+            nn.Conv2d(in_channels, in_channels * self.group, kernel_size=1, padding=0, bias=False),
             abn_block(in_channels * self.group),
         )
 
