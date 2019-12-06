@@ -2,13 +2,13 @@
 
 Encodes listed here provides easy way to swap backbone of classification/segmentation/detection model.
 """
-
+import math
 from typing import List
 
+import torch
 from torch import nn
 
 import warnings
-import torch.nn.functional as F
 
 __all__ = ["EncoderModule", "_take", "make_n_channel_input"]
 
@@ -36,9 +36,10 @@ def make_n_channel_input(conv: nn.Conv2d, in_channels: int, mode="auto"):
 
     w = conv.weight
     if in_channels > conv.in_channels:
-        # TODO: Figure out padding scheme
-        # w = F.pad(w, pad=[0, in_channels - conv.in_channels, 0, 0], mode="circular")
-        pass
+        n = math.ceil(in_channels / float(conv.in_channels))
+        w = torch.cat([w] * n, dim=1)
+        w = w[:, :in_channels, ...]
+        new_conv.weight = nn.Parameter(w, requires_grad=True)
     else:
         w = w[:, 0:in_channels, ...]
         new_conv.weight = nn.Parameter(w, requires_grad=True)
