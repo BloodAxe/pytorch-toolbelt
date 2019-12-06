@@ -92,9 +92,9 @@ def test_densenet():
 @pytest.mark.parametrize(
     ["encoder", "encoder_params"],
     [
-        [E.HRNetV2Encoder18, {"pretrained": False}],
-        [E.HRNetV2Encoder34, {"pretrained": False}],
-        [E.HRNetV2Encoder48, {"pretrained": False}],
+        [E.HRNetV2Encoder18, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [E.HRNetV2Encoder34, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [E.HRNetV2Encoder48, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
     ],
 )
 @torch.no_grad()
