@@ -86,7 +86,7 @@ class DiceLoss(_Loss):
         else:
             loss = 1 - scores
 
-        # IoU loss is defined for non-empty classes
+        # Dice loss is undefined for non-empty classes
         # So we zero contribution of channel that does not have true pixels
         # NOTE: A better workaround would be to use loss term `mean(y_pred)`
         # for this case, however it will be a modified jaccard loss
