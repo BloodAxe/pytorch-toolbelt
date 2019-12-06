@@ -14,7 +14,7 @@ class HRNetDecoder(DecoderModule):
         features = feature_maps[-1]
 
         self.last_layer = nn.Sequential(
-            nn.Conv2d(in_channels=features, out_channels=features, kernel_size=1, stride=1, padding=0),
+            nn.Conv2d(in_channels=features, out_channels=features, kernel_size=1, stride=1, padding=0, bias=False),
             nn.BatchNorm2d(features, momentum=HRNETV2_BN_MOMENTUM),
             nn.ReLU(inplace=True),
             nn.Dropout2d(dropout),
