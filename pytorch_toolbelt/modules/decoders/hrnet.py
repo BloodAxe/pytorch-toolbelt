@@ -4,7 +4,6 @@ from torch import nn, Tensor
 from typing import List
 
 from .common import DecoderModule
-from ..backbone.hrnet import HRNETV2_BN_MOMENTUM
 
 __all__ = ["HRNetDecoder"]
 
@@ -22,7 +21,7 @@ class HRNetDecoder(DecoderModule):
                         "conv1",
                         nn.Conv2d(in_channels=features, out_channels=features, kernel_size=3, padding=1, bias=False),
                     ),
-                    ("bn1", nn.BatchNorm2d(features, momentum=HRNETV2_BN_MOMENTUM)),
+                    ("bn1", nn.BatchNorm2d(features)),
                     ("relu", nn.ReLU(inplace=True)),
                 ]
             )
