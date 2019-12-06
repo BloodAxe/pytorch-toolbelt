@@ -1,6 +1,6 @@
 from collections import OrderedDict
 
-from torch import nn
+from torch import nn, Tensor
 from typing import List
 
 from .common import DecoderModule
@@ -37,6 +37,6 @@ class HRNetDecoder(DecoderModule):
             )
         )
 
-    def forward(self, features):
-        embedding = self.embedding(features)
+    def forward(self, features: List[Tensor]):
+        embedding = self.embedding(features[-1])
         return self.logits(embedding)
