@@ -79,10 +79,10 @@ class DiceLoss(_Loss):
             y_true = y_true.view(bs, num_classes, -1)
             y_pred = y_pred.view(bs, num_classes, -1)
 
-        scores = soft_dice_score(y_pred, y_true.type(y_pred.dtype), self.smooth, self.eps, dims=dims)
+        scores = soft_dice_score(y_pred, y_true.type_as(y_pred), self.smooth, self.eps, dims=dims)
 
         if self.log_loss:
-            loss = -torch.log(scores)
+            loss = -torch.log(scores.clamp_min(self.eps))
         else:
             loss = 1 - scores
 
@@ -91,8 +91,8 @@ class DiceLoss(_Loss):
         # NOTE: A better workaround would be to use loss term `mean(y_pred)`
         # for this case, however it will be a modified jaccard loss
 
-        mask = (y_true.sum(dims) > 0).float()
-        loss = loss * mask
+        mask = y_true.sum(dims) > 0
+        loss *= mask.float()
 
         if self.classes is not None:
             loss = loss[self.classes]

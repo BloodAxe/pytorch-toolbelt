@@ -82,7 +82,7 @@ class JaccardLoss(_Loss):
         scores = soft_jaccard_score(y_pred, y_true.type(y_pred.dtype), self.smooth, self.eps, dims=dims)
 
         if self.log_loss:
-            loss = -torch.log(scores)
+            loss = -torch.log(scores.clamp_min(self.eps))
         else:
             loss = 1 - scores
 
@@ -91,8 +91,8 @@ class JaccardLoss(_Loss):
         # NOTE: A better workaround would be to use loss term `mean(y_pred)`
         # for this case, however it will be a modified jaccard loss
 
-        mask = (y_true.sum(dims) > 0).float()
-        loss = loss * mask
+        mask = y_true.sum(dims) > 0
+        loss *= mask.float()
 
         if self.classes is not None:
             loss = loss[self.classes]

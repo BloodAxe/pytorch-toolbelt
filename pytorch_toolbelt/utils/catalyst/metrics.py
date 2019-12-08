@@ -1,15 +1,15 @@
 from functools import partial
+from typing import List
 
 import numpy as np
 import torch
 from catalyst.dl import Callback, RunnerState, MetricCallback, CallbackOrder
+from sklearn.metrics import f1_score
 from torchnet.meter import ConfusionMeter
-from typing import List
 
+from pytorch_toolbelt.utils.visualization import render_figure_to_tensor, plot_confusion_matrix
 from .visualization import get_tensorboard_logger
 from ..torch_utils import to_numpy
-from pytorch_toolbelt.utils.visualization import render_figure_to_tensor, plot_confusion_matrix
-from sklearn.metrics import f1_score, confusion_matrix
 
 __all__ = [
     "pixel_accuracy",
@@ -81,6 +81,7 @@ class ConfusionMatrixCallback(Callback):
         class_names: List[str] = None,
         num_classes: int = None,
         ignore_index=None,
+        activation_fn=partial(torch.argmax, dim=1),
     ):
         """
         :param input_key: input key to use for precision calculation;
@@ -92,20 +93,21 @@ class ConfusionMatrixCallback(Callback):
         super().__init__(CallbackOrder.Metric)
         self.prefix = prefix
         self.class_names = class_names
-        self.num_classes = num_classes \
-            if class_names is None \
-            else len(class_names)
+        self.num_classes = num_classes if class_names is None else len(class_names)
         self.output_key = output_key
         self.input_key = input_key
         self.ignore_index = ignore_index
         self.confusion_matrix = None
+        self.activation_fn = activation_fn
 
     def on_loader_start(self, state):
         self.confusion_matrix = ConfusionMeter(self.num_classes)
 
     def on_batch_end(self, state: RunnerState):
-        outputs = state.output[self.output_key].detach().argmax(dim=1).cpu()
-        targets = state.input[self.input_key].detach().cpu()
+        outputs: torch.Tensor = state.output[self.output_key].detach().cpu()
+        outputs: torch.Tensor = self.activation_fn(outputs)
+
+        targets: torch.Tensor = state.input[self.input_key].detach().cpu()
 
         # Flatten
         outputs = outputs.view(-1)
@@ -116,10 +118,10 @@ class ConfusionMatrixCallback(Callback):
             outputs = outputs[mask]
             targets = targets[mask]
 
+        targets = targets.type_as(outputs)
         self.confusion_matrix.add(predicted=outputs, target=targets)
 
     def on_loader_end(self, state):
-
         if self.class_names is None:
             class_names = [str(i) for i in range(self.num_classes)]
         else:
