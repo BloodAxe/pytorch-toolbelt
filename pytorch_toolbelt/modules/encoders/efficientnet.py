@@ -9,7 +9,7 @@ from ..backbone.efficient_net import (
     efficient_net_b7,
 )
 
-from .common import EncoderModule, _take
+from .common import EncoderModule, _take, make_n_channel_input
 
 __all__ = [
     "EfficientNetEncoder",
@@ -56,6 +56,10 @@ class EfficientNetEncoder(EncoderModule):
 
         # Return only features that were requested
         return _take(output_features, self._layers)
+
+    def change_input_channels(self, input_channels: int, mode="auto"):
+        self.stem.conv = make_n_channel_input(self.stem.conv, input_channels, mode)
+        return self
 
 
 class EfficientNetB0Encoder(EfficientNetEncoder):
