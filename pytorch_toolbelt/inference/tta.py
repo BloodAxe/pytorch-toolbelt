@@ -204,7 +204,8 @@ def d4_image2mask(model: nn.Module, image: Tensor) -> Tensor:
         output += F.torch_transpose(x)
 
     one_over_8 = float(1.0 / 8.0)
-    return output * one_over_8
+    output *= one_over_8
+    return output
 
 
 class TTAWrapper(nn.Module):

@@ -14,7 +14,7 @@ def focal_loss_with_logits(
     alpha: Optional[float] = 0.25,
     reduction="mean",
     normalized=False,
-    threshold: Optional[float] = None,
+    reduced_threshold: Optional[float] = None,
 ) -> torch.Tensor:
     """Compute binary focal loss between target and output logits.
 
@@ -31,24 +31,24 @@ def focal_loss_with_logits(
             specifying either of those two args will override :attr:`reduction`.
             'batchwise_mean' computes mean loss per sample in batch. Default: 'mean'
         normalized (bool): Compute normalized focal loss (https://arxiv.org/pdf/1909.07829.pdf).
-        threshold (float, optional): Compute reduced focal loss (https://arxiv.org/abs/1903.01347).
+        reduced_threshold (float, optional): Compute reduced focal loss (https://arxiv.org/abs/1903.01347).
     References::
 
         https://github.com/open-mmlab/mmdetection/blob/master/mmdet/core/loss/losses.py
     """
     target = target.type(input.type())
 
-    logpt = -F.binary_cross_entropy_with_logits(input, target, reduction="none")
-    pt = torch.exp(logpt)
+    logpt = F.binary_cross_entropy_with_logits(input, target, reduction="none")
+    pt = torch.exp(-logpt)
 
     # compute the loss
-    if threshold is None:
+    if reduced_threshold is None:
         focal_term = (1 - pt).pow(gamma)
     else:
-        focal_term = ((1.0 - pt) / threshold).pow(gamma)
-        focal_term[pt < threshold] = 1
+        focal_term = ((1.0 - pt) / reduced_threshold).pow(gamma)
+        focal_term[pt < reduced_threshold] = 1
 
-    loss = -focal_term * logpt
+    loss = focal_term * logpt
 
     if alpha is not None:
         loss = loss * (alpha * target + (1 - alpha) * (1 - target))
@@ -73,7 +73,7 @@ sigmoid_focal_loss = focal_loss_with_logits
 
 # TODO: Mark as deprecated and emit warning
 def reduced_focal_loss(input: torch.Tensor, target: torch.Tensor, threshold=0.5, gamma=2.0, reduction="mean"):
-    return focal_loss_with_logits(input, target, alpha=None, gamma=gamma, reduction=reduction, threshold=threshold)
+    return focal_loss_with_logits(input, target, alpha=None, gamma=gamma, reduction=reduction, reduced_threshold=threshold)
 
 
 def soft_jaccard_score(y_pred: torch.Tensor, y_true: torch.Tensor, smooth=0.0, eps=1e-7, dims=None) -> torch.Tensor:
