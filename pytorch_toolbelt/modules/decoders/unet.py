@@ -12,13 +12,17 @@ __all__ = ["UNetDecoder"]
 
 
 class UNetDecoder(DecoderModule):
-    def __init__(self, feature_maps: List[int], decoder_features: int, mask_channels: int, dropout=0.):
+    def __init__(self, feature_maps: List[int], decoder_features: int, mask_channels: int, abn_block=ABN, dropout=0.):
         super().__init__()
 
         if not isinstance(decoder_features, list):
             decoder_features = [decoder_features * (2 ** i) for i in range(len(feature_maps))]
 
-        self.center = UnetCentralBlock(in_dec_filters=feature_maps[-1], out_filters=decoder_features[-1])
+        self.center = UnetCentralBlock(
+            in_dec_filters=feature_maps[-1],
+            out_filters=decoder_features[-1],
+            abn_block=abn_block
+        )
 
         blocks = []
         for block_index, in_enc_features in enumerate(feature_maps[:-1]):
@@ -27,6 +31,7 @@ class UNetDecoder(DecoderModule):
                     in_dec_filters=decoder_features[block_index + 1],
                     in_enc_filters=in_enc_features,
                     out_filters=decoder_features[block_index],
+                    abn_block=abn_block
                 )
             )
 
