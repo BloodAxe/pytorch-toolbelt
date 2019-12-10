@@ -54,7 +54,7 @@ def focal_loss_with_logits(
         loss = loss * (alpha * target + (1 - alpha) * (1 - target))
 
     if normalized:
-        norm_factor = focal_term.sum()
+        norm_factor = focal_term.sum() + 1e-5
         loss = loss / norm_factor
 
     if reduction == "mean":
