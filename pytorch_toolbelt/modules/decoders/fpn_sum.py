@@ -67,9 +67,9 @@ class FPNSumCenterBlock(nn.Module):
         x = torch.cat(
             [
                 x,
-                F.interpolate(p2, size=x_size, mode="bilinear", align_corners=False),
-                F.interpolate(p4, size=x_size, mode="bilinear", align_corners=False),
-                F.interpolate(p8, size=x_size, mode="bilinear", align_corners=False),
+                F.interpolate(p2, size=x_size, mode="nearest"),
+                F.interpolate(p4, size=x_size, mode="nearest"),
+                F.interpolate(p8, size=x_size, mode="nearest"),
             ],
             dim=1,
         )
@@ -124,7 +124,7 @@ class FPNSumDecoderBlock(nn.Module):
             self.dsv = None
 
     def forward(self, decoder_fm: Tensor, encoder_fm: Tensor) -> Union[Tensor, Tuple[Tensor, Tensor]]:
-        decoder_fm = F.interpolate(decoder_fm, size=encoder_fm.size()[2:], mode="bilinear", align_corners=False)
+        decoder_fm = F.interpolate(decoder_fm, size=encoder_fm.size()[2:], mode="nearest")
 
         encoder_fm = self.skip(encoder_fm)
         x = decoder_fm + encoder_fm
