@@ -66,14 +66,16 @@ class ASPP(nn.Module):
 
 
 class DeeplabV3Decoder(DecoderModule):
-    def __init__(self,
-                 feature_maps: List[int],
-                 num_classes: int,
-                 output_stride=32,
-                 high_level_bottleneck=256,
-                 low_level_bottleneck=32,
-                 dropout=0.5,
-                 abn_block=ABN):
+    def __init__(
+        self,
+        feature_maps: List[int],
+        num_classes: int,
+        output_stride=32,
+        high_level_bottleneck=256,
+        low_level_bottleneck=32,
+        dropout=0.5,
+        abn_block=ABN,
+    ):
         super(DeeplabV3Decoder, self).__init__()
 
         self.aspp = ASPP(feature_maps[-1], output_stride, high_level_bottleneck, dropout=dropout, abn_block=abn_block)
@@ -82,7 +84,13 @@ class DeeplabV3Decoder(DecoderModule):
         self.abn1 = abn_block(low_level_bottleneck)
 
         self.last_conv = nn.Sequential(
-            nn.Conv2d(high_level_bottleneck + low_level_bottleneck, high_level_bottleneck, kernel_size=3, padding=1, bias=False),
+            nn.Conv2d(
+                high_level_bottleneck + low_level_bottleneck,
+                high_level_bottleneck,
+                kernel_size=3,
+                padding=1,
+                bias=False,
+            ),
             abn_block(high_level_bottleneck),
             nn.Dropout(dropout),
             nn.Conv2d(high_level_bottleneck, high_level_bottleneck, kernel_size=3, padding=1, bias=False),
