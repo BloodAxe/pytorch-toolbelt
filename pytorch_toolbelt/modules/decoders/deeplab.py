@@ -109,12 +109,12 @@ class DeeplabV3Decoder(DecoderModule):
         high_level_features = feature_maps[-1]
         high_level_features = self.aspp(high_level_features)
 
-        dsv = self.dsv(high_level_features)
+        mask_dsv = self.dsv(high_level_features)
 
         high_level_features = F.interpolate(
             high_level_features, size=low_level_feat.size()[2:], mode="bilinear", align_corners=False
         )
         high_level_features = torch.cat([high_level_features, low_level_feat], dim=1)
-        high_level_features = self.last_conv(high_level_features)
+        mask = self.last_conv(high_level_features)
 
-        return high_level_features, dsv
+        return mask, mask_dsv
