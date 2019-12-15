@@ -18,6 +18,7 @@ def _take(elements, indexes):
 
 
 def make_n_channel_input(conv: nn.Conv2d, in_channels: int, mode="auto"):
+    assert isinstance(conv, nn.Conv2d)
     if conv.in_channels == in_channels:
         warnings.warn("make_n_channel_input call is spurious")
         return conv

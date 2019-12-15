@@ -1,5 +1,5 @@
 from torch import nn
-from typing import List
+from typing import List, Optional
 
 from .common import DecoderModule
 from ..fpn import FPNBottleneckBlock, UpsampleAdd, FPNPredictionBlock
@@ -15,7 +15,7 @@ class FPNDecoder(DecoderModule):
         fpn_features=128,
         prediction_features=128,
         mode="bilinear",
-        align_corners=False,
+        align_corners: Optional[bool] = False,
         upsample_scale=None,
     ):
         """

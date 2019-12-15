@@ -49,6 +49,8 @@ class FPNCatDecoder(SegmentationDecoderModule):
         upsample_add=UpsampleAdd,
         prediction_block=FPNCatDecoderBlock,
         final_block=partial(nn.Conv2d, kernel_size=1),
+        interpolation_mode: str = "bilinear",
+        align_corners: Optional[bool] = False,
     ):
         """
 
@@ -71,9 +73,11 @@ class FPNCatDecoder(SegmentationDecoderModule):
             prediction_block=prediction_block,
             fpn_features=fpn_channels,
             prediction_features=fpn_channels,
+            mode=interpolation_mode,
+            align_corners=align_corners,
         )
 
-        self.fuse = FPNFuse()
+        self.fuse = FPNFuse(mode=interpolation_mode, align_corners=align_corners)
         self.dropout = nn.Dropout2d(dropout, inplace=True)
 
         # dsv blocks are for deep supervision
