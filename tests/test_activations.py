@@ -1,7 +1,7 @@
 import torch
 import pytest
 
-from pytorch_toolbelt.modules.activations import get_activation_module
+from pytorch_toolbelt.modules.activations import instantiate_activation_block
 
 skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="Cuda is not available")
 
@@ -11,7 +11,7 @@ skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="Cuda
     ["none", "relu", "relu6", "leaky_relu", "elu", "selu", "celu", "mish", "swish", "hard_sigmoid", "hard_swish"],
 )
 def test_activations(activation_name):
-    act = get_activation_module(activation_name)
+    act = instantiate_activation_block(activation_name)
     x = torch.randn(128).float()
     y = act(x)
     assert y.dtype == torch.float32
@@ -23,12 +23,12 @@ def test_activations(activation_name):
 )
 @skip_if_no_cuda
 def test_activations_cuda(activation_name):
-    act = get_activation_module(activation_name)
+    act = instantiate_activation_block(activation_name)
     x = torch.randn(128).float().cuda()
     y = act(x)
     assert y.dtype == torch.float32
 
-    act = get_activation_module(activation_name)
+    act = instantiate_activation_block(activation_name)
     x = torch.randn(128).half().cuda()
     y = act(x)
     assert y.dtype == torch.float16

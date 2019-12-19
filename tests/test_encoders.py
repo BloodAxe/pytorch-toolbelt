@@ -11,6 +11,8 @@ skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="Cuda
 @pytest.mark.parametrize(
     ["encoder", "encoder_params"],
     [
+        [E.MobilenetV2Encoder, {}],
+        [E.MobilenetV3Encoder, {}],
         [E.Resnet34Encoder, {"pretrained": False}],
         [E.Resnet50Encoder, {"pretrained": False}],
         [E.SEResNeXt50Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],

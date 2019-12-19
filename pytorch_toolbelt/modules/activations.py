@@ -23,7 +23,8 @@ __all__ = [
     "HardSigmoid",
     "HardSwish",
     "Swish",
-    "get_activation_module",
+    "instantiate_activation_block",
+    "get_activation_block",
     "sanitize_activation_name",
 ]
 
@@ -134,7 +135,27 @@ class HardSwish(nn.Module):
         return hard_swish(x, inplace=self.inplace)
 
 
-def get_activation_module(activation_name: str, **kwargs) -> nn.Module:
+def get_activation_block(activation_name: str):
+    ACTIVATIONS = {
+        "relu": nn.ReLU,
+        "relu6": nn.ReLU6,
+        "leaky_relu": nn.LeakyReLU,
+        "elu": nn.ELU,
+        "selu": nn.SELU,
+        "celu": nn.CELU,
+        "glu": nn.GLU,
+        "prelu": nn.PReLU,
+        "swish": Swish,
+        "mish": Mish,
+        "hard_sigmoid": HardSigmoid,
+        "hard_swish": HardSwish,
+        "none": Identity,
+    }
+
+    return ACTIVATIONS[activation_name.lower()]
+
+
+def instantiate_activation_block(activation_name: str, **kwargs) -> nn.Module:
     ACTIVATIONS = {
         "relu": nn.ReLU,
         "relu6": nn.ReLU6,
