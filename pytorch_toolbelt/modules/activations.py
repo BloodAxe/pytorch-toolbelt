@@ -123,7 +123,7 @@ class HardSigmoid(nn.Module):
 
 class Swish(nn.Module):
     def forward(self, input_tensor):
-        return SwishFunction.apply(input_tensor)
+        return swish(input_tensor)
 
 
 class HardSwish(nn.Module):
