@@ -1,7 +1,7 @@
 from collections import OrderedDict
+from typing import List
 
 from torch import nn, Tensor
-from typing import List
 
 from .common import DecoderModule
 

@@ -1,9 +1,9 @@
-from ..modules import ABN
-from ..modules import encoders as E
-from ..modules import decoders as D
 from torch import nn, Tensor
 from torch.nn import functional as F
 
+from ..modules import ABN
+from ..modules import decoders as D
+from ..modules import encoders as E
 
 __all__ = [
     "FPNSumSegmentationModel",

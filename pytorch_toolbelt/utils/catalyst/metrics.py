@@ -7,9 +7,9 @@ from catalyst.dl import Callback, RunnerState, MetricCallback, CallbackOrder
 from sklearn.metrics import f1_score
 from torchnet.meter import ConfusionMeter
 
-from pytorch_toolbelt.utils.visualization import render_figure_to_tensor, plot_confusion_matrix
 from .visualization import get_tensorboard_logger
 from ..torch_utils import to_numpy
+from ..visualization import render_figure_to_tensor, plot_confusion_matrix
 
 __all__ = [
     "pixel_accuracy",

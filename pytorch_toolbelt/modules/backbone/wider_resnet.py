@@ -1,10 +1,10 @@
 from collections import OrderedDict
 from functools import partial
 
-import torch
+from torch import nn
+
 from ..activated_batch_norm import ABN
 from ..pooling import GlobalAvgPool2d
-from torch import nn
 
 
 class IdentityResidualBlock(nn.Module):

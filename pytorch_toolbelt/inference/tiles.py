@@ -1,11 +1,11 @@
 """Implementation of tile-based inference allowing to predict huge images that does not fit into GPU memory entirely
 in a sliding-window fashion and merging prediction mask back to full-resolution.
 """
+import math
 from typing import List
 
-import numpy as np
 import cv2
-import math
+import numpy as np
 import torch
 
 

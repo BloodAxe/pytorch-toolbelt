@@ -1,9 +1,9 @@
 from collections import OrderedDict
+from typing import List
 
 import torch
-from torch import nn
 import torch.nn.functional as F
-from typing import List
+from torch import nn
 
 from .common import EncoderModule, make_n_channel_input
 

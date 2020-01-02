@@ -3,7 +3,6 @@
 """
 import collections
 import warnings
-from typing import Tuple
 
 import numpy as np
 import torch

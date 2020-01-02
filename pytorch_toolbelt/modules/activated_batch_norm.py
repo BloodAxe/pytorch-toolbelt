@@ -1,8 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn.parameter import Parameter
 from torch.nn import init
+from torch.nn.parameter import Parameter
+
 from .activations import (
     ACT_LEAKY_RELU,
     ACT_HARD_SWISH,

@@ -1,9 +1,10 @@
 from typing import Callable, List
 
-from pytorch_toolbelt.inference.tiles import ImageSlicer
-from pytorch_toolbelt.utils.fs import id_from_fname
-from pytorch_toolbelt.utils.torch_utils import tensor_from_rgb_image, tensor_from_mask_image
 from torch.utils.data import Dataset, ConcatDataset
+
+from .fs import id_from_fname
+from .torch_utils import tensor_from_rgb_image, tensor_from_mask_image
+from ..inference.tiles import ImageSlicer
 
 
 class ImageMaskDataset(Dataset):

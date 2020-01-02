@@ -1,7 +1,7 @@
-import torch
-from torch import nn
-import torch.nn.functional as F
 from typing import Optional
+
+import torch.nn.functional as F
+from torch import nn
 
 __all__ = ["BCELoss", "SoftBCELoss"]
 

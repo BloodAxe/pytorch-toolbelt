@@ -1,9 +1,8 @@
 from typing import List
 
+from .common import EncoderModule, _take, make_n_channel_input
 from ..activated_batch_norm import ABN
 from ..backbone.wider_resnet import WiderResNet, WiderResNetA2
-
-from .common import EncoderModule, _take, make_n_channel_input
 
 __all__ = [
     "WiderResnetEncoder",

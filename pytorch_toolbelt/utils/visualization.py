@@ -1,9 +1,10 @@
 from __future__ import absolute_import
 
 import itertools
+
 import numpy as np
 
-from pytorch_toolbelt.utils.torch_utils import tensor_from_rgb_image
+from .torch_utils import tensor_from_rgb_image
 
 
 def plot_confusion_matrix(

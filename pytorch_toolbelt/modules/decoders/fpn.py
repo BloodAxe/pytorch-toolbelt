@@ -1,5 +1,6 @@
-from torch import nn
 from typing import List, Optional
+
+from torch import nn
 
 from .common import DecoderModule
 from ..fpn import FPNBottleneckBlock, UpsampleAdd, FPNPredictionBlock

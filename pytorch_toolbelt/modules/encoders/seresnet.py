@@ -2,11 +2,11 @@
 
 Encodes listed here provides easy way to swap backbone of classification/segmentation/detection model.
 """
-from torch import Tensor
 from typing import List
 
-from .common import EncoderModule, _take, make_n_channel_input
+from torch import Tensor
 
+from .common import EncoderModule, _take, make_n_channel_input
 from ..backbone.senet import (
     SENet,
     se_resnext50_32x4d,

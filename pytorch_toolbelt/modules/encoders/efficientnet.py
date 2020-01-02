@@ -1,3 +1,4 @@
+from .common import EncoderModule, _take, make_n_channel_input
 from ..backbone.efficient_net import (
     efficient_net_b0,
     efficient_net_b6,
@@ -8,8 +9,6 @@ from ..backbone.efficient_net import (
     efficient_net_b5,
     efficient_net_b7,
 )
-
-from .common import EncoderModule, _take, make_n_channel_input
 
 __all__ = [
     "EfficientNetEncoder",

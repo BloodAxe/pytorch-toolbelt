@@ -3,13 +3,12 @@ from itertools import repeat
 from typing import List, Tuple, Optional, Union
 
 import torch
+import torch.nn.functional as F
+from torch import Tensor, nn
+
+from .common import SegmentationDecoderModule
 from ..activated_batch_norm import ABN
 from ..identity import Identity
-from .common import SegmentationDecoderModule
-
-
-from torch import Tensor, nn
-import torch.nn.functional as F
 
 __all__ = ["FPNSumDecoder", "FPNSumDecoderBlock", "FPNSumCenterBlock"]
 

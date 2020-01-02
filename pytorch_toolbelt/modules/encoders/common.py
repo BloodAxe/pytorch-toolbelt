@@ -3,12 +3,11 @@
 Encodes listed here provides easy way to swap backbone of classification/segmentation/detection model.
 """
 import math
+import warnings
 from typing import List
 
 import torch
 from torch import nn
-
-import warnings
 
 __all__ = ["EncoderModule", "_take", "make_n_channel_input"]
 

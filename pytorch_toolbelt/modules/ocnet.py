@@ -1,8 +1,9 @@
 # Credit: https://github.com/PkuRainBow/OCNet.pytorch/blob/master/oc_module/asp_oc_block.py
 import torch
-from torch import nn
-from .activated_batch_norm import ABN
 import torch.nn.functional as F
+from torch import nn
+
+from .activated_batch_norm import ABN
 
 __all__ = ["ObjectContextBlock", "ASPObjectContextBlock", "PyramidObjectContextBlock"]
 

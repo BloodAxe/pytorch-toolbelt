@@ -6,7 +6,7 @@ from typing import List
 import torch
 from torch import nn
 from torch.nn import functional as F
-from torch.nn.init import kaiming_normal_, kaiming_uniform_
+from torch.nn.init import kaiming_uniform_
 
 from ..activated_batch_norm import ABN
 from ..activated_group_norm import AGN

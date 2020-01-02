@@ -3,6 +3,7 @@ from typing import List
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
 from .common import DecoderModule
 from ..activated_batch_norm import ABN
 

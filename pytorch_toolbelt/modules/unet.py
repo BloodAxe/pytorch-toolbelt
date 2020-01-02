@@ -1,7 +1,9 @@
-import torch
-from torch import nn
-import torch.nn.functional as F
 from typing import Optional
+
+import torch
+import torch.nn.functional as F
+from torch import nn
+
 from .activated_batch_norm import ABN
 
 __all__ = ["UnetEncoderBlock", "UnetCentralBlock", "UnetDecoderBlock"]
