@@ -1,4 +1,4 @@
-from typing import List, Tuple, List
+from typing import Tuple, List
 
 import torch
 import torch.nn.functional as F
