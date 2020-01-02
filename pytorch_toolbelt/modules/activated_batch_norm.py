@@ -19,7 +19,7 @@ from .activations import (
     hard_swish,
     mish,
     swish,
-)
+    ACT_SWISH_NAIVE, swish_naive)
 
 __all__ = ["ABN"]
 
@@ -150,6 +150,8 @@ class ABN(nn.Module):
             return F.selu(x, inplace=True)
         elif self.activation == ACT_SWISH:
             return swish(x)
+        elif self.activation == ACT_SWISH_NAIVE:
+            return swish_naive(x)
         elif self.activation == ACT_MISH:
             return mish(x)
         elif self.activation == ACT_HARD_SWISH:

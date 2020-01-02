@@ -38,6 +38,7 @@ ACT_SWISH = "swish"
 ACT_MISH = "mish"
 ACT_HARD_SWISH = "hard_swish"
 ACT_HARD_SIGMOID = "hard_sigmoid"
+ACT_SWISH_NAIVE = "swish_naive"
 
 
 class SwishFunction(torch.autograd.Function):
@@ -103,6 +104,10 @@ def swish(x):
     return SwishFunction.apply(x)
 
 
+def swish_naive(x):
+    return x * x.sigmoid()
+
+
 def hard_sigmoid(x, inplace=False):
     return F.relu6(x + 3, inplace) / 6
 
@@ -118,6 +123,11 @@ class HardSigmoid(nn.Module):
 
     def forward(self, x):
         return hard_sigmoid(x, inplace=self.inplace)
+
+
+class SwishNaive(nn.Module):
+    def forward(self, input_tensor):
+        return swish_naive(input_tensor)
 
 
 class Swish(nn.Module):
@@ -136,49 +146,35 @@ class HardSwish(nn.Module):
 
 def get_activation_block(activation_name: str):
     ACTIVATIONS = {
-        "relu": nn.ReLU,
-        "relu6": nn.ReLU6,
-        "leaky_relu": nn.LeakyReLU,
-        "elu": nn.ELU,
-        "selu": nn.SELU,
+        ACT_RELU: nn.ReLU,
+        ACT_RELU6: nn.ReLU6,
+        ACT_LEAKY_RELU: nn.LeakyReLU,
+        ACT_ELU: nn.ELU,
+        ACT_SELU: nn.SELU,
         "celu": nn.CELU,
         "glu": nn.GLU,
         "prelu": nn.PReLU,
-        "swish": Swish,
-        "mish": Mish,
-        "hard_sigmoid": HardSigmoid,
-        "hard_swish": HardSwish,
-        "none": Identity,
+        ACT_SWISH: Swish,
+        ACT_SWISH_NAIVE: SwishNaive,
+        ACT_MISH: Mish,
+        ACT_HARD_SIGMOID: HardSigmoid,
+        ACT_HARD_SWISH: HardSwish,
+        ACT_NONE: Identity,
     }
 
     return ACTIVATIONS[activation_name.lower()]
 
 
 def instantiate_activation_block(activation_name: str, **kwargs) -> nn.Module:
-    ACTIVATIONS = {
-        "relu": nn.ReLU,
-        "relu6": nn.ReLU6,
-        "leaky_relu": nn.LeakyReLU,
-        "elu": nn.ELU,
-        "selu": nn.SELU,
-        "celu": nn.CELU,
-        "glu": nn.GLU,
-        "prelu": nn.PReLU,
-        "swish": Swish,
-        "mish": Mish,
-        "hard_sigmoid": HardSigmoid,
-        "hard_swish": HardSwish,
-        "none": Identity,
-    }
-
-    return ACTIVATIONS[activation_name.lower()](**kwargs)
+    block = get_activation_block(activation_name)
+    return block(**kwargs)
 
 
 def sanitize_activation_name(activation_name: str) -> str:
     """
     Return reasonable activation name for initialization in `kaiming_uniform_` for hipster activations
     """
-    if activation_name in {ACT_MISH, ACT_SWISH}:
+    if activation_name in {ACT_MISH, ACT_SWISH, ACT_SWISH_NAIVE}:
         return ACT_LEAKY_RELU
 
     return activation_name
