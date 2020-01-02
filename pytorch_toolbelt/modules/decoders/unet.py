@@ -1,11 +1,10 @@
 from typing import List
 
 import torch
-import torch.nn.functional as F
 from torch import nn
 
-from ..activated_batch_norm import ABN
 from .common import DecoderModule
+from ..activated_batch_norm import ABN
 from ..unet import UnetCentralBlock, UnetDecoderBlock
 
 __all__ = ["UNetDecoder"]
