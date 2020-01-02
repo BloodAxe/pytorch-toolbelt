@@ -73,7 +73,9 @@ sigmoid_focal_loss = focal_loss_with_logits
 
 # TODO: Mark as deprecated and emit warning
 def reduced_focal_loss(input: torch.Tensor, target: torch.Tensor, threshold=0.5, gamma=2.0, reduction="mean"):
-    return focal_loss_with_logits(input, target, alpha=None, gamma=gamma, reduction=reduction, reduced_threshold=threshold)
+    return focal_loss_with_logits(
+        input, target, alpha=None, gamma=gamma, reduction=reduction, reduced_threshold=threshold
+    )
 
 
 def soft_jaccard_score(y_pred: torch.Tensor, y_true: torch.Tensor, smooth=0.0, eps=1e-7, dims=None) -> torch.Tensor:

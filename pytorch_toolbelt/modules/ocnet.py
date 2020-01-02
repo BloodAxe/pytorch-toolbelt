@@ -243,7 +243,12 @@ class _PyramidSelfAttentionBlock(nn.Module):
             self.out_channels = in_channels
         self.f_key = nn.Sequential(
             nn.Conv2d(
-                in_channels=self.in_channels, out_channels=self.key_channels, kernel_size=1, stride=1, padding=0, bias=False
+                in_channels=self.in_channels,
+                out_channels=self.key_channels,
+                kernel_size=1,
+                stride=1,
+                padding=0,
+                bias=False,
             ),
             abn_block(self.key_channels),
         )

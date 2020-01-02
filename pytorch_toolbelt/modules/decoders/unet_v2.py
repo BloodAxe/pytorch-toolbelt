@@ -97,7 +97,7 @@ class UnetDecoderBlockV2(nn.Module):
 
 
 class UNetDecoderV2(DecoderModule):
-    def __init__(self, feature_maps: List[int], decoder_features: int, mask_channels: int, dropout=0., abn_block=ABN):
+    def __init__(self, feature_maps: List[int], decoder_features: int, mask_channels: int, dropout=0.0, abn_block=ABN):
         super().__init__()
 
         if not isinstance(decoder_features, list):
@@ -107,9 +107,12 @@ class UNetDecoderV2(DecoderModule):
         for block_index, in_enc_features in enumerate(feature_maps[:-1]):
             blocks.append(
                 UnetDecoderBlockV2(
-                    decoder_features[block_index + 1], in_enc_features, decoder_features[block_index], mask_channels,
+                    decoder_features[block_index + 1],
+                    in_enc_features,
+                    decoder_features[block_index],
+                    mask_channels,
                     abn_block=abn_block,
-                    post_dropout_rate=dropout
+                    post_dropout_rate=dropout,
                 )
             )
 

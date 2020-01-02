@@ -60,9 +60,7 @@ class UnetDecoderBlock(nn.Module):
         self.scale_mode = scale_mode
         self.align_corners = align_corners
 
-        self.conv1 = nn.Conv2d(
-            in_dec_filters + in_enc_filters, out_filters, kernel_size=3, padding=1, bias=False
-        )
+        self.conv1 = nn.Conv2d(in_dec_filters + in_enc_filters, out_filters, kernel_size=3, padding=1, bias=False)
         self.abn1 = abn_block(out_filters)
 
         self.drop = nn.Dropout2d(dropout_rate, inplace=False)

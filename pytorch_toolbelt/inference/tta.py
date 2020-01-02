@@ -188,8 +188,7 @@ def d4_image2mask(model: nn.Module, image: Tensor) -> Tensor:
     output = model(image)
 
     for aug, deaug in zip(
-        [F.torch_rot90, F.torch_rot180, F.torch_rot270],
-        [F.torch_rot270, F.torch_rot180, F.torch_rot90]
+        [F.torch_rot90, F.torch_rot180, F.torch_rot270], [F.torch_rot270, F.torch_rot180, F.torch_rot90]
     ):
         x = deaug(model(aug(image)))
         output += x

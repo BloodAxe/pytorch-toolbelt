@@ -16,13 +16,23 @@ def conv1x1(input, output):
 
 
 class UNetDecoder(DecoderModule):
-    def __init__(self, feature_maps: List[int], decoder_features: int, mask_channels: int, abn_block=ABN, dropout=0.0, final_block=conv1x1):
+    def __init__(
+        self,
+        feature_maps: List[int],
+        decoder_features: int,
+        mask_channels: int,
+        abn_block=ABN,
+        dropout=0.0,
+        final_block=conv1x1,
+    ):
         super().__init__()
 
         if not isinstance(decoder_features, list):
             decoder_features = [decoder_features * (2 ** i) for i in range(len(feature_maps))]
         else:
-            assert len(decoder_features) == len(feature_maps), f"Incorrect number of decoder features: {decoder_features}, {feature_maps}"
+            assert len(decoder_features) == len(
+                feature_maps
+            ), f"Incorrect number of decoder features: {decoder_features}, {feature_maps}"
 
         self.center = UnetCentralBlock(
             in_dec_filters=feature_maps[-1], out_filters=decoder_features[-1], abn_block=abn_block
