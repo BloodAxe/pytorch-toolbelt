@@ -25,7 +25,7 @@ EMAIL = "ekhvedchenya@gmail.com"
 AUTHOR = "Eugene Khvedchenya"
 REQUIRES_PYTHON = ">=3.6.0"
 
-DEPENDENCIES = ["torch>=1.1", "torchvision>=0.3", "opencv-python>=4.0"]
+DEPENDENCIES = ["torch>=1.1", "torchvision>=0.3", "opencv-python>=4.1", "Pillow>=6.2", "torchnet>=0.0.5.1"]
 EXCLUDE_FROM_PACKAGES = ["contrib", "docs", "tests", "examples"]
 CURDIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -66,7 +66,18 @@ setup(
     python_requires=REQUIRES_PYTHON,
     extras_require={"tests": get_test_requirements()},
     include_package_data=True,
-    keywords=["PyTorch", "Kaggle", "Deep Learning", "Machine Learning", "ResNet", "VGG", "ResNext", "Unet", "Focal"],
+    keywords=[
+        "PyTorch",
+        "Kaggle",
+        "Deep Learning",
+        "Machine Learning",
+        "ResNet",
+        "VGG",
+        "ResNext",
+        "Unet",
+        "Focal",
+        "FPN",
+    ],
     scripts=[],
     license="License :: OSI Approved :: MIT License",
     classifiers=[
