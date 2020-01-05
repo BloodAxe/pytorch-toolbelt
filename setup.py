@@ -25,7 +25,7 @@ EMAIL = "ekhvedchenya@gmail.com"
 AUTHOR = "Eugene Khvedchenya"
 REQUIRES_PYTHON = ">=3.6.0"
 
-DEPENDENCIES = ["torch>=1.1", "torchvision>=0.3", "opencv-python>=4.1", "Pillow>=6.2", "torchnet>=0.0.4"]
+DEPENDENCIES = ["torch>=1.1", "torchvision>=0.3", "opencv-python>=4.1", "Pillow>=6.0,<7.0", "torchnet>=0.0.4"]
 EXCLUDE_FROM_PACKAGES = ["contrib", "docs", "tests", "examples"]
 CURDIR = os.path.abspath(os.path.dirname(__file__))
 
