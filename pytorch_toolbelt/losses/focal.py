@@ -15,7 +15,8 @@ class BinaryFocalLoss(_Loss):
 
         :param alpha: Prior probability of having positive value in target.
         :param gamma: Power factor for dampening weight (focal strenght).
-        :param ignore_index: If not None, targets may contain values to be ignored. Target values equal to ignore_index will be ignored from loss computation.
+        :param ignore_index: If not None, targets may contain values to be ignored.
+        Target values equal to ignore_index will be ignored from loss computation.
         :param reduced:
         :param threshold:
         """

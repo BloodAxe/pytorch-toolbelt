@@ -25,7 +25,8 @@ class DiceLoss(_Loss):
         """
 
         :param mode: Metric mode {'binary', 'multiclass', 'multilabel'}
-        :param classes: Optional list of classes that contribute in loss computation; By default, all channels are included.
+        :param classes: Optional list of classes that contribute in loss computation;
+        By default, all channels are included.
         :param log_loss: If True, loss computed as `-log(jaccard)`; otherwise `1 - jaccard`
         :param from_logits: If True assumes input is raw logits
         :param smooth:

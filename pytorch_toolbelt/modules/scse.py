@@ -1,4 +1,5 @@
-"""Implementation of the CoordConv modules from "Concurrent Spatial and Channel Squeeze & Excitation in Fully Convolutional Networks"
+"""Implementation of the CoordConv modules from
+"Concurrent Spatial and Channel Squeeze & Excitation in Fully Convolutional Networks"
 
 Original paper: https://arxiv.org/abs/1803.02579
 """

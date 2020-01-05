@@ -240,7 +240,7 @@ class _PyramidSelfAttentionBlock(nn.Module):
         self.out_channels = out_channels
         self.key_channels = key_channels
         self.value_channels = value_channels
-        if out_channels == None:
+        if out_channels is None:
             self.out_channels = in_channels
         self.f_key = nn.Sequential(
             nn.Conv2d(
