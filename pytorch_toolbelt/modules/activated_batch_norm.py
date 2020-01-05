@@ -19,7 +19,9 @@ from .activations import (
     hard_swish,
     mish,
     swish,
-    ACT_SWISH_NAIVE, swish_naive)
+    ACT_SWISH_NAIVE,
+    swish_naive,
+)
 
 __all__ = ["ABN"]
 

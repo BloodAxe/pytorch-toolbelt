@@ -229,13 +229,7 @@ class HRNetEncoderBase(EncoderModule):
         if layers is None:
             layers = [1, 2, 3, 4]
 
-        channels = [
-            64,
-            width,
-            width * 2,
-            width * 4,
-            width * 8,
-        ]
+        channels = [64, width, width * 2, width * 4, width * 8]
 
         strides = [4, 4, 8, 16, 32]
 
