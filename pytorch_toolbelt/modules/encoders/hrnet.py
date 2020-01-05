@@ -5,7 +5,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from .common import EncoderModule, make_n_channel_input
+from .common import EncoderModule, make_n_channel_input, _take
 
 __all__ = ["HRNetV2Encoder48", "HRNetV2Encoder18", "HRNetV2Encoder34"]
 
@@ -227,18 +227,17 @@ class HighResolutionModule(nn.Module):
 class HRNetEncoderBase(EncoderModule):
     def __init__(self, input_channels=3, width=48, layers: List[int] = None):
         if layers is None:
-            # By default return only last feature map
-            layers = [4]
+            layers = [1, 2, 3, 4]
 
         channels = [
             64,
-            256,
-            width * 2 + width,
-            width * 4 + width * 2 + width,
-            width * 8 + width * 4 + width * 2 + width,
+            width,
+            width * 2,
+            width * 4,
+            width * 8,
         ]
 
-        strides = [4, 4, 4, 4, 4]
+        strides = [4, 4, 8, 16, 32]
 
         super().__init__(channels=channels, strides=strides, layers=layers)
 
@@ -392,14 +391,8 @@ class HRNetEncoderBase(EncoderModule):
         return nn.Sequential(*modules), num_inchannels
 
     def forward(self, x):
-        outputs = []
-        x = self.layer0(x)
-        if 0 in self._layers:
-            outputs.append(x)
-
-        x = self.layer1(x)
-        if 1 in self._layers:
-            outputs.append(x)
+        layer0 = self.layer0(x)
+        x = self.layer1(layer0)
 
         x_list = []
         for i in range(self.stage2_cfg["NUM_BRANCHES"]):
@@ -408,9 +401,6 @@ class HRNetEncoderBase(EncoderModule):
             else:
                 x_list.append(x)
         y_list = self.stage2(x_list)
-        if 2 in self._layers:
-            x = self.resize_and_concatenate_input(y_list)
-            outputs.append(x)
 
         x_list = []
         for i in range(self.stage3_cfg["NUM_BRANCHES"]):
@@ -419,9 +409,6 @@ class HRNetEncoderBase(EncoderModule):
             else:
                 x_list.append(y_list[i])
         y_list = self.stage3(x_list)
-        if 3 in self._layers:
-            x = self.resize_and_concatenate_input(y_list)
-            outputs.append(x)
 
         x_list = []
         for i in range(self.stage4_cfg["NUM_BRANCHES"]):
@@ -430,18 +417,9 @@ class HRNetEncoderBase(EncoderModule):
             else:
                 x_list.append(y_list[i])
         y_list = self.stage4(x_list)
-        if 4 in self._layers:
-            x = self.resize_and_concatenate_input(y_list)
-            outputs.append(x)
 
+        outputs = _take([layer0] + y_list, self._layers)
         return outputs
-
-    @staticmethod
-    def resize_and_concatenate_input(x: List[torch.Tensor]) -> torch.Tensor:
-        x0_h, x0_w = x[0].size(2), x[0].size(3)
-        x = [x[0]] + [F.interpolate(xi, size=(x0_h, x0_w), mode="bilinear", align_corners=False) for xi in x[1:]]
-        x = torch.cat(x, dim=1)
-        return x
 
     def change_input_channels(self, input_channels: int, mode="auto"):
         self.layer0.conv1 = make_n_channel_input(self.layer0.conv1, input_channels, mode)
