@@ -28,14 +28,18 @@ def compute_pyramid_patch_weight_loss(width, height) -> np.ndarray:
     Dc = np.zeros((width, height))
     De = np.zeros((width, height))
 
-    for i in range(width):
-        for j in range(height):
-            Dc[i, j] = np.sqrt(np.square(i - xc + 0.5) + np.square(j - yc + 0.5))
-            De_l = np.sqrt(np.square(i - xl + 0.5) + np.square(j - j + 0.5))
-            De_r = np.sqrt(np.square(i - xr + 0.5) + np.square(j - j + 0.5))
-            De_b = np.sqrt(np.square(i - i + 0.5) + np.square(j - yb + 0.5))
-            De_t = np.sqrt(np.square(i - i + 0.5) + np.square(j - yt + 0.5))
-            De[i, j] = np.min([De_l, De_r, De_b, De_t])
+    Dcx = np.square(np.arange(width) - xc + 0.5)
+    Dcy = np.square(np.arange(height) - yc + 0.5)
+    Dc = np.sqrt(Dcx[np.newaxis].transpose() + Dcy)
+
+    De_l = np.square(np.arange(width) - xl + 0.5) + np.square(0.5)
+    De_r = np.square(np.arange(width) - xr + 0.5) + np.square(0.5)
+    De_b = np.square(0.5) + np.square(np.arange(height) - yb + 0.5)
+    De_t = np.square(0.5) + np.square(np.arange(height) - yt + 0.5)
+
+    De_x = np.sqrt(np.minimum(De_l, De_r))
+    De_y = np.sqrt(np.minimum(De_b, De_t))
+    De = np.minimum(De_x[np.newaxis].transpose(), De_y)
 
     alpha = (width * height) / np.sum(np.divide(De, np.add(Dc, De)))
     W = alpha * np.divide(De, np.add(Dc, De))
