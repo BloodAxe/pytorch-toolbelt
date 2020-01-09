@@ -118,8 +118,9 @@ class ConfusionMatrixCallback(Callback):
             outputs = outputs[mask]
             targets = targets[mask]
 
-        targets = targets.type_as(outputs)
-        self.confusion_matrix.add(predicted=outputs, target=targets)
+        if len(targets):
+            targets = targets.type_as(outputs)
+            self.confusion_matrix.add(predicted=outputs, target=targets)
 
     def on_loader_end(self, state):
         if self.class_names is None:
