@@ -82,9 +82,7 @@ class ShowPolarBatchesCallback(Callback):
             return data.detach().cpu()
         if isinstance(data, (list, tuple)):
             return [self.to_cpu(value) for value in data]
-        if isinstance(data, str):
-            return data
-        raise ValueError("Unsupported type", type(data))
+        return data
 
     def on_loader_start(self, state):
         self.best_score = None
