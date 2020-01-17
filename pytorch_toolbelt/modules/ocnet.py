@@ -264,7 +264,7 @@ class _PyramidSelfAttentionBlock(nn.Module):
         nn.init.constant(self.W.bias, 0)
 
     def forward(self, x):
-        batch_size, c, h, w = x.size(0), x.size(1), x.size(2), x.size(3)
+        batch_size, _, h, w = x.size(0), x.size(1), x.size(2), x.size(3)
 
         local_x = []
         local_y = []
