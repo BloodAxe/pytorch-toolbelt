@@ -1,5 +1,5 @@
 import warnings
-from typing import Callable
+from typing import Callable, Optional, List
 
 import cv2
 import matplotlib.pyplot as plt
@@ -188,25 +188,54 @@ def draw_binary_segmentation_predictions(
     input: dict,
     output: dict,
     image_key="features",
-    image_id_key="image_id",
+    image_id_key: Optional[str] = "image_id",
     targets_key="targets",
     outputs_key="logits",
     mean=(0.485, 0.456, 0.406),
     std=(0.229, 0.224, 0.225),
-):
-    images = []
-    image_id_input = input[image_id_key] if image_id_key is not None else [None] * len(input[image_key])
+    max_images=None,
+    targets_threshold=0.5,
+    logits_threshold=0,
+) -> List[np.ndarray]:
+    """
+    Draws visualization of model's prediction for binary segmentation problem.
+    This function draws a color-coded overlay on top of the image, with color codes meaning:
+        - green: True positives
+        - red: False-negatives
+        - yellow: False-positives
 
-    for image, target, image_id, logits in zip(
-        input[image_key], input[targets_key], image_id_input, output[outputs_key]
-    ):
-        image = rgb_image_from_tensor(image, mean, std)
-        target = to_numpy(target).squeeze(0)
-        logits = to_numpy(logits).squeeze(0)
+    :param input: Input batch (model's input batch)
+    :param output: Output batch (model predictions)
+    :param image_key: Key for getting image
+    :param image_id_key: Key for getting image id/fname
+    :param targets_key: Key for getting ground-truth mask
+    :param outputs_key: Key for getting model logits for predicted mask
+    :param mean: Mean vector user during normalization
+    :param std: Std vector user during normalization
+    :param max_images: Maximum number of images to visualize from batch
+        (If you have huge batch, saving hundeds of images may make TensorBoard slow)
+    :param targets_threshold: Threshold to convert target values to binary.
+        Default value 0.5 is safe for both smoothed and hard labels.
+    :param logits_threshold: Threshold to convert model predictions (raw logits) values to binary.
+        Default value 0.0 is equivalent to 0.5 after applying sigmoid activation
+    :return: List of images
+    """
+    images = []
+    num_samples = len(input[image_key])
+    if max_images is not None:
+        num_samples = min(num_samples, max_images)
+
+    assert output[outputs_key].size(1) == 1, "Mask must be single-channel tensor of shape [Nx1xHxW]"
+
+    for i in range(num_samples):
+
+        image = rgb_image_from_tensor(input[image_key][i], mean, std)
+        target = to_numpy(input[targets_key][i]).squeeze(0)
+        logits = to_numpy(output[outputs_key][i]).squeeze(0)
 
         overlay = image.copy()
-        true_mask = target > 0
-        pred_mask = logits > 0
+        true_mask = target > targets_threshold
+        pred_mask = logits > logits_threshold
 
         overlay[true_mask & pred_mask] = np.array(
             [0, 250, 0], dtype=overlay.dtype
@@ -217,7 +246,8 @@ def draw_binary_segmentation_predictions(
         )  # False alarm painted with yellow
         overlay = cv2.addWeighted(image, 0.5, overlay, 0.5, 0, dtype=cv2.CV_8U)
 
-        if image_id is not None:
+        if image_id_key is not None and image_id_key in input:
+            image_id = input[image_id_key][i]
             cv2.putText(overlay, str(image_id), (10, 15), cv2.FONT_HERSHEY_PLAIN, 1, (250, 250, 250))
 
         images.append(overlay)
