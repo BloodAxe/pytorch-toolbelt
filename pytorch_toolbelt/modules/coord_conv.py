@@ -1,9 +1,11 @@
-"""Implementation of the CoordConv modules from https://arxiv.org/abs/1807.03247
-
+"""
+Implementation of the CoordConv modules from https://arxiv.org/abs/1807.03247
 """
 
 import torch
 import torch.nn as nn
+
+__all__ = ["append_coords", "AddCoords", "CoordConv"]
 
 
 def append_coords(input_tensor, with_r=False):
@@ -21,32 +23,23 @@ def append_coords(input_tensor, with_r=False):
     xx_channel = xx_channel.repeat(batch_size, 1, 1, 1).transpose(2, 3)
     yy_channel = yy_channel.repeat(batch_size, 1, 1, 1).transpose(2, 3)
 
-    ret = torch.cat(
-        [
-            input_tensor,
-            xx_channel.type_as(input_tensor),
-            yy_channel.type_as(input_tensor),
-        ],
-        dim=1,
-    )
+    ret = torch.cat([input_tensor, xx_channel.type_as(input_tensor), yy_channel.type_as(input_tensor)], dim=1)
 
     if with_r:
         rr = torch.sqrt(
-            torch.pow(xx_channel.type_as(input_tensor) - 0.5, 2)
-            + torch.pow(yy_channel.type_as(input_tensor) - 0.5, 2)
+            torch.pow(xx_channel.type_as(input_tensor) - 0.5, 2) + torch.pow(yy_channel.type_as(input_tensor) - 0.5, 2)
         )
         ret = torch.cat([ret, rr], dim=1)
 
     return ret
 
 
-"""
-An alternative implementation for PyTorch with auto-infering the x-y dimensions.
-https://github.com/mkocabas/CoordConv-pytorch/blob/master/CoordConv.py
-"""
-
-
 class AddCoords(nn.Module):
+    """
+    An alternative implementation for PyTorch with auto-infering the x-y dimensions.
+    https://github.com/mkocabas/CoordConv-pytorch/blob/master/CoordConv.py
+    """
+
     def __init__(self, with_r=False):
         super().__init__()
         self.with_r = with_r

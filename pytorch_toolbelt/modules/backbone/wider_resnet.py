@@ -1,25 +1,14 @@
 from collections import OrderedDict
 from functools import partial
 
-import torch
 from torch import nn
 
-from pytorch_toolbelt.modules.abn import ABN
-from pytorch_toolbelt.modules.pooling import GlobalAvgPool2d
-from pytorch_toolbelt.utils.torch_utils import count_parameters
+from ..activated_batch_norm import ABN
+from ..pooling import GlobalAvgPool2d
 
 
 class IdentityResidualBlock(nn.Module):
-    def __init__(
-        self,
-        in_channels,
-        channels,
-        stride=1,
-        dilation=1,
-        groups=1,
-        norm_act=ABN,
-        dropout=None,
-    ):
+    def __init__(self, in_channels, channels, stride=1, dilation=1, groups=1, norm_act=ABN, dropout=None):
         """Identity-mapping residual block
         Parameters
         ----------
@@ -58,44 +47,20 @@ class IdentityResidualBlock(nn.Module):
                 (
                     "conv1",
                     nn.Conv2d(
-                        in_channels,
-                        channels[0],
-                        3,
-                        stride=stride,
-                        padding=dilation,
-                        bias=False,
-                        dilation=dilation,
+                        in_channels, channels[0], 3, stride=stride, padding=dilation, bias=False, dilation=dilation
                     ),
                 ),
                 ("bn2", norm_act(channels[0])),
                 (
                     "conv2",
-                    nn.Conv2d(
-                        channels[0],
-                        channels[1],
-                        3,
-                        stride=1,
-                        padding=dilation,
-                        bias=False,
-                        dilation=dilation,
-                    ),
+                    nn.Conv2d(channels[0], channels[1], 3, stride=1, padding=dilation, bias=False, dilation=dilation),
                 ),
             ]
             if dropout is not None:
                 layers = layers[0:2] + [("dropout", dropout())] + layers[2:]
         else:
             layers = [
-                (
-                    "conv1",
-                    nn.Conv2d(
-                        in_channels,
-                        channels[0],
-                        1,
-                        stride=stride,
-                        padding=0,
-                        bias=False,
-                    ),
-                ),
+                ("conv1", nn.Conv2d(in_channels, channels[0], 1, stride=stride, padding=0, bias=False)),
                 ("bn2", norm_act(channels[0])),
                 (
                     "conv2",
@@ -111,21 +76,14 @@ class IdentityResidualBlock(nn.Module):
                     ),
                 ),
                 ("bn3", norm_act(channels[1])),
-                (
-                    "conv3",
-                    nn.Conv2d(
-                        channels[1], channels[2], 1, stride=1, padding=0, bias=False
-                    ),
-                ),
+                ("conv3", nn.Conv2d(channels[1], channels[2], 1, stride=1, padding=0, bias=False)),
             ]
             if dropout is not None:
                 layers = layers[0:4] + [("dropout", dropout())] + layers[4:]
         self.convs = nn.Sequential(OrderedDict(layers))
 
         if need_proj_conv:
-            self.proj_conv = nn.Conv2d(
-                in_channels, channels[-1], 1, stride=stride, padding=0, bias=False
-            )
+            self.proj_conv = nn.Conv2d(in_channels, channels[-1], 1, stride=stride, padding=0, bias=False)
 
     def forward(self, x):
         if hasattr(self, "proj_conv"):
@@ -162,22 +120,11 @@ class WiderResNet(nn.Module):
             raise ValueError("Expected a structure with six values")
 
         # Initial layers
-        self.mod1 = nn.Sequential(
-            OrderedDict(
-                [("conv1", nn.Conv2d(3, 64, 3, stride=1, padding=1, bias=False))]
-            )
-        )
+        self.mod1 = nn.Sequential(OrderedDict([("conv1", nn.Conv2d(3, 64, 3, stride=1, padding=1, bias=False))]))
 
         # Groups of residual blocks
         in_channels = 64
-        channels = [
-            (128, 128),
-            (256, 256),
-            (512, 512),
-            (512, 1024),
-            (512, 1024, 2048),
-            (1024, 2048, 4096),
-        ]
+        channels = [(128, 128), (256, 256), (512, 512), (512, 1024), (512, 1024, 2048), (1024, 2048, 4096)]
         for mod_id, num in enumerate(structure):
             # Create blocks for module
             blocks = []
@@ -185,9 +132,7 @@ class WiderResNet(nn.Module):
                 blocks.append(
                     (
                         "block%d" % (block_id + 1),
-                        IdentityResidualBlock(
-                            in_channels, channels[mod_id], norm_act=norm_act
-                        ),
+                        IdentityResidualBlock(in_channels, channels[mod_id], norm_act=norm_act),
                     )
                 )
 
@@ -196,21 +141,14 @@ class WiderResNet(nn.Module):
 
             # Create module
             if mod_id <= 4:
-                self.add_module(
-                    "pool%d" % (mod_id + 2), nn.MaxPool2d(3, stride=2, padding=1)
-                )
+                self.add_module("pool%d" % (mod_id + 2), nn.MaxPool2d(3, stride=2, padding=1))
             self.add_module("mod%d" % (mod_id + 2), nn.Sequential(OrderedDict(blocks)))
 
         # Pooling and predictor
         self.bn_out = norm_act(in_channels)
         if classes != 0:
             self.classifier = nn.Sequential(
-                OrderedDict(
-                    [
-                        ("avg_pool", GlobalAvgPool2d()),
-                        ("fc", nn.Linear(in_channels, classes)),
-                    ]
-                )
+                OrderedDict([("avg_pool", GlobalAvgPool2d()), ("fc", nn.Linear(in_channels, classes))])
             )
 
     def forward(self, img):
@@ -254,22 +192,11 @@ class WiderResNetA2(nn.Module):
             raise ValueError("Expected a structure with six values")
 
         # Initial layers
-        self.mod1 = nn.Sequential(
-            OrderedDict(
-                [("conv1", nn.Conv2d(3, 64, 3, stride=1, padding=1, bias=False))]
-            )
-        )
+        self.mod1 = nn.Sequential(OrderedDict([("conv1", nn.Conv2d(3, 64, 3, stride=1, padding=1, bias=False))]))
 
         # Groups of residual blocks
         in_channels = 64
-        channels = [
-            (128, 128),
-            (256, 256),
-            (512, 512),
-            (512, 1024),
-            (512, 1024, 2048),
-            (1024, 2048, 4096),
-        ]
+        channels = [(128, 128), (256, 256), (512, 512), (512, 1024), (512, 1024, 2048), (1024, 2048, 4096)]
         for mod_id, num in enumerate(structure):
             # Create blocks for module
             blocks = []
@@ -297,12 +224,7 @@ class WiderResNetA2(nn.Module):
                     (
                         "block%d" % (block_id + 1),
                         IdentityResidualBlock(
-                            in_channels,
-                            channels[mod_id],
-                            norm_act=norm_act,
-                            stride=stride,
-                            dilation=dil,
-                            dropout=drop,
+                            in_channels, channels[mod_id], norm_act=norm_act, stride=stride, dilation=dil, dropout=drop
                         ),
                     )
                 )
@@ -312,21 +234,14 @@ class WiderResNetA2(nn.Module):
 
             # Create module
             if mod_id < 2:
-                self.add_module(
-                    "pool%d" % (mod_id + 2), nn.MaxPool2d(3, stride=2, padding=1)
-                )
+                self.add_module("pool%d" % (mod_id + 2), nn.MaxPool2d(3, stride=2, padding=1))
             self.add_module("mod%d" % (mod_id + 2), nn.Sequential(OrderedDict(blocks)))
 
         # Pooling and predictor
         self.bn_out = norm_act(in_channels)
         if classes != 0:
             self.classifier = nn.Sequential(
-                OrderedDict(
-                    [
-                        ("avg_pool", GlobalAvgPool2d()),
-                        ("fc", nn.Linear(in_channels, classes)),
-                    ]
-                )
+                OrderedDict([("avg_pool", GlobalAvgPool2d()), ("fc", nn.Linear(in_channels, classes))])
             )
 
     def forward(self, img):
@@ -346,53 +261,24 @@ class WiderResNetA2(nn.Module):
 
 
 def wider_resnet_16(num_classes=0, norm_act=ABN):
-    return WiderResNet(
-        structure=[1, 1, 1, 1, 1, 1], norm_act=norm_act, classes=num_classes
-    )
+    return WiderResNet(structure=[1, 1, 1, 1, 1, 1], norm_act=norm_act, classes=num_classes)
 
 
 def wider_resnet_20(num_classes=0, norm_act=ABN):
-    return WiderResNet(
-        structure=[1, 1, 1, 3, 1, 1], norm_act=norm_act, classes=num_classes
-    )
+    return WiderResNet(structure=[1, 1, 1, 3, 1, 1], norm_act=norm_act, classes=num_classes)
 
 
 def wider_resnet_38(num_classes=0, norm_act=ABN):
-    return WiderResNet(
-        structure=[3, 3, 6, 3, 1, 1], norm_act=norm_act, classes=num_classes
-    )
+    return WiderResNet(structure=[3, 3, 6, 3, 1, 1], norm_act=norm_act, classes=num_classes)
 
 
 def wider_resnet_16_a2(num_classes=0, norm_act=ABN):
-    return WiderResNetA2(
-        structure=[1, 1, 1, 1, 1, 1], norm_act=norm_act, classes=num_classes
-    )
+    return WiderResNetA2(structure=[1, 1, 1, 1, 1, 1], norm_act=norm_act, classes=num_classes)
 
 
 def wider_resnet_20_a2(num_classes=0, norm_act=ABN):
-    return WiderResNetA2(
-        structure=[1, 1, 1, 3, 1, 1], norm_act=norm_act, classes=num_classes
-    )
+    return WiderResNetA2(structure=[1, 1, 1, 3, 1, 1], norm_act=norm_act, classes=num_classes)
 
 
 def wider_resnet_38_a2(num_classes=0, norm_act=ABN):
-    return WiderResNetA2(
-        structure=[3, 3, 6, 3, 1, 1], norm_act=norm_act, classes=num_classes
-    )
-
-
-def test_wider_resnet():
-    for fn in [
-        wider_resnet_16_a2,
-        wider_resnet_16,
-        wider_resnet_20,
-        wider_resnet_20_a2,
-        wider_resnet_38,
-        wider_resnet_38_a2,
-    ]:
-        net = fn().eval()
-        print(count_parameters(net))
-        x = torch.randn((1, 3, 512, 512))
-        out = net(x)
-        for o in out:
-            print(o.size())
+    return WiderResNetA2(structure=[3, 3, 6, 3, 1, 1], norm_act=norm_act, classes=num_classes)

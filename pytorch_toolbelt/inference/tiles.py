@@ -1,11 +1,11 @@
 """Implementation of tile-based inference allowing to predict huge images that does not fit into GPU memory entirely
 in a sliding-window fashion and merging prediction mask back to full-resolution.
 """
+import math
 from typing import List
 
-import numpy as np
 import cv2
-import math
+import numpy as np
 import torch
 
 
@@ -28,14 +28,18 @@ def compute_pyramid_patch_weight_loss(width, height) -> np.ndarray:
     Dc = np.zeros((width, height))
     De = np.zeros((width, height))
 
-    for i in range(width):
-        for j in range(height):
-            Dc[i, j] = np.sqrt(np.square(i - xc + 0.5) + np.square(j - yc + 0.5))
-            De_l = np.sqrt(np.square(i - xl + 0.5) + np.square(j - j + 0.5))
-            De_r = np.sqrt(np.square(i - xr + 0.5) + np.square(j - j + 0.5))
-            De_b = np.sqrt(np.square(i - i + 0.5) + np.square(j - yb + 0.5))
-            De_t = np.sqrt(np.square(i - i + 0.5) + np.square(j - yt + 0.5))
-            De[i, j] = np.min([De_l, De_r, De_b, De_t])
+    Dcx = np.square(np.arange(width) - xc + 0.5)
+    Dcy = np.square(np.arange(height) - yc + 0.5)
+    Dc = np.sqrt(Dcx[np.newaxis].transpose() + Dcy)
+
+    De_l = np.square(np.arange(width) - xl + 0.5) + np.square(0.5)
+    De_r = np.square(np.arange(width) - xr + 0.5) + np.square(0.5)
+    De_b = np.square(0.5) + np.square(np.arange(height) - yb + 0.5)
+    De_t = np.square(0.5) + np.square(np.arange(height) - yt + 0.5)
+
+    De_x = np.sqrt(np.minimum(De_l, De_r))
+    De_y = np.sqrt(np.minimum(De_b, De_t))
+    De = np.minimum(De_x[np.newaxis].transpose(), De_y)
 
     alpha = (width * height) / np.sum(np.divide(De, np.add(Dc, De)))
     W = alpha * np.divide(De, np.add(Dc, De))
@@ -47,9 +51,7 @@ class ImageSlicer:
     Helper class to slice image into tiles and merge them back
     """
 
-    def __init__(
-        self, image_shape, tile_size, tile_step=0, image_margin=0, weight="mean"
-    ):
+    def __init__(self, image_shape, tile_size, tile_step=0, image_margin=0, weight="mean"):
         """
 
         :param image_shape: Shape of the source image (H, W)
@@ -75,21 +77,14 @@ class ImageSlicer:
 
         weights = {"mean": self._mean, "pyramid": self._pyramid}
 
-        self.weight = (
-            weight
-            if isinstance(weight, np.ndarray)
-            else weights[weight](self.tile_size)
-        )
+        self.weight = weight if isinstance(weight, np.ndarray) else weights[weight](self.tile_size)
 
         if self.tile_step[0] < 1 or self.tile_step[0] > self.tile_size[0]:
             raise ValueError()
         if self.tile_step[1] < 1 or self.tile_step[1] > self.tile_size[1]:
             raise ValueError()
 
-        overlap = [
-            self.tile_size[0] - self.tile_step[0],
-            self.tile_size[1] - self.tile_step[1],
-        ]
+        overlap = [self.tile_size[0] - self.tile_step[0], self.tile_size[1] - self.tile_step[1]]
 
         self.margin_left = 0
         self.margin_right = 0
@@ -111,14 +106,10 @@ class ImageSlicer:
             self.margin_bottom = extra_h - self.margin_top
 
         else:
-            if (self.image_width - overlap[1] + 2 * image_margin) % self.tile_step[
-                1
-            ] != 0:
+            if (self.image_width - overlap[1] + 2 * image_margin) % self.tile_step[1] != 0:
                 raise ValueError()
 
-            if (self.image_height - overlap[0] + 2 * image_margin) % self.tile_step[
-                0
-            ] != 0:
+            if (self.image_height - overlap[0] + 2 * image_margin) % self.tile_step[0] != 0:
                 raise ValueError()
 
             self.margin_left = image_margin
@@ -130,32 +121,13 @@ class ImageSlicer:
         bbox_crops = []
 
         for y in range(
-            0,
-            self.image_height
-            + self.margin_top
-            + self.margin_bottom
-            - self.tile_size[0]
-            + 1,
-            self.tile_step[0],
+            0, self.image_height + self.margin_top + self.margin_bottom - self.tile_size[0] + 1, self.tile_step[0]
         ):
             for x in range(
-                0,
-                self.image_width
-                + self.margin_left
-                + self.margin_right
-                - self.tile_size[1]
-                + 1,
-                self.tile_step[1],
+                0, self.image_width + self.margin_left + self.margin_right - self.tile_size[1] + 1, self.tile_step[1]
             ):
                 crops.append((x, y, self.tile_size[1], self.tile_size[0]))
-                bbox_crops.append(
-                    (
-                        x - self.margin_left,
-                        y - self.margin_top,
-                        self.tile_size[1],
-                        self.tile_size[0],
-                    )
-                )
+                bbox_crops.append((x - self.margin_left, y - self.margin_top, self.tile_size[1], self.tile_size[0]))
 
         self.crops = np.array(crops)
         self.bbox_crops = np.array(bbox_crops)
@@ -189,9 +161,7 @@ class ImageSlicer:
 
         return tiles
 
-    def cut_patch(
-        self, image: np.ndarray, slice_index, border_type=cv2.BORDER_CONSTANT, value=0
-    ):
+    def cut_patch(self, image: np.ndarray, slice_index, border_type=cv2.BORDER_CONSTANT, value=0):
         assert image.shape[0] == self.image_height
         assert image.shape[1] == self.image_width
 
@@ -298,9 +268,7 @@ class CudaTileMerger:
         :param crop_coords: Corresponding tile crops w.r.t to original image
         """
         if len(batch) != len(crop_coords):
-            raise ValueError(
-                "Number of images in batch does not correspond to number of coordinates"
-            )
+            raise ValueError("Number of images in batch does not correspond to number of coordinates")
 
         for tile, (x, y, tile_width, tile_height) in zip(batch, crop_coords):
             self.image[:, y : y + tile_height, x : x + tile_width] += tile * self.weight

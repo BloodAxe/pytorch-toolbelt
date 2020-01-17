@@ -1,15 +1,15 @@
 from functools import partial
+from typing import List
 
 import numpy as np
 import torch
 from catalyst.dl import Callback, RunnerState, MetricCallback, CallbackOrder
-from pytorch_toolbelt.utils.catalyst.visualization import get_tensorboard_logger
-from pytorch_toolbelt.utils.torch_utils import to_numpy
-from pytorch_toolbelt.utils.visualization import (
-    render_figure_to_tensor,
-    plot_confusion_matrix,
-)
-from sklearn.metrics import f1_score, confusion_matrix
+from sklearn.metrics import f1_score
+from torchnet.meter import ConfusionMeter
+
+from .visualization import get_tensorboard_logger
+from ..torch_utils import to_numpy
+from ..visualization import render_figure_to_tensor, plot_confusion_matrix
 
 __all__ = [
     "pixel_accuracy",
@@ -50,11 +50,7 @@ class PixelAccuracyCallback(MetricCallback):
     """
 
     def __init__(
-        self,
-        input_key: str = "targets",
-        output_key: str = "logits",
-        prefix: str = "accuracy",
-        ignore_index=None,
+        self, input_key: str = "targets", output_key: str = "logits", prefix: str = "accuracy", ignore_index=None
     ):
         """
         :param input_key: input key to use for iou calculation;
@@ -82,8 +78,10 @@ class ConfusionMatrixCallback(Callback):
         input_key: str = "targets",
         output_key: str = "logits",
         prefix: str = "confusion_matrix",
-        class_names=None,
+        class_names: List[str] = None,
+        num_classes: int = None,
         ignore_index=None,
+        activation_fn=partial(torch.argmax, dim=1),
     ):
         """
         :param input_key: input key to use for precision calculation;
@@ -92,44 +90,46 @@ class ConfusionMatrixCallback(Callback):
             specifies our `y_pred`.
         :param ignore_index: same meaning as in nn.CrossEntropyLoss
         """
-        super().__init__(CallbackOrder.Logger)
+        super().__init__(CallbackOrder.Metric)
         self.prefix = prefix
         self.class_names = class_names
+        self.num_classes = num_classes if class_names is None else len(class_names)
         self.output_key = output_key
         self.input_key = input_key
-        self.outputs = []
-        self.targets = []
         self.ignore_index = ignore_index
+        self.confusion_matrix = None
+        self.activation_fn = activation_fn
 
     def on_loader_start(self, state):
-        self.outputs = []
-        self.targets = []
+        self.confusion_matrix = ConfusionMeter(self.num_classes)
 
     def on_batch_end(self, state: RunnerState):
-        outputs = to_numpy(state.output[self.output_key])
-        targets = to_numpy(state.input[self.input_key])
+        outputs: torch.Tensor = state.output[self.output_key].detach().cpu()
+        outputs: torch.Tensor = self.activation_fn(outputs)
 
-        outputs = np.argmax(outputs, axis=1)
+        targets: torch.Tensor = state.input[self.input_key].detach().cpu()
+
+        # Flatten
+        outputs = outputs.view(-1)
+        targets = targets.view(-1)
 
         if self.ignore_index is not None:
             mask = targets != self.ignore_index
             outputs = outputs[mask]
             targets = targets[mask]
 
-        self.outputs.extend(outputs)
-        self.targets.extend(targets)
+        if len(targets):
+            targets = targets.type_as(outputs)
+            self.confusion_matrix.add(predicted=outputs, target=targets)
 
     def on_loader_end(self, state):
-        targets = np.array(self.targets)
-        outputs = np.array(self.outputs)
-
         if self.class_names is None:
-            class_names = [str(i) for i in range(targets.shape[1])]
+            class_names = [str(i) for i in range(self.num_classes)]
         else:
             class_names = self.class_names
 
         num_classes = len(class_names)
-        cm = confusion_matrix(targets, outputs, labels=range(num_classes))
+        cm = self.confusion_matrix.value()
 
         fig = plot_confusion_matrix(
             cm,
@@ -150,11 +150,7 @@ class MacroF1Callback(Callback):
     """
 
     def __init__(
-        self,
-        input_key: str = "targets",
-        output_key: str = "logits",
-        prefix: str = "macro_f1",
-        ignore_index=None,
+        self, input_key: str = "targets", output_key: str = "logits", prefix: str = "macro_f1", ignore_index=None
     ):
         """
         :param input_key: input key to use for precision calculation;
@@ -163,9 +159,7 @@ class MacroF1Callback(Callback):
             specifies our `y_pred`.
         """
         super().__init__(CallbackOrder.Metric)
-        self.metric_fn = lambda outputs, targets: f1_score(
-            targets, outputs, average="macro"
-        )
+        self.metric_fn = lambda outputs, targets: f1_score(targets, outputs, average="macro")
         self.prefix = prefix
         self.output_key = output_key
         self.input_key = input_key
@@ -208,12 +202,7 @@ class MacroF1Callback(Callback):
 
 
 def binary_dice_iou_score(
-    y_pred: torch.Tensor,
-    y_true: torch.Tensor,
-    mode="dice",
-    threshold=None,
-    nan_score_on_empty=False,
-    eps=1e-7,
+    y_pred: torch.Tensor, y_true: torch.Tensor, mode="dice", threshold=None, nan_score_on_empty=False, eps=1e-7
 ) -> float:
     """
     Compute IoU score between two image tensors
@@ -360,10 +349,7 @@ class IoUMetricsCallback(Callback):
 
         if self.mode == BINARY_MODE:
             self.score_fn = partial(
-                binary_dice_iou_score,
-                threshold=0.0,
-                nan_score_on_empty=nan_score_on_empty,
-                mode=metric,
+                binary_dice_iou_score, threshold=0.0, nan_score_on_empty=nan_score_on_empty, mode=metric
             )
 
         if self.mode == MULTICLASS_MODE:
@@ -395,9 +381,7 @@ class IoUMetricsCallback(Callback):
         batch_size = targets.size(0)
         score_per_image = []
         for image_index in range(batch_size):
-            score_per_class = self.score_fn(
-                y_pred=outputs[image_index], y_true=targets[image_index]
-            )
+            score_per_class = self.score_fn(y_pred=outputs[image_index], y_true=targets[image_index])
             score_per_image.append(score_per_class)
 
         mean_score = np.nanmean(score_per_image)
@@ -419,6 +403,4 @@ class IoUMetricsCallback(Callback):
 
             scores_per_class = np.nanmean(scores, axis=0)
             for class_name, score_per_class in zip(class_names, scores_per_class):
-                state.metrics.epoch_values[state.loader_name][
-                    self.prefix + "_" + class_name
-                ] = float(score_per_class)
+                state.metrics.epoch_values[state.loader_name][self.prefix + "_" + class_name] = float(score_per_class)

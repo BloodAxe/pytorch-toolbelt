@@ -3,7 +3,6 @@
 """
 import collections
 import warnings
-from typing import Tuple
 
 import numpy as np
 import torch
@@ -48,7 +47,7 @@ def logit(x: torch.Tensor, eps=1e-5):
     return torch.log(x / (1.0 - x))
 
 
-def count_parameters(model: nn.Module) -> Tuple[int, int]:
+def count_parameters(model: nn.Module) -> dict:
     """
     Count number of total and trainable parameters of a model
     :param model: A model
@@ -56,7 +55,13 @@ def count_parameters(model: nn.Module) -> Tuple[int, int]:
     """
     total = sum(p.numel() for p in model.parameters())
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    return total, trainable
+    parameters = {"total": total, "trainable": trainable}
+
+    for key in ["encoder", "decoder"]:
+        if hasattr(model, key):
+            parameters[key] = sum(p.numel() for p in model.__getattr__(key).parameters())
+
+    return parameters
 
 
 def to_numpy(x) -> np.ndarray:
@@ -108,9 +113,7 @@ def tensor_from_mask_image(mask: np.ndarray) -> torch.Tensor:
     return tensor_from_rgb_image(mask)
 
 
-def rgb_image_from_tensor(
-    image: torch.Tensor, mean, std, max_pixel_value=255.0, dtype=np.uint8
-) -> np.ndarray:
+def rgb_image_from_tensor(image: torch.Tensor, mean, std, max_pixel_value=255.0, dtype=np.uint8) -> np.ndarray:
     image = np.moveaxis(to_numpy(image), 0, -1)
     mean = to_numpy(mean)
     std = to_numpy(std)
@@ -144,8 +147,6 @@ def transfer_weights(model: nn.Module, model_state_dict: collections.OrderedDict
     """
     for name, value in model_state_dict.items():
         try:
-            model.load_state_dict(
-                collections.OrderedDict([(name, value)]), strict=False
-            )
+            model.load_state_dict(collections.OrderedDict([(name, value)]), strict=False)
         except Exception as e:
             print(e)
