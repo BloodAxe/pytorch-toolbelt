@@ -1,8 +1,10 @@
 from __future__ import absolute_import
 
+from .dice import *
 from .focal import *
 from .jaccard import *
-from .dice import *
-from .lovasz import *
 from .joint_loss import *
+from .lovasz import *
+from .soft_bce import *
+from .soft_ce import *
 from .wing_loss import *

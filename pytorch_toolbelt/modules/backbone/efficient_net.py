@@ -4,12 +4,14 @@ from copy import deepcopy
 from typing import List
 
 import torch
-from pytorch_toolbelt.modules import ABN, SpatialGate2d
-from pytorch_toolbelt.modules.activations import ACT_HARD_SWISH
-from pytorch_toolbelt.modules.agn import AGN
 from torch import nn
 from torch.nn import functional as F
-from torch.nn.init import kaiming_normal_
+from torch.nn.init import kaiming_uniform_
+
+from ..activated_batch_norm import ABN
+from ..activated_group_norm import AGN
+from ..activations import ACT_HARD_SWISH, sanitize_activation_name
+from ..scse import SpatialGate2d
 
 
 def round_filters(filters, width_coefficient, depth_divisor, min_depth):
@@ -18,9 +20,7 @@ def round_filters(filters, width_coefficient, depth_divisor, min_depth):
     """
     filters *= width_coefficient
     min_depth = min_depth or depth_divisor
-    new_filters = max(
-        min_depth, int(filters + depth_divisor / 2) // depth_divisor * depth_divisor
-    )
+    new_filters = max(min_depth, int(filters + depth_divisor / 2) // depth_divisor * depth_divisor)
     if new_filters < 0.9 * filters:  # prevent rounding by more than 10%
         new_filters += depth_divisor
     return int(new_filters)
@@ -44,9 +44,7 @@ def drop_connect(inputs, p, training):
     batch_size = inputs.shape[0]
     keep_prob = 1 - p
     random_tensor = keep_prob
-    random_tensor += torch.rand(
-        [batch_size, 1, 1, 1], dtype=inputs.dtype
-    )  # uniform [0,1)
+    random_tensor += torch.rand([batch_size, 1, 1, 1], dtype=inputs.dtype)  # uniform [0,1)
     binary_tensor = torch.floor(random_tensor)
     output = inputs / keep_prob * binary_tensor
     return output
@@ -81,19 +79,11 @@ class EfficientNetBlockArgs:
         self.id_skip = id_skip
 
     def scale(
-        self,
-        width_coefficient: float,
-        depth_coefficient: float,
-        depth_divisor: float = 8.0,
-        min_filters: int = None,
+        self, width_coefficient: float, depth_coefficient: float, depth_divisor: float = 8.0, min_filters: int = None
     ):
         copy = deepcopy(self)
-        copy.input_filters = round_filters(
-            self.input_filters, width_coefficient, depth_divisor, min_filters
-        )
-        copy.output_filters = round_filters(
-            self.output_filters, width_coefficient, depth_divisor, min_filters
-        )
+        copy.input_filters = round_filters(self.input_filters, width_coefficient, depth_divisor, min_filters)
+        copy.output_filters = round_filters(self.output_filters, width_coefficient, depth_divisor, min_filters)
         copy.num_repeat = round_repeats(self.num_repeat, depth_coefficient)
         copy.width_coefficient = width_coefficient
         copy.depth_coefficient = depth_coefficient
@@ -122,14 +112,10 @@ class MBConvBlock(nn.Module):
 
         # Expansion phase
         inp = block_args.input_filters  # number of input channels
-        oup = (
-            block_args.input_filters * block_args.expand_ratio
-        )  # number of output channels
+        oup = block_args.input_filters * block_args.expand_ratio  # number of output channels
 
         if block_args.expand_ratio != 1:
-            self.expand_conv = nn.Conv2d(
-                in_channels=inp, out_channels=oup, kernel_size=1, bias=False
-            )
+            self.expand_conv = nn.Conv2d(in_channels=inp, out_channels=oup, kernel_size=1, bias=False)
             self.abn0 = abn_block(oup, **abn_params)
 
         # Depthwise convolution phase
@@ -151,9 +137,7 @@ class MBConvBlock(nn.Module):
 
         # Output phase
         final_oup = self._block_args.output_filters
-        self.project_conv = nn.Conv2d(
-            in_channels=oup, out_channels=final_oup, kernel_size=1, bias=False
-        )
+        self.project_conv = nn.Conv2d(in_channels=oup, out_channels=final_oup, kernel_size=1, bias=False)
         self.abn2 = abn_block(final_oup, **abn_params)
 
         self.input_filters = block_args.input_filters
@@ -163,17 +147,16 @@ class MBConvBlock(nn.Module):
 
     def reset_parameters(self):
         if hasattr(self, "expand_conv"):
-            kaiming_normal_(self.expand_conv.weight,
-                            a=self.abn0.slope,
-                            nonlinearity=self.abn0.activation)
+            kaiming_uniform_(
+                self.expand_conv.weight, a=self.abn0.slope, nonlinearity=sanitize_activation_name(self.abn0.activation)
+            )
 
-        kaiming_normal_(self.depthwise_conv.weight,
-                        a=self.abn1.slope,
-                        nonlinearity=self.abn1.activation)
-
-        kaiming_normal_(self.project_conv.weight,
-                        a=self.abn1.slope,
-                        nonlinearity=self.abn2.activation)
+        kaiming_uniform_(
+            self.depthwise_conv.weight, a=self.abn1.slope, nonlinearity=sanitize_activation_name(self.abn1.activation)
+        )
+        kaiming_uniform_(
+            self.project_conv.weight, a=self.abn1.slope, nonlinearity=sanitize_activation_name(self.abn2.activation)
+        )
 
     def forward(self, inputs, drop_connect_rate=None):
         """
@@ -195,11 +178,7 @@ class MBConvBlock(nn.Module):
         x = self.abn2(self.project_conv(x))
 
         # Skip connection and drop connect
-        if (
-            self.id_skip
-            and self._block_args.stride == 1
-            and self.input_filters == self.output_filters
-        ):
+        if self.id_skip and self._block_args.stride == 1 and self.input_filters == self.output_filters:
             if drop_connect_rate:
                 x = drop_connect(x, p=drop_connect_rate, training=self.training)
             x = x + inputs  # skip connection
@@ -326,12 +305,7 @@ class EfficientNet(nn.Module):
                     (
                         "conv",
                         nn.Conv2d(
-                            in_channels,
-                            first_block_args.input_filters,
-                            kernel_size=3,
-                            padding=1,
-                            stride=2,
-                            bias=False,
+                            in_channels, first_block_args.input_filters, kernel_size=3, padding=1, stride=2, bias=False
                         ),
                     ),
                     ("abn", abn_block(first_block_args.input_filters, **abn_params)),
@@ -358,15 +332,10 @@ class EfficientNet(nn.Module):
 
         # Head
         out_channels = round_filters(
-            1280,
-            last_block_args.width_coefficient,
-            last_block_args.depth_divisor,
-            last_block_args.min_filters,
+            1280, last_block_args.width_coefficient, last_block_args.depth_divisor, last_block_args.min_filters
         )
 
-        self.conv_head = nn.Conv2d(
-            last_block_args.output_filters, out_channels, kernel_size=1, bias=False
-        )
+        self.conv_head = nn.Conv2d(last_block_args.output_filters, out_channels, kernel_size=1, bias=False)
         self.abn_head = abn_block(out_channels, **abn_params)
 
         # Final linear layer
@@ -496,9 +465,7 @@ def test_efficient_net_group_norm():
     ]:
         print("=======", model_fn.__name__, "=======")
         agn_params = {"num_groups": 8, "activation": ACT_HARD_SWISH}
-        model = (
-            model_fn(num_classes, abn_block=AGN, abn_params=agn_params).eval().cuda()
-        )
+        model = model_fn(num_classes, abn_block=AGN, abn_params=agn_params).eval().cuda()
         print(count_parameters(model))
         # print(model)
         print()

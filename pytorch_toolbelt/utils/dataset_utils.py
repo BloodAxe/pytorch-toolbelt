@@ -1,28 +1,18 @@
 from typing import Callable, List
 
-from pytorch_toolbelt.inference.tiles import ImageSlicer
-from pytorch_toolbelt.utils.fs import id_from_fname
-from pytorch_toolbelt.utils.torch_utils import (
-    tensor_from_rgb_image,
-    tensor_from_mask_image,
-)
 from torch.utils.data import Dataset, ConcatDataset
+
+from .fs import id_from_fname
+from .torch_utils import tensor_from_rgb_image, tensor_from_mask_image
+from ..inference.tiles import ImageSlicer
 
 
 class ImageMaskDataset(Dataset):
     def __init__(
-        self,
-        image_filenames,
-        target_filenames,
-        image_loader,
-        target_loader,
-        transform=None,
-        keep_in_mem=False,
+        self, image_filenames, target_filenames, image_loader, target_loader, transform=None, keep_in_mem=False
     ):
         if len(image_filenames) != len(target_filenames):
-            raise ValueError(
-                "Number of images does not corresponds to number of targets"
-            )
+            raise ValueError("Number of images does not corresponds to number of targets")
 
         self.image_ids = [id_from_fname(fname) for fname in image_filenames]
 
@@ -97,8 +87,7 @@ class TiledSingleImageDataset(Dataset):
 
         self.transform = transform
         self.image_ids = [
-            id_from_fname(image_fname) + f" [{crop[0]};{crop[1]};{crop[2]};{crop[3]};]"
-            for crop in self.slicer.crops
+            id_from_fname(image_fname) + f" [{crop[0]};{crop[1]};{crop[2]};{crop[3]};]" for crop in self.slicer.crops
         ]
 
     def _get_image(self, index):
@@ -142,14 +131,10 @@ class TiledImageMaskDataset(ConcatDataset):
         **kwargs,
     ):
         if len(image_filenames) != len(target_filenames):
-            raise ValueError(
-                "Number of images does not corresponds to number of targets"
-            )
+            raise ValueError("Number of images does not corresponds to number of targets")
 
         datasets = []
         for image, mask in zip(image_filenames, target_filenames):
-            dataset = TiledSingleImageDataset(
-                image, mask, image_loader, target_loader, **kwargs
-            )
+            dataset = TiledSingleImageDataset(image, mask, image_loader, target_loader, **kwargs)
             datasets.append(dataset)
         super().__init__(datasets)

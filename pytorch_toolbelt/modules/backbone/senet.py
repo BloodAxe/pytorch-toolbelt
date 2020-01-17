@@ -3,8 +3,9 @@ ResNet code gently borrowed from
 https://github.com/pytorch/vision/blob/master/torchvision/models/resnet.py
 """
 from __future__ import print_function, division, absolute_import
-from collections import OrderedDict
+
 import math
+from collections import OrderedDict
 
 import torch.nn as nn
 from torch.utils import model_zoo
@@ -148,13 +149,7 @@ class SEBottleneck(Bottleneck):
         self.conv1 = nn.Conv2d(inplanes, planes * 2, kernel_size=1, bias=False)
         self.bn1 = nn.BatchNorm2d(planes * 2)
         self.conv2 = nn.Conv2d(
-            planes * 2,
-            planes * 4,
-            kernel_size=3,
-            stride=stride,
-            padding=1,
-            groups=groups,
-            bias=False,
+            planes * 2, planes * 4, kernel_size=3, stride=stride, padding=1, groups=groups, bias=False
         )
         self.bn2 = nn.BatchNorm2d(planes * 4)
         self.conv3 = nn.Conv2d(planes * 4, planes * 4, kernel_size=1, bias=False)
@@ -176,13 +171,9 @@ class SEResNetBottleneck(Bottleneck):
 
     def __init__(self, inplanes, planes, groups, reduction, stride=1, downsample=None):
         super(SEResNetBottleneck, self).__init__()
-        self.conv1 = nn.Conv2d(
-            inplanes, planes, kernel_size=1, bias=False, stride=stride
-        )
+        self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=1, bias=False, stride=stride)
         self.bn1 = nn.BatchNorm2d(planes)
-        self.conv2 = nn.Conv2d(
-            planes, planes, kernel_size=3, padding=1, groups=groups, bias=False
-        )
+        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, padding=1, groups=groups, bias=False)
         self.bn2 = nn.BatchNorm2d(planes)
         self.conv3 = nn.Conv2d(planes, planes * 4, kernel_size=1, bias=False)
         self.bn3 = nn.BatchNorm2d(planes * 4)
@@ -199,29 +190,12 @@ class SEResNeXtBottleneck(Bottleneck):
 
     expansion = 4
 
-    def __init__(
-        self,
-        inplanes,
-        planes,
-        groups,
-        reduction,
-        stride=1,
-        downsample=None,
-        base_width=4,
-    ):
+    def __init__(self, inplanes, planes, groups, reduction, stride=1, downsample=None, base_width=4):
         super(SEResNeXtBottleneck, self).__init__()
         width = math.floor(planes * (base_width / 64)) * groups
         self.conv1 = nn.Conv2d(inplanes, width, kernel_size=1, bias=False, stride=1)
         self.bn1 = nn.BatchNorm2d(width)
-        self.conv2 = nn.Conv2d(
-            width,
-            width,
-            kernel_size=3,
-            stride=stride,
-            padding=1,
-            groups=groups,
-            bias=False,
-        )
+        self.conv2 = nn.Conv2d(width, width, kernel_size=3, stride=stride, padding=1, groups=groups, bias=False)
         self.bn2 = nn.BatchNorm2d(width)
         self.conv3 = nn.Conv2d(width, planes * 4, kernel_size=1, bias=False)
         self.bn3 = nn.BatchNorm2d(planes * 4)
@@ -304,12 +278,7 @@ class SENet(nn.Module):
             ]
         else:
             layer0_modules = [
-                (
-                    "conv1",
-                    nn.Conv2d(
-                        3, inplanes, kernel_size=7, stride=2, padding=3, bias=False
-                    ),
-                ),
+                ("conv1", nn.Conv2d(3, inplanes, kernel_size=7, stride=2, padding=3, bias=False)),
                 ("bn1", nn.BatchNorm2d(inplanes)),
                 ("relu1", nn.ReLU(inplace=True)),
             ]
@@ -361,15 +330,7 @@ class SENet(nn.Module):
         self.last_linear = nn.Linear(512 * block.expansion, num_classes)
 
     def _make_layer(
-        self,
-        block,
-        planes,
-        blocks,
-        groups,
-        reduction,
-        stride=1,
-        downsample_kernel_size=1,
-        downsample_padding=0,
+        self, block, planes, blocks, groups, reduction, stride=1, downsample_kernel_size=1, downsample_padding=0
     ):
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
@@ -386,9 +347,7 @@ class SENet(nn.Module):
             )
 
         layers = []
-        layers.append(
-            block(self.inplanes, planes, groups, reduction, stride, downsample)
-        )
+        layers.append(block(self.inplanes, planes, groups, reduction, stride, downsample))
         self.inplanes = planes * block.expansion
         for i in range(1, blocks):
             layers.append(block(self.inplanes, planes, groups, reduction))
@@ -418,9 +377,7 @@ class SENet(nn.Module):
 
 
 def initialize_pretrained_model(model, num_classes, settings):
-    assert (
-        num_classes == settings["num_classes"]
-    ), "num_classes should be {}, but is {}".format(
+    assert num_classes == settings["num_classes"], "num_classes should be {}, but is {}".format(
         settings["num_classes"], num_classes
     )
     model.load_state_dict(model_zoo.load_url(settings["url"]))
@@ -432,14 +389,7 @@ def initialize_pretrained_model(model, num_classes, settings):
 
 
 def senet154(num_classes=1000, pretrained="imagenet"):
-    model = SENet(
-        SEBottleneck,
-        [3, 8, 36, 3],
-        groups=64,
-        reduction=16,
-        dropout_p=0.2,
-        num_classes=num_classes,
-    )
+    model = SENet(SEBottleneck, [3, 8, 36, 3], groups=64, reduction=16, dropout_p=0.2, num_classes=num_classes)
     if pretrained is not None:
         settings = pretrained_settings["senet154"][pretrained]
         initialize_pretrained_model(model, num_classes, settings)

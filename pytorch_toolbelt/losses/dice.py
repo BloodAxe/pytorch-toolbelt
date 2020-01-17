@@ -21,19 +21,12 @@ class DiceLoss(_Loss):
     It supports binary, multiclass and multilabel cases
     """
 
-    def __init__(
-        self,
-        mode: str,
-        classes: List[int] = None,
-        log_loss=False,
-        from_logits=True,
-        smooth=0,
-        eps=1e-7,
-    ):
+    def __init__(self, mode: str, classes: List[int] = None, log_loss=False, from_logits=True, smooth=0, eps=1e-7):
         """
 
         :param mode: Metric mode {'binary', 'multiclass', 'multilabel'}
-        :param classes: Optional list of classes that contribute in loss computation; By default, all channels are included.
+        :param classes: Optional list of classes that contribute in loss computation;
+        By default, all channels are included.
         :param log_loss: If True, loss computed as `-log(jaccard)`; otherwise `1 - jaccard`
         :param from_logits: If True assumes input is raw logits
         :param smooth:
@@ -43,9 +36,7 @@ class DiceLoss(_Loss):
         super(DiceLoss, self).__init__()
         self.mode = mode
         if classes is not None:
-            assert (
-                mode != BINARY_MODE
-            ), "Masking classes is not supported with mode=binary"
+            assert mode != BINARY_MODE, "Masking classes is not supported with mode=binary"
             classes = to_tensor(classes, dtype=torch.long)
 
         self.classes = classes
@@ -89,22 +80,20 @@ class DiceLoss(_Loss):
             y_true = y_true.view(bs, num_classes, -1)
             y_pred = y_pred.view(bs, num_classes, -1)
 
-        scores = soft_dice_score(
-            y_pred, y_true.type(y_pred.dtype), self.smooth, self.eps, dims=dims
-        )
+        scores = soft_dice_score(y_pred, y_true.type_as(y_pred), self.smooth, self.eps, dims=dims)
 
         if self.log_loss:
-            loss = -torch.log(scores)
+            loss = -torch.log(scores.clamp_min(self.eps))
         else:
             loss = 1 - scores
 
-        # IoU loss is defined for non-empty classes
+        # Dice loss is undefined for non-empty classes
         # So we zero contribution of channel that does not have true pixels
         # NOTE: A better workaround would be to use loss term `mean(y_pred)`
         # for this case, however it will be a modified jaccard loss
 
-        mask = (y_true.sum(dims) > 0).float()
-        loss = loss * mask
+        mask = y_true.sum(dims) > 0
+        loss *= mask.float()
 
         if self.classes is not None:
             loss = loss[self.classes]

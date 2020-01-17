@@ -71,21 +71,11 @@ def fivecrop_image2label(model: nn.Module, image: Tensor, crop_size: Tuple) -> T
     center_crop_y = (image_height - crop_height) // 2
     center_crop_x = (image_width - crop_width) // 2
 
-    crop_cc = image[
-        ...,
-        center_crop_y : center_crop_y + crop_height,
-        center_crop_x : center_crop_x + crop_width,
-    ]
+    crop_cc = image[..., center_crop_y : center_crop_y + crop_height, center_crop_x : center_crop_x + crop_width]
     assert crop_cc.size(2) == crop_height
     assert crop_cc.size(3) == crop_width
 
-    output = (
-        model(crop_tl)
-        + model(crop_tr)
-        + model(crop_bl)
-        + model(crop_br)
-        + model(crop_cc)
-    )
+    output = model(crop_tl) + model(crop_tr) + model(crop_bl) + model(crop_br) + model(crop_cc)
     one_over_5 = float(1.0 / 5.0)
     return output * one_over_5
 
@@ -125,11 +115,7 @@ def tencrop_image2label(model: nn.Module, image: Tensor, crop_size: Tuple) -> Te
     center_crop_y = (image_height - crop_height) // 2
     center_crop_x = (image_width - crop_width) // 2
 
-    crop_cc = image[
-        ...,
-        center_crop_y : center_crop_y + crop_height,
-        center_crop_x : center_crop_x + crop_width,
-    ]
+    crop_cc = image[..., center_crop_y : center_crop_y + crop_height, center_crop_x : center_crop_x + crop_width]
     assert crop_cc.size(2) == crop_height
     assert crop_cc.size(3) == crop_width
 
@@ -202,11 +188,10 @@ def d4_image2mask(model: nn.Module, image: Tensor) -> Tensor:
     output = model(image)
 
     for aug, deaug in zip(
-        [F.torch_rot90, F.torch_rot180, F.torch_rot270],
-        [F.torch_rot270, F.torch_rot180, F.torch_rot90],
+        [F.torch_rot90, F.torch_rot180, F.torch_rot270], [F.torch_rot270, F.torch_rot180, F.torch_rot90]
     ):
         x = deaug(model(aug(image)))
-        output = output + x
+        output += x
 
     image = F.torch_transpose(image)
 
@@ -215,10 +200,11 @@ def d4_image2mask(model: nn.Module, image: Tensor) -> Tensor:
         [F.torch_none, F.torch_rot270, F.torch_rot180, F.torch_rot90],
     ):
         x = deaug(model(aug(image)))
-        output = output + F.torch_transpose(x)
+        output += F.torch_transpose(x)
 
     one_over_8 = float(1.0 / 8.0)
-    return output * one_over_8
+    output *= one_over_8
+    return output
 
 
 class TTAWrapper(nn.Module):
@@ -258,13 +244,9 @@ class MultiscaleTTAWrapper(nn.Module):
 
         for scale in self.scale_levels:
             dst_size = int(h * scale), int(w * scale)
-            input_scaled = interpolate(
-                input, dst_size, mode="bilinear", align_corners=True
-            )
+            input_scaled = interpolate(input, dst_size, mode="bilinear", align_corners=False)
             output_scaled = self.model(input_scaled)
-            output_scaled = interpolate(
-                output_scaled, out_size, mode="bilinear", align_corners=True
-            )
+            output_scaled = interpolate(output_scaled, out_size, mode="bilinear", align_corners=False)
             output += output_scaled
 
         return output / (1 + len(self.scale_levels))

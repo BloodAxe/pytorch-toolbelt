@@ -9,38 +9,27 @@ __all__ = ["BinaryFocalLoss", "FocalLoss"]
 
 class BinaryFocalLoss(_Loss):
     def __init__(
-        self,
-        alpha=0.5,
-        gamma=2,
-        ignore_index=None,
-        reduction="mean",
-        reduced=False,
-        threshold=0.5,
+        self, alpha=None, gamma=2, ignore_index=None, reduction="mean", normalized=False, reduced_threshold=None
     ):
         """
 
-        :param alpha:
-        :param gamma:
-        :param ignore_index:
+        :param alpha: Prior probability of having positive value in target.
+        :param gamma: Power factor for dampening weight (focal strenght).
+        :param ignore_index: If not None, targets may contain values to be ignored.
+        Target values equal to ignore_index will be ignored from loss computation.
         :param reduced:
         :param threshold:
         """
         super().__init__()
-        self.alpha = alpha
-        self.gamma = gamma
         self.ignore_index = ignore_index
-        if reduced:
-            self.focal_loss = partial(
-                focal_loss_with_logits,
-                alpha=None,
-                gamma=gamma,
-                threshold=threshold,
-                reduction=reduction,
-            )
-        else:
-            self.focal_loss = partial(
-                focal_loss_with_logits, alpha=alpha, gamma=gamma, reduction=reduction
-            )
+        self.focal_loss_fn = partial(
+            focal_loss_with_logits,
+            alpha=alpha,
+            gamma=gamma,
+            reduced_threshold=reduced_threshold,
+            reduction=reduction,
+            normalized=normalized,
+        )
 
     def forward(self, label_input, label_target):
         """Compute focal loss for binary classification problem.
@@ -54,23 +43,32 @@ class BinaryFocalLoss(_Loss):
             label_input = label_input[not_ignored]
             label_target = label_target[not_ignored]
 
-        loss = self.focal_loss(label_input, label_target)
+        loss = self.focal_loss_fn(label_input, label_target)
         return loss
 
 
 class FocalLoss(_Loss):
-    def __init__(self, alpha=0.5, gamma=2, ignore_index=None):
+    def __init__(
+        self, alpha=None, gamma=2, ignore_index=None, reduction="mean", normalized=False, reduced_threshold=None
+    ):
         """
         Focal loss for multi-class problem.
 
         :param alpha:
         :param gamma:
         :param ignore_index: If not None, targets with given index are ignored
+        :param reduced_threshold: A threshold factor for computing reduced focal loss
         """
         super().__init__()
-        self.alpha = alpha
-        self.gamma = gamma
         self.ignore_index = ignore_index
+        self.focal_loss_fn = partial(
+            focal_loss_with_logits,
+            alpha=alpha,
+            gamma=gamma,
+            reduced_threshold=reduced_threshold,
+            reduction=reduction,
+            normalized=normalized,
+        )
 
     def forward(self, label_input, label_target):
         num_classes = label_input.size(1)
@@ -88,7 +86,5 @@ class FocalLoss(_Loss):
                 cls_label_target = cls_label_target[not_ignored]
                 cls_label_input = cls_label_input[not_ignored]
 
-            loss += focal_loss_with_logits(
-                cls_label_input, cls_label_target, gamma=self.gamma, alpha=self.alpha
-            )
+            loss += self.focal_loss_fn(cls_label_input, cls_label_target)
         return loss
