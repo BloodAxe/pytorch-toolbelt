@@ -1,6 +1,6 @@
 import torch
 
-__all__ = ["clean_checkpoint"]
+__all__ = ["clean_checkpoint", "report_checkpoint"]
 
 
 def clean_checkpoint(src_fname, dst_fname):
