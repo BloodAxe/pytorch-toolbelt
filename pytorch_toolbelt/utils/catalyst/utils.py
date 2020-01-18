@@ -18,3 +18,26 @@ def clean_checkpoint(src_fname, dst_fname):
             del checkpoint[key]
 
     torch.save(checkpoint, dst_fname)
+
+
+def report_checkpoint(checkpoint):
+    """
+    Prints checkpoint metrics & epoch
+    :param checkpoint:
+    """
+    print("Epoch          :", checkpoint["epoch"])
+
+    skip_fields = [
+        "_base/lr",
+        "_base/momentum",
+        "_timers/data_time",
+        "_timers/model_time",
+        "_timers/batch_time",
+        "_timers/_fps",
+    ]
+    print(
+        "Metrics (Train):", [(k, v) for k, v, in checkpoint["epoch_metrics"]["train"].items() if k not in skip_fields]
+    )
+    print(
+        "Metrics (Valid):", [(k, v) for k, v, in checkpoint["epoch_metrics"]["valid"].items() if k not in skip_fields]
+    )
