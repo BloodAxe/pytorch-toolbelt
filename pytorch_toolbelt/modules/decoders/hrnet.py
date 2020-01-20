@@ -58,4 +58,4 @@ class HRNetSegmentationDecoder(SegmentationDecoderModule):
 
         feature_map = torch.cat(resized_feature_maps, dim=1)
         embedding = self.embedding(feature_map)
-        return self.final(embedding)
+        return self.logits(embedding)
