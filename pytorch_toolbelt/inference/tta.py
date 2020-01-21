@@ -176,7 +176,7 @@ def d4_image2label(model: nn.Module, image: Tensor) -> Tensor:
 
 
 def d4_image2mask(model: nn.Module, image: Tensor) -> Tensor:
-    """Test-time augmentation for image classification that averages predictions
+    """Test-time augmentation for image segmentation that averages predictions
     of all D4 augmentations applied to input image.
 
     For segmentation we need to reverse the augmentation after making a prediction
