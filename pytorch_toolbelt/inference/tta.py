@@ -25,7 +25,7 @@ __all__ = [
 
 def fliplr_image2label(model: nn.Module, image: Tensor) -> Tensor:
     """Test-time augmentation for image classification that averages predictions
-    for input image and vertically flipped one.
+    for input image and horizontally flipped one.
 
     :param model:
     :param image:
