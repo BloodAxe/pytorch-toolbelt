@@ -196,6 +196,7 @@ def draw_binary_segmentation_predictions(
     max_images=None,
     targets_threshold=0.5,
     logits_threshold=0,
+    image_format = "rgb"
 ) -> List[np.ndarray]:
     """
     Draws visualization of model's prediction for binary segmentation problem.
@@ -229,6 +230,11 @@ def draw_binary_segmentation_predictions(
 
     for i in range(num_samples):
         image = rgb_image_from_tensor(input[image_key][i], mean, std)
+        if image_format == "bgr":
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        elif image_format == "gray":
+            image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+
         target = to_numpy(input[targets_key][i]).squeeze(0)
         logits = to_numpy(output[outputs_key][i]).squeeze(0)
 
