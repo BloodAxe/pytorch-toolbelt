@@ -1,5 +1,5 @@
 import warnings
-from typing import Callable, Optional, List
+from typing import Callable, Optional, List, Union
 
 import cv2
 import matplotlib.pyplot as plt
@@ -196,7 +196,7 @@ def draw_binary_segmentation_predictions(
     max_images=None,
     targets_threshold=0.5,
     logits_threshold=0,
-    image_format = "rgb"
+    image_format: Union[str, Callable] = "rgb",
 ) -> List[np.ndarray]:
     """
     Draws visualization of model's prediction for binary segmentation problem.
@@ -219,6 +219,8 @@ def draw_binary_segmentation_predictions(
         Default value 0.5 is safe for both smoothed and hard labels.
     :param logits_threshold: Threshold to convert model predictions (raw logits) values to binary.
         Default value 0.0 is equivalent to 0.5 after applying sigmoid activation
+    :param image_format: Source format of the image tensor to conver to RGB representation.
+        Can be string ("gray", "rgb", "brg") or function `convert(np.ndarray)->nd.ndarray`.
     :return: List of images
     """
     images = []
@@ -230,10 +232,13 @@ def draw_binary_segmentation_predictions(
 
     for i in range(num_samples):
         image = rgb_image_from_tensor(input[image_key][i], mean, std)
+
         if image_format == "bgr":
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         elif image_format == "gray":
             image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+        elif isinstance(image_format, callable):
+            image = image_format(image)
 
         target = to_numpy(input[targets_key][i]).squeeze(0)
         logits = to_numpy(output[outputs_key][i]).squeeze(0)
@@ -271,6 +276,7 @@ def draw_semantic_segmentation_predictions(
     mean=(0.485, 0.456, 0.406),
     std=(0.229, 0.224, 0.225),
     max_images=None,
+    image_format: Union[str, Callable] = "rgb",
 ) -> List[np.ndarray]:
     """
     Draws visualization of model's prediction for binary segmentation problem.
@@ -291,6 +297,8 @@ def draw_semantic_segmentation_predictions(
     :param std: Std vector user during normalization
     :param max_images: Maximum number of images to visualize from batch
         (If you have huge batch, saving hundreds of images may make TensorBoard slow)
+    :param image_format: Source format of the image tensor to conver to RGB representation.
+        Can be string ("gray", "rgb", "brg") or function `convert(np.ndarray)->nd.ndarray`.
     :return: List of images
     """
 
@@ -303,6 +311,14 @@ def draw_semantic_segmentation_predictions(
 
     for i in range(num_samples):
         image = rgb_image_from_tensor(input[image_key][i], mean, std)
+
+        if image_format == "bgr":
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        elif image_format == "gray":
+            image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+        elif isinstance(image_format, callable):
+            image = image_format(image)
+
         target = to_numpy(input[targets_key][i]).squeeze(0)
         logits = to_numpy(output[outputs_key][i]).argmax(axis=0)
 
@@ -348,6 +364,7 @@ def draw_multilabel_segmentation_predictions(
     max_images=None,
     targets_threshold=0.5,
     logits_threshold=0,
+    image_format: Union[str, Callable] = "rgb",
 ) -> List[np.ndarray]:
     """
     Draws visualization of model's prediction for binary segmentation problem.
@@ -368,6 +385,8 @@ def draw_multilabel_segmentation_predictions(
     :param std: Std vector user during normalization
     :param max_images: Maximum number of images to visualize from batch
         (If you have huge batch, saving hundreds of images may make TensorBoard slow)
+    :param image_format: Source format of the image tensor to conver to RGB representation.
+        Can be string ("gray", "rgb", "brg") or function `convert(np.ndarray)->nd.ndarray`.
     :return: List of images
     """
 
@@ -380,6 +399,14 @@ def draw_multilabel_segmentation_predictions(
 
     for i in range(num_samples):
         image = rgb_image_from_tensor(input[image_key][i], mean, std)
+
+        if image_format == "bgr":
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        elif image_format == "gray":
+            image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+        elif isinstance(image_format, callable):
+            image = image_format(image)
+
         target = to_numpy(input[targets_key][i]) > targets_threshold
         logits = to_numpy(output[outputs_key][i]) > logits_threshold
 
