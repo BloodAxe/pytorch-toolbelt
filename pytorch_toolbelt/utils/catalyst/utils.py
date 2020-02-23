@@ -2,6 +2,8 @@ import torch
 
 __all__ = ["clean_checkpoint", "report_checkpoint"]
 
+from catalyst.dl import Callback, CallbackOrder, RunnerState
+
 
 def clean_checkpoint(src_fname, dst_fname):
     """
