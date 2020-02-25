@@ -1,5 +1,5 @@
 import warnings
-from typing import Callable
+from typing import Callable, Optional, List, Union
 
 import cv2
 import matplotlib.pyplot as plt
@@ -188,25 +188,64 @@ def draw_binary_segmentation_predictions(
     input: dict,
     output: dict,
     image_key="features",
-    image_id_key="image_id",
+    image_id_key: Optional[str] = "image_id",
     targets_key="targets",
     outputs_key="logits",
     mean=(0.485, 0.456, 0.406),
     std=(0.229, 0.224, 0.225),
-):
-    images = []
-    image_id_input = input[image_id_key] if image_id_key is not None else [None] * len(input[image_key])
+    max_images=None,
+    targets_threshold=0.5,
+    logits_threshold=0,
+    image_format: Union[str, Callable] = "rgb",
+) -> List[np.ndarray]:
+    """
+    Draws visualization of model's prediction for binary segmentation problem.
+    This function draws a color-coded overlay on top of the image, with color codes meaning:
+        - green: True positives
+        - red: False-negatives
+        - yellow: False-positives
 
-    for image, target, image_id, logits in zip(
-        input[image_key], input[targets_key], image_id_input, output[outputs_key]
-    ):
-        image = rgb_image_from_tensor(image, mean, std)
-        target = to_numpy(target).squeeze(0)
-        logits = to_numpy(logits).squeeze(0)
+    :param input: Input batch (model's input batch)
+    :param output: Output batch (model predictions)
+    :param image_key: Key for getting image
+    :param image_id_key: Key for getting image id/fname
+    :param targets_key: Key for getting ground-truth mask
+    :param outputs_key: Key for getting model logits for predicted mask
+    :param mean: Mean vector user during normalization
+    :param std: Std vector user during normalization
+    :param max_images: Maximum number of images to visualize from batch
+        (If you have huge batch, saving hundreds of images may make TensorBoard slow)
+    :param targets_threshold: Threshold to convert target values to binary.
+        Default value 0.5 is safe for both smoothed and hard labels.
+    :param logits_threshold: Threshold to convert model predictions (raw logits) values to binary.
+        Default value 0.0 is equivalent to 0.5 after applying sigmoid activation
+    :param image_format: Source format of the image tensor to conver to RGB representation.
+        Can be string ("gray", "rgb", "brg") or function `convert(np.ndarray)->nd.ndarray`.
+    :return: List of images
+    """
+    images = []
+    num_samples = len(input[image_key])
+    if max_images is not None:
+        num_samples = min(num_samples, max_images)
+
+    assert output[outputs_key].size(1) == 1, "Mask must be single-channel tensor of shape [Nx1xHxW]"
+
+    for i in range(num_samples):
+        image = rgb_image_from_tensor(input[image_key][i], mean, std)
+
+        if image_format == "bgr":
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        elif image_format == "gray":
+            image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+        elif isinstance(image_format, callable):
+            image = image_format(image)
+
+        target = to_numpy(input[targets_key][i]).squeeze(0)
+        logits = to_numpy(output[outputs_key][i]).squeeze(0)
 
         overlay = image.copy()
-        true_mask = target > 0
-        pred_mask = logits > 0
+        true_mask = target > targets_threshold
+        pred_mask = logits > logits_threshold
 
         overlay[true_mask & pred_mask] = np.array(
             [0, 250, 0], dtype=overlay.dtype
@@ -217,7 +256,8 @@ def draw_binary_segmentation_predictions(
         )  # False alarm painted with yellow
         overlay = cv2.addWeighted(image, 0.5, overlay, 0.5, 0, dtype=cv2.CV_8U)
 
-        if image_id is not None:
+        if image_id_key is not None and image_id_key in input:
+            image_id = input[image_id_key][i]
             cv2.putText(overlay, str(image_id), (10, 15), cv2.FONT_HERSHEY_PLAIN, 1, (250, 250, 250))
 
         images.append(overlay)
@@ -227,7 +267,7 @@ def draw_binary_segmentation_predictions(
 def draw_semantic_segmentation_predictions(
     input: dict,
     output: dict,
-    class_colors,
+    class_colors: List,
     mode="overlay",
     image_key="features",
     image_id_key="image_id",
@@ -235,18 +275,52 @@ def draw_semantic_segmentation_predictions(
     outputs_key="logits",
     mean=(0.485, 0.456, 0.406),
     std=(0.229, 0.224, 0.225),
-):
+    max_images=None,
+    image_format: Union[str, Callable] = "rgb",
+) -> List[np.ndarray]:
+    """
+    Draws visualization of model's prediction for binary segmentation problem.
+    This function draws a color-coded overlay on top of the image, with color codes meaning:
+        - green: True positives
+        - red: False-negatives
+        - yellow: False-positives
+
+    :param input: Input batch (model's input batch)
+    :param output: Output batch (model predictions)
+    :param class_colors:
+    :param mode:
+    :param image_key: Key for getting image
+    :param image_id_key: Key for getting image id/fname
+    :param targets_key: Key for getting ground-truth mask
+    :param outputs_key: Key for getting model logits for predicted mask
+    :param mean: Mean vector user during normalization
+    :param std: Std vector user during normalization
+    :param max_images: Maximum number of images to visualize from batch
+        (If you have huge batch, saving hundreds of images may make TensorBoard slow)
+    :param image_format: Source format of the image tensor to conver to RGB representation.
+        Can be string ("gray", "rgb", "brg") or function `convert(np.ndarray)->nd.ndarray`.
+    :return: List of images
+    """
+
     assert mode in {"overlay", "side-by-side"}
 
     images = []
-    image_id_input = input[image_id_key] if image_id_key is not None else [None] * len(input[image_key])
+    num_samples = len(input[image_key])
+    if max_images is not None:
+        num_samples = min(num_samples, max_images)
 
-    for image, target, image_id, logits in zip(
-        input[image_key], input[targets_key], image_id_input, output[outputs_key]
-    ):
-        image = rgb_image_from_tensor(image, mean, std)
-        logits = to_numpy(logits).argmax(axis=0)
-        target = to_numpy(target)
+    for i in range(num_samples):
+        image = rgb_image_from_tensor(input[image_key][i], mean, std)
+
+        if image_format == "bgr":
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        elif image_format == "gray":
+            image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+        elif isinstance(image_format, callable):
+            image = image_format(image)
+
+        target = to_numpy(input[targets_key][i]).squeeze(0)
+        logits = to_numpy(output[outputs_key][i]).argmax(axis=0)
 
         if mode == "overlay":
             overlay = image.copy()
@@ -254,11 +328,7 @@ def draw_semantic_segmentation_predictions(
                 overlay[logits == class_index, :] = class_color
 
             overlay = cv2.addWeighted(image, 0.5, overlay, 0.5, 0, dtype=cv2.CV_8U)
-
-            if image_id is not None:
-                cv2.putText(overlay, str(image_id), (10, 15), cv2.FONT_HERSHEY_PLAIN, 1, (250, 250, 250))
         elif mode == "side-by-side":
-
             true_mask = np.zeros_like(image)
             for class_index, class_color in enumerate(class_colors):
                 true_mask[target == class_index, :] = class_color
@@ -270,6 +340,100 @@ def draw_semantic_segmentation_predictions(
             overlay = np.hstack((image, true_mask, pred_mask))
         else:
             raise ValueError(mode)
+
+        if image_id_key is not None and image_id_key in input:
+            image_id = input[image_id_key][i]
+            cv2.putText(overlay, str(image_id), (10, 15), cv2.FONT_HERSHEY_PLAIN, 1, (250, 250, 250))
+
+        images.append(overlay)
+
+    return images
+
+
+def draw_multilabel_segmentation_predictions(
+    input: dict,
+    output: dict,
+    class_colors: List,
+    mode="side-by-side",
+    image_key="features",
+    image_id_key="image_id",
+    targets_key="targets",
+    outputs_key="logits",
+    mean=(0.485, 0.456, 0.406),
+    std=(0.229, 0.224, 0.225),
+    max_images=None,
+    targets_threshold=0.5,
+    logits_threshold=0,
+    image_format: Union[str, Callable] = "rgb",
+) -> List[np.ndarray]:
+    """
+    Draws visualization of model's prediction for binary segmentation problem.
+    This function draws a color-coded overlay on top of the image, with color codes meaning:
+        - green: True positives
+        - red: False-negatives
+        - yellow: False-positives
+
+    :param input: Input batch (model's input batch)
+    :param output: Output batch (model predictions)
+    :param class_colors:
+    :param mode:
+    :param image_key: Key for getting image
+    :param image_id_key: Key for getting image id/fname
+    :param targets_key: Key for getting ground-truth mask
+    :param outputs_key: Key for getting model logits for predicted mask
+    :param mean: Mean vector user during normalization
+    :param std: Std vector user during normalization
+    :param max_images: Maximum number of images to visualize from batch
+        (If you have huge batch, saving hundreds of images may make TensorBoard slow)
+    :param image_format: Source format of the image tensor to conver to RGB representation.
+        Can be string ("gray", "rgb", "brg") or function `convert(np.ndarray)->nd.ndarray`.
+    :return: List of images
+    """
+
+    assert mode in {"overlay", "side-by-side"}
+
+    images = []
+    num_samples = len(input[image_key])
+    if max_images is not None:
+        num_samples = min(num_samples, max_images)
+
+    for i in range(num_samples):
+        image = rgb_image_from_tensor(input[image_key][i], mean, std)
+
+        if image_format == "bgr":
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        elif image_format == "gray":
+            image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+        elif isinstance(image_format, callable):
+            image = image_format(image)
+
+        target = to_numpy(input[targets_key][i]) > targets_threshold
+        logits = to_numpy(output[outputs_key][i]) > logits_threshold
+
+        if mode == "overlay":
+            overlay = image.copy()
+            for class_index, class_color in enumerate(class_colors):
+                overlay[logits[class_index], :] = class_color
+
+            overlay = cv2.addWeighted(image, 0.5, overlay, 0.5, 0, dtype=cv2.CV_8U)
+        elif mode == "side-by-side":
+            true_mask = image.copy()
+            for class_index, class_color in enumerate(class_colors):
+                true_mask[target[class_index], :] = class_color
+
+            pred_mask = image.copy()
+            for class_index, class_color in enumerate(class_colors):
+                pred_mask[logits[class_index], :] = class_color
+
+            true_mask = cv2.addWeighted(image, 0.5, true_mask, 0.5, 0, dtype=cv2.CV_8U)
+            pred_mask = cv2.addWeighted(image, 0.5, pred_mask, 0.5, 0, dtype=cv2.CV_8U)
+            overlay = np.hstack((true_mask, pred_mask))
+        else:
+            raise ValueError(mode)
+
+        if image_id_key is not None and image_id_key in input:
+            image_id = input[image_id_key][i]
+            cv2.putText(overlay, str(image_id), (10, 15), cv2.FONT_HERSHEY_PLAIN, 1, (250, 250, 250))
 
         images.append(overlay)
 

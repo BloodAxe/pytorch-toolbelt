@@ -16,16 +16,15 @@ class UnetEncoder(EncoderModule):
         super().__init__(feature_maps, strides, layers=list(range(num_layers)))
 
         input_filters = input_channels
-        output_filters = feature_maps[0]
         self.num_layers = num_layers
         for layer in range(num_layers):
-            block = UnetEncoderBlock(input_filters, output_filters, abn_block=abn_block)
-
+            block = UnetEncoderBlock(input_filters, feature_maps[layer], abn_block=abn_block)
+            input_filters = feature_maps[layer]
             self.add_module(f"layer{layer}", block)
 
     @property
     def encoder_layers(self):
-        return [self[f"layer{layer}"] for layer in range(self.num_layers)]
+        return [self.__getattr__(f"layer{layer}") for layer in range(self.num_layers)]
 
     def change_input_channels(self, input_channels: int, mode="auto"):
         self.layer0.conv1 = make_n_channel_input(self.layer0.conv1, input_channels, mode)

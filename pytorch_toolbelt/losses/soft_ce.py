@@ -6,7 +6,7 @@ __all__ = ["SoftCrossEntropyLoss"]
 
 
 class SoftCrossEntropyLoss(nn.Module):
-    def __init__(self, smooth_factor=1e-4, ignore_index=None):
+    def __init__(self, smooth_factor=1e-4, ignore_index: int = -100):
         super().__init__()
         self.smooth_factor = smooth_factor
         self.ignore_index = ignore_index
