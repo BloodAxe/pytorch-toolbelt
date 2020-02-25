@@ -1,13 +1,13 @@
+from typing import Dict
+
 import torch
 
 __all__ = ["clean_checkpoint", "report_checkpoint"]
 
-from catalyst.dl import Callback, CallbackOrder, RunnerState
-
 
 def clean_checkpoint(src_fname, dst_fname):
     """
-    Removes optimizer, scheduler and criterion states from checkpoint
+    Remove optimizer, scheduler and criterion states from checkpoint
     :param src_fname: Source checkpoint filename
     :param dst_fname: Target checkpoint filename (can be same)
     """
@@ -22,9 +22,9 @@ def clean_checkpoint(src_fname, dst_fname):
     torch.save(checkpoint, dst_fname)
 
 
-def report_checkpoint(checkpoint):
+def report_checkpoint(checkpoint: Dict):
     """
-    Prints checkpoint metrics & epoch
+    Print checkpoint metrics and epoch number
     :param checkpoint:
     """
     print("Epoch          :", checkpoint["epoch"])
