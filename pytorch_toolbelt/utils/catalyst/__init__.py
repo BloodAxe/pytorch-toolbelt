@@ -4,3 +4,4 @@ from .criterions import *
 from .metrics import *
 from .opl import *
 from .visualization import *
+from .utils import *
