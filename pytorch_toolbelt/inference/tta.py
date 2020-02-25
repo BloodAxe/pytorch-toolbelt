@@ -25,7 +25,7 @@ __all__ = [
 
 def fliplr_image2label(model: nn.Module, image: Tensor) -> Tensor:
     """Test-time augmentation for image classification that averages predictions
-    for input image and vertically flipped one.
+    for input image and horizontally flipped one.
 
     :param model:
     :param image:
@@ -176,7 +176,7 @@ def d4_image2label(model: nn.Module, image: Tensor) -> Tensor:
 
 
 def d4_image2mask(model: nn.Module, image: Tensor) -> Tensor:
-    """Test-time augmentation for image classification that averages predictions
+    """Test-time augmentation for image segmentation that averages predictions
     of all D4 augmentations applied to input image.
 
     For segmentation we need to reverse the augmentation after making a prediction
@@ -222,7 +222,7 @@ class MultiscaleTTAWrapper(nn.Module):
     Multiscale TTA wrapper module
     """
 
-    def __init__(self, model: nn.Module, scale_levels: List[float]):
+    def __init__(self, model: nn.Module, scale_levels: List[float] = None, size_offsets: List[int] = None):
         """
         Initialize multi-scale TTA wrapper
 
@@ -231,9 +231,11 @@ class MultiscaleTTAWrapper(nn.Module):
             e.g: [0.5, 0.75, 1.25]
         """
         super().__init__()
-        assert len(scale_levels)
+        assert scale_levels or size_offsets, "Either scale_levels or size_offsets must be set"
+        assert not (scale_levels and size_offsets), "Either scale_levels or size_offsets must be set"
         self.model = model
         self.scale_levels = scale_levels
+        self.size_offsets = size_offsets
 
     def forward(self, input: Tensor) -> Tensor:
         h = input.size(2)
@@ -242,11 +244,21 @@ class MultiscaleTTAWrapper(nn.Module):
         out_size = h, w
         output = self.model(input)
 
-        for scale in self.scale_levels:
-            dst_size = int(h * scale), int(w * scale)
-            input_scaled = interpolate(input, dst_size, mode="bilinear", align_corners=False)
-            output_scaled = self.model(input_scaled)
-            output_scaled = interpolate(output_scaled, out_size, mode="bilinear", align_corners=False)
-            output += output_scaled
+        if self.scale_levels:
+            for scale in self.scale_levels:
+                dst_size = int(h * scale), int(w * scale)
+                input_scaled = interpolate(input, dst_size, mode="bilinear", align_corners=False)
+                output_scaled = self.model(input_scaled)
+                output_scaled = interpolate(output_scaled, out_size, mode="bilinear", align_corners=False)
+                output += output_scaled
+            output /= 1.0 + len(self.scale_levels)
+        elif self.size_offsets:
+            for offset in self.size_offsets:
+                dst_size = int(h + offset), int(w + offset)
+                input_scaled = interpolate(input, dst_size, mode="bilinear", align_corners=False)
+                output_scaled = self.model(input_scaled)
+                output_scaled = interpolate(output_scaled, out_size, mode="bilinear", align_corners=False)
+                output += output_scaled
+            output /= 1.0 + len(self.size_offsets)
 
-        return output / (1 + len(self.scale_levels))
+        return output

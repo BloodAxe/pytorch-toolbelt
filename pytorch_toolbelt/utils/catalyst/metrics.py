@@ -227,7 +227,7 @@ def binary_dice_iou_score(
     if mode == "dice":
         score = (2.0 * intersection) / (cardinality + eps)
     else:
-        score = intersection / (cardinality + eps)
+        score = intersection / (cardinality - intersection + eps)
 
     has_targets = torch.sum(y_true) > 0
     has_predicted = torch.sum(y_pred) > 0

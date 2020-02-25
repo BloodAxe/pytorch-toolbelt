@@ -1,19 +1,29 @@
 from collections import OrderedDict
 from typing import List
 
+import torch
+import torch.nn.functional as F
 from torch import nn, Tensor
 
-from .common import DecoderModule
+from .common import SegmentationDecoderModule
 
-__all__ = ["HRNetDecoder"]
+__all__ = ["HRNetSegmentationDecoder"]
 
 
-class HRNetDecoder(DecoderModule):
-    def __init__(self, feature_maps: List[int], output_channels: int, dropout=0.0):
+class HRNetSegmentationDecoder(SegmentationDecoderModule):
+    def __init__(
+        self,
+        feature_maps: List[int],
+        output_channels: int,
+        dropout=0.0,
+        interpolation_mode="nearest",
+        align_corners=None,
+    ):
         super().__init__()
+        self.interpolation_mode = interpolation_mode
+        self.align_corners = align_corners
 
-        features = feature_maps[-1]
-
+        features = sum(feature_maps)
         self.embedding = nn.Sequential(
             OrderedDict(
                 [
@@ -37,5 +47,15 @@ class HRNetDecoder(DecoderModule):
         )
 
     def forward(self, features: List[Tensor]):
-        embedding = self.embedding(features[-1])
+        x_size = features[0].size()[2:]
+
+        resized_feature_maps = [features[0]]
+        for feature_map in features[1:]:
+            feature_map = F.interpolate(
+                feature_map, size=x_size, mode=self.interpolation_mode, align_corners=self.align_corners
+            )
+            resized_feature_maps.append(feature_map)
+
+        feature_map = torch.cat(resized_feature_maps, dim=1)
+        embedding = self.embedding(feature_map)
         return self.logits(embedding)
