@@ -199,7 +199,7 @@ def draw_binary_segmentation_predictions(
     image_format: Union[str, Callable] = "rgb",
 ) -> List[np.ndarray]:
     """
-    Draws visualization of model's prediction for binary segmentation problem.
+    Render visualization of model's prediction for binary segmentation problem.
     This function draws a color-coded overlay on top of the image, with color codes meaning:
         - green: True positives
         - red: False-negatives
@@ -279,7 +279,7 @@ def draw_semantic_segmentation_predictions(
     image_format: Union[str, Callable] = "rgb",
 ) -> List[np.ndarray]:
     """
-    Draws visualization of model's prediction for binary segmentation problem.
+    Render visualization of model's prediction for binary segmentation problem.
     This function draws a color-coded overlay on top of the image, with color codes meaning:
         - green: True positives
         - red: False-negatives
@@ -301,7 +301,6 @@ def draw_semantic_segmentation_predictions(
         Can be string ("gray", "rgb", "brg") or function `convert(np.ndarray)->nd.ndarray`.
     :return: List of images
     """
-
     assert mode in {"overlay", "side-by-side"}
 
     images = []
@@ -367,7 +366,7 @@ def draw_multilabel_segmentation_predictions(
     image_format: Union[str, Callable] = "rgb",
 ) -> List[np.ndarray]:
     """
-    Draws visualization of model's prediction for binary segmentation problem.
+    Render visualization of model's prediction for binary segmentation problem.
     This function draws a color-coded overlay on top of the image, with color codes meaning:
         - green: True positives
         - red: False-negatives
@@ -389,7 +388,6 @@ def draw_multilabel_segmentation_predictions(
         Can be string ("gray", "rgb", "brg") or function `convert(np.ndarray)->nd.ndarray`.
     :return: List of images
     """
-
     assert mode in {"overlay", "side-by-side"}
 
     images = []
