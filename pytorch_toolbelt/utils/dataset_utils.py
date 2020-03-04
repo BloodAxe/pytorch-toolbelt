@@ -71,7 +71,7 @@ class TiledSingleImageDataset(Dataset):
             mask = target_loader(mask_fname)
             if image.shape[0] != mask.shape[0] or image.shape[1] != mask.shape[1]:
                 raise ValueError(
-                    f"Image size {image.shape} and mask shape {image.shape} must have equal width and height"
+                    f"Image size {image.shape} and mask shape {mask.shape} must have equal width and height"
                 )
 
             target_shape = image.shape
