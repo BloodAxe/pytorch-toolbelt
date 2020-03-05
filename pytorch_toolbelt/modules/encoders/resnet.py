@@ -24,28 +24,19 @@ class ResnetEncoder(EncoderModule):
     def __init__(self, resnet, filters, strides, layers=None):
         if layers is None:
             layers = [1, 2, 3, 4]
+        super().__init__(filters, strides, layers)
 
-        num_layers = max(layers) + 1
-        assert num_layers >= 0 and num_layers <= 5
-
-        super().__init__(filters[:num_layers], strides[:num_layers], layers[:num_layers])
-
-        layer0 = nn.Sequential(OrderedDict([("conv0", resnet.conv1), ("bn0", resnet.bn1), ("act0", resnet.relu)]))
-
-        layers = [
-            layer0,
-            resnet.layer1,
-            resnet.layer2,
-            resnet.layer3,
-            resnet.layer4,
-        ]
+        self.layer0 = nn.Sequential(OrderedDict([("conv0", resnet.conv1), ("bn0", resnet.bn1), ("act0", resnet.relu)]))
         self.maxpool = resnet.maxpool
 
-        self._encoder_layers = nn.ModuleList(layers[:num_layers])
+        self.layer1 = resnet.layer1
+        self.layer2 = resnet.layer2
+        self.layer3 = resnet.layer3
+        self.layer4 = resnet.layer4
 
     @property
     def encoder_layers(self):
-        return self._encoder_layers
+        return [self.layer0, self.layer1, self.layer2, self.layer3, self.layer4]
 
     def forward(self, x):
         input = x
@@ -54,7 +45,7 @@ class ResnetEncoder(EncoderModule):
             output = layer(input)
             output_features.append(output)
 
-            if layer == self.encoder_layers[0]:
+            if layer == self.layer0:
                 # Fist maxpool operator is not a part of layer0 because we want that layer0 output to have stride of 2
                 output = self.maxpool(output)
             input = output
@@ -63,7 +54,7 @@ class ResnetEncoder(EncoderModule):
         return _take(output_features, self._layers)
 
     def change_input_channels(self, input_channels: int, mode="auto"):
-        self._encoder_layers[0].conv0 = make_n_channel_input(self._encoder_layers[0].conv0, input_channels, mode)
+        self.layer0.conv0 = make_n_channel_input(self.layer0.conv0, input_channels, mode)
         return self
 
 
