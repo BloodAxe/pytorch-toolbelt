@@ -115,3 +115,36 @@ def test_hrnet_encoder(encoder: E.EncoderModule, encoder_params):
         assert feature_map.size(1) == expected_channels
         assert feature_map.size(2) * expected_stride == 256
         assert feature_map.size(3) * expected_stride == 256
+
+
+@pytest.mark.parametrize(
+    ["encoder", "encoder_params"],
+    [
+        [E.XResNet18Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [E.XResNet34Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [E.XResNet50Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [E.XResNet101Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [E.XResNet152Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [E.SEXResNet18Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [E.SEXResNet34Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [E.SEXResNet50Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [E.SEXResNet101Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [E.SEXResNet152Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+    ],
+)
+@torch.no_grad()
+@skip_if_no_cuda
+def test_xresnet_encoder(encoder, encoder_params):
+    net = encoder(**encoder_params).eval()
+    print(net.__class__.__name__, count_parameters(net))
+    print(net.output_strides)
+    print(net.output_filters)
+    input = torch.rand((4, 3, 256, 256))
+    input = maybe_cuda(input)
+    net = maybe_cuda(net)
+    output = net(input)
+    assert len(output) == len(net.output_filters)
+    for feature_map, expected_stride, expected_channels in zip(output, net.output_strides, net.output_filters):
+        assert feature_map.size(1) == expected_channels
+        assert feature_map.size(2) * expected_stride == 256
+        assert feature_map.size(3) * expected_stride == 256

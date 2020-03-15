@@ -13,3 +13,4 @@ from .seresnet import *
 from .squeezenet import *
 from .unet import *
 from .wide_resnet import *
+from .xresnet import *
