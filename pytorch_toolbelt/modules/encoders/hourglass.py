@@ -1,12 +1,45 @@
 from collections import OrderedDict
+from typing import List
 
-from pytorch_toolbelt.modules.encoders import EncoderModule
+from pytorch_toolbelt.modules import ACT_RELU, get_activation_block
+from pytorch_toolbelt.modules.encoders import EncoderModule, make_n_channel_input
 from torch import nn
+import torch.nn.functional as F
+
+__all__ = ["StackedHGEncoder"]
 
 
-class ResidualBlock(nn.Module):
+class HGStemBlock(nn.Module):
+    def __init__(self, input_channels, output_channels, activation):
+        super().__init__()
+
+        self.conv1 = nn.Conv2d(input_channels, 16, kernel_size=3, padding=1, stride=2, bias=False)
+        self.bn1 = nn.BatchNorm2d(16)
+        self.act1 = activation(inplace=True)
+
+        self.conv2 = nn.Conv2d(16, 16, kernel_size=3, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(16)
+        self.act2 = activation(inplace=True)
+
+        self.conv3 = nn.Conv2d(16, output_channels, kernel_size=3, padding=1, stride=2, bias=False)
+        self.bn3 = nn.BatchNorm2d(output_channels)
+        self.act3 = activation(inplace=True)
+
+        self.conv4 = nn.Conv2d(output_channels, output_channels, kernel_size=3, padding=1, bias=False)
+        self.bn4 = nn.BatchNorm2d(output_channels)
+        self.act4 = activation(inplace=True)
+
+    def forward(self, x):
+        x = self.act1(self.bn1(self.conv1(x)))
+        x = self.act2(self.bn2(self.conv2(x)))
+        x = self.act3(self.bn3(self.conv3(x)))
+        x = self.act4(self.bn4(self.conv4(x)))
+        return x
+
+
+class HGResidualBlock(nn.Module):
     def __init__(self, input_channels: int, output_channels: int, reduction=2):
-        super(ResidualBlock, self).__init__()
+        super(HGResidualBlock, self).__init__()
         self.relu = nn.ReLU(inplace=True)
 
         mid_channels = input_channels // reduction
@@ -43,22 +76,22 @@ class ResidualBlock(nn.Module):
         return out
 
 
-class HourGlass(nn.Module):
-    def __init__(self, depth: int, input_features: int, features, bn=None, increase=0):
-        super(HourGlass, self).__init__()
+class HGBlock(nn.Module):
+    def __init__(self, depth: int, input_features: int, features, increase=0):
+        super(HGBlock, self).__init__()
         nf = features + increase
-        self.up1 = ResidualBlock(input_features, features)
+        self.up1 = HGResidualBlock(input_features, features)
         # Lower branch
         self.pool1 = nn.MaxPool2d(2, 2)
-        self.low1 = ResidualBlock(input_features, nf)
+        self.low1 = HGResidualBlock(input_features, nf)
         self.n = depth
         # Recursive hourglass
         if self.n > 1:
-            self.low2 = HourGlass(depth - 1, nf, nf, bn=bn, increase=increase)
+            self.low2 = HGBlock(depth - 1, nf, nf, increase=increase)
         else:
-            self.low2 = ResidualBlock(nf, nf)
-        self.low3 = ResidualBlock(nf, features)
-        self.up2 = nn.Upsample(scale_factor=2, mode="bilinear", align_corners=False)
+            self.low2 = HGResidualBlock(nf, nf)
+        self.low3 = HGResidualBlock(nf, features)
+        self.upsample = nn.Upsample(scale_factor=2, mode="nearest")
 
         self.final = nn.Sequential(
             OrderedDict(
@@ -76,29 +109,35 @@ class HourGlass(nn.Module):
         low1 = self.low1(pool1)
         low2 = self.low2(low1)
         low3 = self.low3(low2)
-        up2 = self.up2(low3)
+        up2 = self.upsample(low3)
         x = up1 + up2
         x = self.final(x)
         return x
 
 
-class StackedHourglass(nn.Module):
-    def __init__(self, stack, depth, input_features, features, bn=None, increase=0):
-        super().__init__()
+class StackedHGEncoder(EncoderModule):
+    def __init__(
+        self, input_channels: int = 3, stack_level: int = 8, depth: int = 4, features: int = 256, activation=ACT_RELU
+    ):
+        super().__init__([64] + [features] * stack_level, [4] + [4] * stack_level, list(range(0, stack_level + 1)))
+        self.stem = HGStemBlock(input_channels, 64, activation=get_activation_block(activation))
+        input_features = 64
         modules = []
-        for _ in range(stack):
-            m = HourGlass(depth, input_features, features, bn, increase)
+        for _ in range(stack_level):
+            modules.append(HGBlock(depth, input_features, features, increase=0))
             input_features = features
-            modules.append(m)
-
         self.blocks = nn.ModuleList(modules)
 
     def forward(self, x):
-        for m in self.blocks:
-            x = m(x)
-        return x
+        outputs = [self.stem(x)]
+        for hourglass in self.blocks:
+            outputs.append(hourglass(outputs[-1]))
+        return outputs
 
+    def change_input_channels(self, input_channels: int, mode="auto"):
+        self.stem.conv1 = make_n_channel_input(self.stem.conv1, input_channels, mode)
+        return self
 
-class StackedHourGlassEncoder(EncoderModule):
-    def __init__(self, input_channels:int, stack_level:int, features:int):
-        self.stem = Stem
+    @property
+    def encoder_layers(self) -> List[nn.Module]:
+        return [self.stem] + self.blocks
