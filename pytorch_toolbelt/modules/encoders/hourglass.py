@@ -82,7 +82,7 @@ class HGBlock(nn.Module):
         nf = features + increase
         self.up1 = HGResidualBlock(input_features, features)
         # Lower branch
-        self.pool1 = nn.MaxPool2d(2, 2)
+        self.pool1 = nn.AvgPool2d(2, 2)
         self.low1 = HGResidualBlock(input_features, nf)
         self.n = depth
         # Recursive hourglass
