@@ -116,6 +116,9 @@ class HGBlock(nn.Module):
 
 
 class StackedHGEncoder(EncoderModule):
+    """
+    Original implementation: https://github.com/princeton-vl/pytorch_stacked_hourglass/blob/master/models/layers.py
+    """
     def __init__(
         self, input_channels: int = 3, stack_level: int = 8, depth: int = 4, features: int = 256, activation=ACT_RELU
     ):
@@ -133,6 +136,71 @@ class StackedHGEncoder(EncoderModule):
         for hourglass in self.blocks:
             outputs.append(hourglass(outputs[-1]))
         return outputs
+
+    def change_input_channels(self, input_channels: int, mode="auto"):
+        self.stem.conv1 = make_n_channel_input(self.stem.conv1, input_channels, mode)
+        return self
+
+    @property
+    def encoder_layers(self) -> List[nn.Module]:
+        return [self.stem] + self.blocks
+
+
+class HGSupervisionBlock(nn.Module):
+    def __init__(self, features, supervision_channels: int):
+        super().__init__()
+        self.squeeze = nn.Conv2d(features, supervision_channels, kernel_size=1)
+        self.expand = nn.Conv2d(supervision_channels, features, kernel_size=1)
+
+    def forward(self, x):
+        sup_mask = self.squeeze(x)
+        sup_features = self.expand(sup_mask)
+        return sup_mask, sup_features
+
+
+class StackedSupervisedHGEncoder(EncoderModule):
+    def __init__(
+        self,
+        input_channels: int,
+        supervision_channels: int,
+        stack_level: int = 8,
+        depth: int = 4,
+        features: int = 256,
+        activation=ACT_RELU,
+    ):
+        super().__init__(
+            [features] + [features] * stack_level, [4] + [4] * stack_level, list(range(0, stack_level + 1))
+        )
+        self.stem = HGStemBlock(input_channels, features, activation=get_activation_block(activation))
+        input_features = features
+        modules = []
+        for _ in range(stack_level):
+            modules.append(HGBlock(depth, input_features, features, increase=0))
+            input_features = features
+        self.blocks = nn.ModuleList(modules)
+        self.num_blocks = len(modules)
+        self.supervision_blocks = nn.ModuleList(
+            [HGSupervisionBlock(features, supervision_channels) for _ in range(self.num_blocks - 1)]
+        )
+
+    def forward(self, x):
+        outputs = [self.stem(x)]
+        supervision = []
+
+        for i, hourglass in enumerate(self.blocks):
+            x = outputs[-1]
+            hg = hourglass(x)
+            y = hg
+
+            # Do not use supervision of last HG
+            if i < self.num_blocks - 1:
+                sup_mask, sup_features = self.supervision_blocks[i](x)
+                supervision.append(sup_mask)
+                y = y + sup_features
+
+            outputs.append(y)
+
+        return outputs, supervision
 
     def change_input_channels(self, input_channels: int, mode="auto"):
         self.stem.conv1 = make_n_channel_input(self.stem.conv1, input_channels, mode)
