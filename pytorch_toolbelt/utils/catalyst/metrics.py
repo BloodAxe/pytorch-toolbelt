@@ -1,5 +1,6 @@
+from collections import defaultdict
 from functools import partial
-from typing import List
+from typing import List, Callable
 
 import numpy as np
 import torch
@@ -404,3 +405,45 @@ class IoUMetricsCallback(Callback):
             scores_per_class = np.nanmean(scores, axis=0)
             for class_name, score_per_class in zip(class_names, scores_per_class):
                 state.metrics.epoch_values[state.loader_name][self.prefix + "_" + class_name] = float(score_per_class)
+
+
+class OutputDistributionCallback(Callback):
+    """
+    Log output distribution to Tensorboard.
+    """
+
+    def __init__(self, output_key: str, activation: Callable, prefix: str = None, bins=255):
+        """
+        :param output_key: output key to use for precision calculation; specifies our `y_pred`.
+        """
+        super().__init__(CallbackOrder.Metric)
+
+        if prefix is None:
+            prefix = output_key
+
+        self.output_key = output_key
+        self.activation = activation
+        self.prefix = prefix
+        self.bins = bins
+
+    def on_loader_start(self, state):
+        self.predictions = []
+
+    @torch.no_grad()
+    def on_batch_end(self, state: RunnerState):
+        outputs = self.activation(state.output[self.output_key].detach())
+
+        batch_size, num_classes = outputs.size(0), outputs.size(1)
+
+        # Make output of shape [num_samples, num_classes]
+        outputs = outputs.view(batch_size, num_classes, -1).permute(1, 0, 2).reshape(num_classes, -1)
+        self.predictions.extend(to_numpy(outputs))
+
+    def on_loader_end(self, state):
+
+        logger = get_tensorboard_logger(state)
+
+        for key, hist in self.predictions.items():
+            logger.add_histogram(f"{self.prefix}/{key}", self.predictions[key], bins=self.bins, global_step=state.step)
+
+        state.metrics.epoch_values[state.loader_name][self.prefix] = float(mean_score)
