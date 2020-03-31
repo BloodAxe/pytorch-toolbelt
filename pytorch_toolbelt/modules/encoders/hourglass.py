@@ -1,5 +1,7 @@
 from collections import OrderedDict
-from typing import List
+from typing import List, Callable
+
+import torch
 
 from pytorch_toolbelt.modules import ACT_RELU, get_activation_block
 from pytorch_toolbelt.modules.encoders import EncoderModule, make_n_channel_input
@@ -10,19 +12,21 @@ __all__ = ["StackedHGEncoder", "StackedSupervisedHGEncoder"]
 
 
 class HGResidualBlock(nn.Module):
-    def __init__(self, input_channels: int, output_channels: int, reduction=2):
+    def __init__(self, input_channels: int, output_channels: int, reduction=2, activation: Callable = nn.ReLU):
         super(HGResidualBlock, self).__init__()
-        self.relu = nn.ReLU(inplace=True)
 
         mid_channels = input_channels // reduction
 
         self.bn1 = nn.BatchNorm2d(input_channels)
+        self.act1 = activation(inplace=True)
         self.conv1 = nn.Conv2d(input_channels, mid_channels, kernel_size=1, bias=False)
 
         self.bn2 = nn.BatchNorm2d(mid_channels)
+        self.act2 = activation(inplace=True)
         self.conv2 = nn.Conv2d(mid_channels, mid_channels, kernel_size=3, padding=1, bias=False)
 
         self.bn3 = nn.BatchNorm2d(mid_channels)
+        self.act3 = activation(inplace=True)
         self.conv3 = nn.Conv2d(mid_channels, output_channels, kernel_size=1, bias=True)
 
         if input_channels == output_channels:
@@ -34,59 +38,66 @@ class HGResidualBlock(nn.Module):
         residual = self.skip_layer(x)
 
         out = self.bn1(x)
-        out = self.relu(out)
+        out = self.act1(out)
         out = self.conv1(out)
 
         out = self.bn2(out)
-        out = self.relu(out)
+        out = self.act2(out)
         out = self.conv2(out)
 
         out = self.bn3(out)
-        out = self.relu(out)
+        out = self.act3(out)
         out = self.conv3(out)
         out += residual
         return out
 
 
 class HGStemBlock(nn.Module):
-    def __init__(self, input_channels, output_channels, activation):
+    def __init__(self, input_channels, output_channels, activation: Callable = nn.ReLU):
         super().__init__()
 
         self.conv1 = nn.Conv2d(input_channels, 16, kernel_size=3, padding=1, stride=2, bias=False)
         self.bn1 = nn.BatchNorm2d(16)
         self.act1 = activation(inplace=True)
 
-        self.residual1 = HGResidualBlock(16, 32)
+        self.conv2 = nn.Conv2d(16, 32, kernel_size=3, padding=1, stride=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(32)
+        self.act2 = activation(inplace=True)
 
-        self.conv3 = nn.Conv2d(32, output_channels, kernel_size=3, padding=1, stride=2, bias=False)
-        self.bn3 = nn.BatchNorm2d(output_channels)
+        self.conv3 = nn.Conv2d(32, 64, kernel_size=3, padding=1, stride=2, bias=False)
+        self.bn3 = nn.BatchNorm2d(64)
         self.act3 = activation(inplace=True)
 
-        self.residual2 = HGResidualBlock(output_channels, output_channels)
+        self.residual1 = HGResidualBlock(64, 128)
+        self.residual2 = HGResidualBlock(128, output_channels)
 
     def forward(self, x):
         x = self.act1(self.bn1(self.conv1(x)))
-        x = self.residual1(x)
+        x = self.act2(self.bn2(self.conv2(x)))
         x = self.act3(self.bn3(self.conv3(x)))
+        x = self.residual1(x)
         x = self.residual2(x)
         return x
 
 
 class HGBlock(nn.Module):
-    def __init__(self, depth: int, input_features: int, features, increase=0):
+    def __init__(self, depth: int, input_features: int, features, increase=0, activation=nn.ReLU):
         super(HGBlock, self).__init__()
         nf = features + increase
-        self.up1 = HGResidualBlock(input_features, features)
+        self.up1 = HGResidualBlock(input_features, features, activation=activation)
         # Lower branch
-        self.down = nn.AvgPool2d(2, 2)
-        self.low1 = HGResidualBlock(input_features, nf)
-        self.n = depth
+        self.down = nn.Conv2d(features, features, kernel_size=3, padding=1, stride=2, groups=features, bias=False)
+        # Start with average pool
+        torch.nn.init.constant_(self.down.weight, 1.0 / 9.0)
+
+        self.low1 = HGResidualBlock(input_features, nf, activation=activation)
+        self.depth = depth
         # Recursive hourglass
-        if self.n > 1:
-            self.low2 = HGBlock(depth - 1, nf, nf, increase=increase)
+        if self.depth > 1:
+            self.low2 = HGBlock(depth - 1, nf, nf, increase=increase, activation=activation)
         else:
-            self.low2 = HGResidualBlock(nf, nf)
-        self.low3 = HGResidualBlock(nf, features)
+            self.low2 = HGResidualBlock(nf, nf, activation=activation)
+        self.low3 = HGResidualBlock(nf, features, activation=activation)
         self.up = nn.Upsample(scale_factor=2, mode="nearest")
 
     def forward(self, x):
@@ -101,15 +112,15 @@ class HGBlock(nn.Module):
 
 
 class HGFeaturesBlock(nn.Module):
-    def __init__(self, features: int):
+    def __init__(self, features: int, activation: Callable):
         super().__init__()
-        self.residual = HGResidualBlock(features, features)
+        self.residual = HGResidualBlock(features, features, activation=activation)
         self.conv_bn_act = nn.Sequential(
             OrderedDict(
                 [
                     ("conv", nn.Conv2d(features, features, kernel_size=1, bias=False)),
                     ("bn", nn.BatchNorm2d(features)),
-                    ("relu", nn.ReLU(inplace=True)),
+                    ("relu", activation(inplace=True)),
                 ]
             )
         )
@@ -145,17 +156,22 @@ class StackedHGEncoder(EncoderModule):
             strides=[4] + [4] * stack_level,
             layers=list(range(0, stack_level + 1)),
         )
-        self.stem = HGStemBlock(input_channels, features, activation=get_activation_block(activation))
+        act = get_activation_block(activation)
+        self.stem = HGStemBlock(input_channels, features, activation=act)
 
         input_features = features
         modules = []
 
         for _ in range(stack_level):
-            modules.append(HGBlock(depth, input_features, features, increase=0))
+            modules.append(HGBlock(depth, input_features, features, increase=0, activation=act))
             input_features = features
         self.blocks = nn.ModuleList(modules)
-        self.features = nn.ModuleList([HGFeaturesBlock(features) for _ in range(stack_level)])
+        self.features = nn.ModuleList([HGFeaturesBlock(features, activation=act) for _ in range(stack_level)])
         self.num_blocks = len(modules)
+
+        self.merge_features = nn.ModuleList(
+            [nn.Conv2d(features, features, kernel_size=1) for _ in range(stack_level - 1)]
+        )
 
     def forward(self, x):
         x = self.stem(x)
@@ -164,8 +180,9 @@ class StackedHGEncoder(EncoderModule):
         for i, hourglass in enumerate(self.blocks):
             hg = hourglass(x)
             features = self.features[i](hg)
-            x = x + features
-            outputs.append(x)
+            if i < self.num_blocks - 1:
+                x = x + self.merge_features[i](features)
+            outputs.append(features)
 
         return outputs
 
@@ -202,11 +219,12 @@ class StackedSupervisedHGEncoder(StackedHGEncoder):
         for i, hourglass in enumerate(self.blocks):
             hg = hourglass(x)
             features = self.features[i](hg)
-            x = x + features
+
             if i < self.num_blocks - 1:
-                sup_mask, sup_features = self.supervision_blocks[i](hg)
-                x += sup_features
+                sup_mask, sup_features = self.supervision_blocks[i](features)
+                x = x + self.merge_features[i](features) + sup_features
                 supervision.append(sup_mask)
-            outputs.append(x)
+
+            outputs.append(features)
 
         return outputs, supervision
