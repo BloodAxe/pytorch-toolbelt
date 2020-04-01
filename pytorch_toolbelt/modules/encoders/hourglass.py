@@ -11,13 +11,13 @@ import torch.nn.functional as F
 __all__ = ["StackedHGEncoder", "StackedSupervisedHGEncoder"]
 
 
-def conv1x1_bn_relu(in_channels, out_channels):
+def conv1x1_bn_act(in_channels, out_channels, activation=nn.ReLU):
     return nn.Sequential(
         OrderedDict(
             [
                 ("conv", nn.Conv2d(in_channels, out_channels, kernel_size=1)),
                 ("bn", nn.BatchNorm2d(out_channels)),
-                ("relu", nn.ReLU(inplace=True)),
+                ("act", activation(inplace=True)),
             ]
         )
     )
@@ -124,11 +124,11 @@ class HGBlock(nn.Module):
 
 
 class HGFeaturesBlock(nn.Module):
-    def __init__(self, features: int, blocks=4, activation: Callable):
+    def __init__(self, features: int, activation: Callable, blocks=4):
         super().__init__()
         residual_blocks = [HGResidualBlock(features, features, activation=activation) for _ in range(blocks)]
         self.residuals = nn.Sequential(*residual_blocks)
-        self.linear = conv1x1_bn_relu(features, features, activation=activation)
+        self.linear = conv1x1_bn_act(features, features, activation=activation)
 
     def forward(self, x):
         x = self.residuals(x)
@@ -173,14 +173,13 @@ class StackedHGEncoder(EncoderModule):
 
         self.num_blocks = len(modules)
         self.blocks = nn.ModuleList(modules)
-        self.features = nn.ModuleList([HGFeaturesBlock(features, 4) for _ in range(stack_level)])
+        self.features = nn.ModuleList(
+            [HGFeaturesBlock(features, blocks=4, activation=act) for _ in range(stack_level)]
+        )
         self.merge_features = nn.ModuleList(
             [nn.Conv2d(features, features, kernel_size=1) for _ in range(stack_level - 1)]
         )
 
-        self.merge_features = nn.ModuleList(
-            [nn.Conv2d(features, features, kernel_size=1) for _ in range(stack_level - 1)]
-        )
 
     def forward(self, x):
         x = self.stem(x)
