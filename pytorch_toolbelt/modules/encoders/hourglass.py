@@ -9,6 +9,18 @@ import torch.nn.functional as F
 __all__ = ["StackedHGEncoder", "StackedSupervisedHGEncoder"]
 
 
+def conv1x1_bn_relu(in_channels, out_channels):
+    return nn.Sequential(
+        OrderedDict(
+            [
+                ("conv", nn.Conv2d(in_channels, out_channels, kernel_size=1)),
+                ("bn", nn.BatchNorm2d(out_channels)),
+                ("relu", nn.ReLU(inplace=True)),
+            ]
+        )
+    )
+
+
 class HGResidualBlock(nn.Module):
     def __init__(self, input_channels: int, output_channels: int, reduction=2):
         super(HGResidualBlock, self).__init__()
@@ -101,22 +113,15 @@ class HGBlock(nn.Module):
 
 
 class HGFeaturesBlock(nn.Module):
-    def __init__(self, features: int):
+    def __init__(self, features: int, blocks=4):
         super().__init__()
-        self.residual = HGResidualBlock(features, features)
-        self.conv_bn_act = nn.Sequential(
-            OrderedDict(
-                [
-                    ("conv", nn.Conv2d(features, features, kernel_size=1, bias=False)),
-                    ("bn", nn.BatchNorm2d(features)),
-                    ("relu", nn.ReLU(inplace=True)),
-                ]
-            )
-        )
+        residual_blocks = [HGResidualBlock(features, features) for _ in range(blocks)]
+        self.residuals = nn.Sequential(*residual_blocks)
+        self.linear = conv1x1_bn_relu(features, features)
 
     def forward(self, x):
-        x = self.residual(x)
-        x = self.conv_bn_act(x)
+        x = self.residuals(x)
+        x = self.linear(x)
         return x
 
 
@@ -153,19 +158,24 @@ class StackedHGEncoder(EncoderModule):
         for _ in range(stack_level):
             modules.append(HGBlock(depth, input_features, features, increase=0))
             input_features = features
-        self.blocks = nn.ModuleList(modules)
-        self.features = nn.ModuleList([HGFeaturesBlock(features) for _ in range(stack_level)])
+
         self.num_blocks = len(modules)
+        self.blocks = nn.ModuleList(modules)
+        self.features = nn.ModuleList([HGFeaturesBlock(features, 4) for _ in range(stack_level)])
+        self.merge_features = nn.ModuleList(
+            [nn.Conv2d(features, features, kernel_size=1) for _ in range(stack_level - 1)]
+        )
 
     def forward(self, x):
         x = self.stem(x)
         outputs = [x]
 
         for i, hourglass in enumerate(self.blocks):
-            hg = hourglass(x)
-            features = self.features[i](hg)
-            x = x + features
-            outputs.append(x)
+            features = self.features[i](hourglass(x))
+            outputs.append(features)
+
+            if i < self.num_blocks - 1:
+                x = x + self.merge_features[i](features)
 
         return outputs
 
@@ -175,7 +185,7 @@ class StackedHGEncoder(EncoderModule):
 
     @property
     def encoder_layers(self) -> List[nn.Module]:
-        return [self.stem] + self.blocks
+        return [self.stem] + list(self.blocks)
 
 
 class StackedSupervisedHGEncoder(StackedHGEncoder):
@@ -200,13 +210,12 @@ class StackedSupervisedHGEncoder(StackedHGEncoder):
         supervision = []
 
         for i, hourglass in enumerate(self.blocks):
-            hg = hourglass(x)
-            features = self.features[i](hg)
-            x = x + features
+            features = self.features[i](hourglass(x))
+            outputs.append(features)
+
             if i < self.num_blocks - 1:
-                sup_mask, sup_features = self.supervision_blocks[i](hg)
-                x += sup_features
+                sup_mask, sup_features = self.supervision_blocks[i](features)
                 supervision.append(sup_mask)
-            outputs.append(x)
+                x = x + self.merge_features[i](features) + sup_features
 
         return outputs, supervision
