@@ -417,6 +417,7 @@ class HRNetEncoderBase(EncoderModule):
 
     def change_input_channels(self, input_channels: int, mode="auto"):
         self.layer0.conv1 = make_n_channel_input(self.layer0.conv1, input_channels, mode)
+        return self
 
 
 class HRNetV2Encoder18(HRNetEncoderBase):
