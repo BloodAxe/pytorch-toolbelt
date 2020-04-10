@@ -124,7 +124,7 @@ class HGBlock(nn.Module):
 
 
 class HGFeaturesBlock(nn.Module):
-    def __init__(self, features: int, activation: Callable, blocks=4):
+    def __init__(self, features: int, activation: Callable, blocks=1):
         super().__init__()
         residual_blocks = [HGResidualBlock(features, features, activation=activation) for _ in range(blocks)]
         self.residuals = nn.Sequential(*residual_blocks)
