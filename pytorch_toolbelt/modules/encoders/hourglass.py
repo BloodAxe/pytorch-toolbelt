@@ -45,6 +45,9 @@ class HGResidualBlock(nn.Module):
             self.skip_layer = nn.Identity()
         else:
             self.skip_layer = nn.Conv2d(input_channels, output_channels, kernel_size=1)
+            torch.nn.init.zeros_(self.skip_layer.bias)
+
+        torch.nn.init.zeros_(self.conv3.bias)
 
     def forward(self, x):
         residual = self.skip_layer(x)
@@ -179,7 +182,6 @@ class StackedHGEncoder(EncoderModule):
         self.merge_features = nn.ModuleList(
             [nn.Conv2d(features, features, kernel_size=1) for _ in range(stack_level - 1)]
         )
-
 
     def forward(self, x):
         x = self.stem(x)
