@@ -1,4 +1,4 @@
-from collections import defaultdict
+import warnings
 from functools import partial
 from typing import List, Callable
 
@@ -203,7 +203,13 @@ class MacroF1Callback(Callback):
 
 
 def binary_dice_iou_score(
-    y_pred: torch.Tensor, y_true: torch.Tensor, mode="dice", threshold=None, nan_score_on_empty=False, eps=1e-7
+    y_pred: torch.Tensor,
+    y_true: torch.Tensor,
+    mode="dice",
+    threshold=None,
+    nan_score_on_empty=False,
+    eps=1e-7,
+    ignore_index=None,
 ) -> float:
     """
     Compute IoU score between two image tensors
@@ -221,6 +227,11 @@ def binary_dice_iou_score(
     # Binarize predictions
     if threshold is not None:
         y_pred = (y_pred > threshold).to(y_true.dtype)
+
+    if ignore_index is not None:
+        mask = (y_true != ignore_index).to(y_true.dtype)
+        y_true = y_true * mask
+        y_pred = y_pred * mask
 
     intersection = torch.sum(y_pred * y_true).item()
     cardinality = (torch.sum(y_pred) + torch.sum(y_true)).item()
@@ -279,6 +290,7 @@ def multilabel_dice_iou_score(
     eps=1e-7,
     nan_score_on_empty=False,
     classes_of_interest=None,
+    ignore_index=None,
 ):
     ious = []
     num_classes = y_pred.size(0)
@@ -294,6 +306,7 @@ def multilabel_dice_iou_score(
             threshold=threshold,
             nan_score_on_empty=nan_score_on_empty,
             eps=eps,
+            ignore_index=ignore_index,
         )
         ious.append(iou)
 
@@ -316,6 +329,7 @@ class IoUMetricsCallback(Callback):
         output_key: str = "logits",
         nan_score_on_empty=True,
         prefix: str = None,
+        ignore_index=None,
     ):
         """
         :param mode: One of: 'binary', 'multiclass', 'multilabel'.
@@ -350,10 +364,19 @@ class IoUMetricsCallback(Callback):
 
         if self.mode == BINARY_MODE:
             self.score_fn = partial(
-                binary_dice_iou_score, threshold=0.0, nan_score_on_empty=nan_score_on_empty, mode=metric
+                binary_dice_iou_score,
+                threshold=0.0,
+                nan_score_on_empty=nan_score_on_empty,
+                mode=metric,
+                ignore_index=ignore_index,
             )
 
         if self.mode == MULTICLASS_MODE:
+            if ignore_index is not None:
+                warnings.warn(
+                    f"Use of ignore_index on {self.__class__.__name__} with {self.mode} "
+                    "is not needed as this implementation will ignore all target values outside [0..num_classes) range."
+                )
             self.score_fn = partial(
                 multiclass_dice_iou_score,
                 mode=metric,
@@ -369,6 +392,7 @@ class IoUMetricsCallback(Callback):
                 threshold=0.0,
                 nan_score_on_empty=nan_score_on_empty,
                 classes_of_interest=self.classes_of_interest,
+                ignore_index=ignore_index,
             )
 
     def on_loader_start(self, state):
