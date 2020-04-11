@@ -13,12 +13,10 @@ class BCELoss(nn.Module):
         self.reduction = reduction
 
     def forward(self, label_input, label_target):
-        if self.ignore_index is not None:
-            not_ignored_mask = (label_target != self.ignore_index).float()
-
         loss = F.binary_cross_entropy_with_logits(label_input, label_target, reduction="none")
         if self.ignore_index is not None:
-            loss = loss * not_ignored_mask.float()
+            not_ignored_mask = (label_target != self.ignore_index).to(loss.dtype)
+            loss *= not_ignored_mask.float()
 
         if self.reduction == "mean":
             loss = loss.mean()
