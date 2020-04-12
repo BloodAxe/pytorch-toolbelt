@@ -5,7 +5,14 @@ import torch
 import torch.nn
 from torch import nn
 
-__all__ = ["bilinear_upsample_initializer", "icnr_init", "DepthToSpaceUpsampleBlock", "BilinearAdditiveUpsampleBlock"]
+__all__ = [
+    "bilinear_upsample_initializer",
+    "icnr_init",
+    "DepthToSpaceUpsampleBlock",
+    "BilinearAdditiveUpsampleBlock",
+    "DeconvolutionUpsampleBlock",
+    "ResidualDeconvolutionUpsampleBlock",
+]
 
 
 def bilinear_upsample_initializer(x):
@@ -63,7 +70,8 @@ def icnr_init(tensor: torch.Tensor, upscale_factor=2, initializer=nn.init.kaimin
 
 class DepthToSpaceUpsampleBlock(nn.Module):
     """
-    NOTE: This block is not fully ready yet
+    NOTE: This block is not fully ready yet. Need to figure out how to correctly initialize
+    default weights to have bilinear upsample identical to OpenCV results
 
     https://github.com/pytorch/pytorch/pull/5429
     https://arxiv.org/ftp/arxiv/papers/1707/1707.02937.pdf
@@ -99,3 +107,22 @@ class BilinearAdditiveUpsampleBlock(nn.Module):
         n, c, h, w = x.size()
         x = x.reshape(n, c // self.n, self.n, h, w).sum(2)
         return x
+
+
+class DeconvolutionUpsampleBlock(nn.Module):
+    def __init__(self, features, n=4):
+        super().__init__()
+        self.conv = nn.ConvTranspose2d(features, features // n, kernel_size=3, padding=1, stride=2)
+
+    def forward(self, x):
+        return self.conv(x)
+
+
+class ResidualDeconvolutionUpsampleBlock(nn.Module):
+    def __init__(self, features, n=4):
+        super().__init__()
+        self.conv = nn.ConvTranspose2d(features, features // n, kernel_size=3, padding=1, stride=2, output_padding=1)
+        self.residual = BilinearAdditiveUpsampleBlock(scale_factor=2, n=n)
+
+    def forward(self, x):
+        return self.conv(x) + self.residual(x)
