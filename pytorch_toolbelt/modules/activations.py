@@ -25,6 +25,8 @@ __all__ = [
     "instantiate_activation_block",
     "get_activation_block",
     "sanitize_activation_name",
+    "ABN",
+    "AGN",
 ]
 
 # Activation names
@@ -178,3 +180,38 @@ def sanitize_activation_name(activation_name: str) -> str:
         return ACT_LEAKY_RELU
 
     return activation_name
+
+
+def ABN(
+    num_features: int,
+    eps=1e-5,
+    momentum=0.1,
+    affine=True,
+    track_running_stats=True,
+    activation=ACT_RELU,
+    slope=0.01,
+    inplace=True,
+):
+    bn = nn.BatchNorm2d(
+        num_features, eps=eps, momentum=momentum, affine=affine, track_running_stats=track_running_stats
+    )
+
+    act_params = {"inplace": inplace}
+    if activation in {ACT_LEAKY_RELU}:
+        activation["slope"] = slope
+
+    act = instantiate_activation_block(activation, **act_params)
+    return nn.Sequential(bn, act)
+
+
+def AGN(
+    num_features: int, num_groups: int, eps=1e-5, affine=True, activation=ACT_RELU, slope=0.01, inplace=True,
+):
+    bn = nn.GroupNorm(num_channels=num_features, num_groups=num_groups, eps=eps, affine=affine)
+
+    act_params = {"inplace": inplace}
+    if activation in {ACT_LEAKY_RELU}:
+        activation["slope"] = slope
+
+    act = instantiate_activation_block(activation, **act_params)
+    return nn.Sequential(bn, act)
