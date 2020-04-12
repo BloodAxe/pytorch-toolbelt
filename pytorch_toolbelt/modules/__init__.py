@@ -14,3 +14,4 @@ from .pooling import *
 from .scse import *
 from .srm import *
 from .unet import *
+from .upsample import *

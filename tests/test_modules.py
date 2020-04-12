@@ -1,10 +1,18 @@
+import cv2
 import pytest
 import torch
+import numpy as np
 
 import pytorch_toolbelt.modules.encoders as E
 from pytorch_toolbelt.modules.backbone.inceptionv4 import inceptionv4
 from pytorch_toolbelt.modules.fpn import HFF
-from pytorch_toolbelt.utils.torch_utils import maybe_cuda, count_parameters
+from pytorch_toolbelt.utils.torch_utils import (
+    maybe_cuda,
+    count_parameters,
+    tensor_from_rgb_image,
+    rgb_image_from_tensor,
+)
+from pytorch_toolbelt.modules import *
 
 skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="Cuda is not available")
 
@@ -36,3 +44,17 @@ def test_hff_static_size():
     output = hff(feature_maps)
     assert output.size(2) == 512
     assert output.size(3) == 512
+
+
+def test_upsample():
+    block = DepthToSpaceUpsampleBlock(1)
+    original = np.expand_dims(cv2.imread("lena.png", cv2.IMREAD_GRAYSCALE), -1)
+    input = tensor_from_rgb_image(original / 255.0).unsqueeze(0).float()
+    output = block(input)
+
+    output_rgb = rgb_image_from_tensor(output.squeeze(0), mean=0, std=1, max_pixel_value=1, dtype=np.float32)
+
+    cv2.imshow("Original", original)
+    cv2.imshow("Upsampled (cv2)", cv2.resize(original, None, fx=2, fy=2, interpolation=cv2.INTER_LINEAR))
+    cv2.imshow("Upsampled", cv2.normalize(output_rgb, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U))
+    cv2.waitKey(-1)
