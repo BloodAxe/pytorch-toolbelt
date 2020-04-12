@@ -1,7 +1,7 @@
 import pytest
 import pytorch_toolbelt.losses.functional as F
 import torch
-from pytorch_toolbelt.losses import DiceLoss, JaccardLoss
+from pytorch_toolbelt.losses import *
 
 
 def test_sigmoid_focal_loss():
@@ -197,3 +197,27 @@ def test_multilabel_jaccard_loss():
 
     loss = criterion(y_pred, y_true)
     assert float(loss) == pytest.approx(1.0 - 1.0 / 3.0, abs=eps)
+
+
+@torch.no_grad()
+def test_soft_ce_loss():
+    criterion = SoftCrossEntropyLoss(smooth_factor=0.1, ignore_index=-100)
+
+    # Ideal case
+    y_pred = torch.tensor([[+9, -9, -9, -9], [-9, +9, -9, -9], [-9, -9, +9, -9], [-9, -9, -9, +9]]).float()
+    y_true = torch.tensor([0, 1, -100, 3]).long()
+
+    loss = criterion(y_pred, y_true)
+    print(loss)
+
+
+@torch.no_grad()
+def test_soft_bce_loss():
+    criterion = SoftBCEWithLogitsLoss(smooth_factor=0.1, ignore_index=-100)
+
+    # Ideal case
+    y_pred = torch.tensor([-9, 9, 1, 9, -9]).float()
+    y_true = torch.tensor([0, 1, -100, 1, 0]).long()
+
+    loss = criterion(y_pred, y_true)
+    print(loss)
