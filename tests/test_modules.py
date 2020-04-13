@@ -47,7 +47,7 @@ def test_hff_static_size():
 
 
 def test_upsample():
-    block = DepthToSpaceUpsampleBlock(1)
+    block = DepthToSpaceUpsample2d(1)
     original = np.expand_dims(cv2.imread("lena.png", cv2.IMREAD_GRAYSCALE), -1)
     input = tensor_from_rgb_image(original / 255.0).unsqueeze(0).float()
     output = block(input)
@@ -62,6 +62,6 @@ def test_upsample():
 
 def test_residualdeconvolutionupsampleblock():
     input = torch.randn((4, 16, 32, 32))
-    block = ResidualDeconvolutionUpsampleBlock(16)
+    block = ResidualDeconvolutionUpsample2d(16)
     output = block(input)
     print(output.size())

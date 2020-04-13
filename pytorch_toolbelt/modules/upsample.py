@@ -8,10 +8,10 @@ from torch import nn
 __all__ = [
     "bilinear_upsample_initializer",
     "icnr_init",
-    "DepthToSpaceUpsampleBlock",
-    "BilinearAdditiveUpsampleBlock",
-    "DeconvolutionUpsampleBlock",
-    "ResidualDeconvolutionUpsampleBlock",
+    "DepthToSpaceUpsample2d",
+    "BilinearAdditiveUpsample2d",
+    "DeconvolutionUpsample2d",
+    "ResidualDeconvolutionUpsample2d",
 ]
 
 
@@ -68,7 +68,7 @@ def icnr_init(tensor: torch.Tensor, upscale_factor=2, initializer=nn.init.kaimin
     return kernel
 
 
-class DepthToSpaceUpsampleBlock(nn.Module):
+class DepthToSpaceUpsample2d(nn.Module):
     """
     NOTE: This block is not fully ready yet. Need to figure out how to correctly initialize
     default weights to have bilinear upsample identical to OpenCV results
@@ -77,7 +77,7 @@ class DepthToSpaceUpsampleBlock(nn.Module):
     https://arxiv.org/ftp/arxiv/papers/1707/1707.02937.pdf
     """
 
-    def __init__(self, features: int, scale_factor: int = 2, n: int = 4):
+    def __init__(self, features: int, scale_factor: int = 2):
         super().__init__()
         self.n = 2 ** scale_factor
         self.conv = nn.Conv2d(features, features * self.n, kernel_size=3, padding=1, bias=False)
@@ -92,13 +92,15 @@ class DepthToSpaceUpsampleBlock(nn.Module):
         return x
 
 
-class BilinearAdditiveUpsampleBlock(nn.Module):
+class BilinearAdditiveUpsample2d(nn.Module):
     """
     https://arxiv.org/abs/1707.05847
     """
 
-    def __init__(self, scale_factor: int = 2, n: int = 4):
+    def __init__(self, in_channels: int, scale_factor: int = 2, n: int = 4):
         super().__init__()
+        self.in_channels = in_channels
+        self.out_channels = in_channels // n
         self.upsample = nn.UpsamplingBilinear2d(scale_factor=scale_factor)
         self.n = n
 
@@ -109,20 +111,28 @@ class BilinearAdditiveUpsampleBlock(nn.Module):
         return x
 
 
-class DeconvolutionUpsampleBlock(nn.Module):
-    def __init__(self, features, n=4):
+class DeconvolutionUpsample2d(nn.Module):
+    def __init__(self, in_channels: int, n=4):
         super().__init__()
-        self.conv = nn.ConvTranspose2d(features, features // n, kernel_size=3, padding=1, stride=2)
+        self.in_channels = in_channels
+        self.out_channels = in_channels // n
+        self.conv = nn.ConvTranspose2d(in_channels, in_channels // n, kernel_size=3, padding=1, stride=2)
 
     def forward(self, x):
         return self.conv(x)
 
 
-class ResidualDeconvolutionUpsampleBlock(nn.Module):
-    def __init__(self, features, n=4):
+class ResidualDeconvolutionUpsample2d(nn.Module):
+    def __init__(self, in_channels, scale_factor=2, n=4):
+        if scale_factor != 2:
+            raise NotImplementedError("Scale factor other than 2 is not implemented")
         super().__init__()
-        self.conv = nn.ConvTranspose2d(features, features // n, kernel_size=3, padding=1, stride=2, output_padding=1)
-        self.residual = BilinearAdditiveUpsampleBlock(scale_factor=2, n=n)
+        self.in_channels = in_channels
+        self.out_channels = in_channels // n
+        self.conv = nn.ConvTranspose2d(
+            in_channels, in_channels // n, kernel_size=3, padding=1, stride=scale_factor, output_padding=1
+        )
+        self.residual = BilinearAdditiveUpsample2d(in_channels, scale_factor=scale_factor, n=n)
 
     def forward(self, x):
         return self.conv(x) + self.residual(x)
