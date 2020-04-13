@@ -107,7 +107,7 @@ class BilinearAdditiveUpsample2d(nn.Module):
     def forward(self, x):
         x = self.upsample(x)
         n, c, h, w = x.size()
-        x = x.reshape(n, c // self.n, self.n, h, w).sum(2)
+        x = x.reshape(n, c // self.n, self.n, h, w).mean(2)
         return x
 
 
