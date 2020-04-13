@@ -214,11 +214,12 @@ class StackedSupervisedHGEncoder(StackedHGEncoder):
         depth: int = 4,
         features: int = 256,
         activation=ACT_RELU,
+        supervision_block=HGSupervisionBlock,
     ):
         super().__init__(input_channels, stack_level, depth, features, activation)
 
         self.supervision_blocks = nn.ModuleList(
-            [HGSupervisionBlock(features, supervision_channels) for _ in range(stack_level - 1)]
+            [supervision_block(features, supervision_channels) for _ in range(stack_level - 1)]
         )
 
     def forward(self, x):
