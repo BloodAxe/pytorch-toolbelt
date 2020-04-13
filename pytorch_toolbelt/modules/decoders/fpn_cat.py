@@ -5,7 +5,7 @@ from torch import nn, Tensor
 
 from .common import SegmentationDecoderModule
 from .fpn import FPNDecoder
-from ..activated_batch_norm import ABN
+from ..activations import ABN
 from ..fpn import FPNFuse, UpsampleAdd
 
 __all__ = ["FPNCatDecoderBlock", "FPNCatDecoder"]

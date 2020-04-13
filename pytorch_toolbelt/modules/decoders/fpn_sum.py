@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torch import Tensor, nn
 
 from .common import SegmentationDecoderModule
-from ..activated_batch_norm import ABN
+from ..activations import ABN
 from ..identity import Identity
 
 __all__ = ["FPNSumDecoder", "FPNSumDecoderBlock", "FPNSumCenterBlock"]

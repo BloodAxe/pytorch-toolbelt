@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from .common import DecoderModule
-from ..activated_batch_norm import ABN
+from ..activations import ABN
 
 __all__ = ["DeeplabV3Decoder"]
 

@@ -4,7 +4,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from ..modules.activated_batch_norm import ABN
+from ..modules.activations import ABN
 
 __all__ = [
     "FPNBottleneckBlock",

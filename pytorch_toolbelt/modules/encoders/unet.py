@@ -1,5 +1,9 @@
+from typing import Union
+
+from torch import nn
+
 from .common import EncoderModule, make_n_channel_input
-from ..activated_batch_norm import ABN
+from ..activations import ABN, AGN
 from ..unet import UnetEncoderBlock
 
 __all__ = ["UnetEncoder"]
@@ -10,7 +14,9 @@ class UnetEncoder(EncoderModule):
     Vanilla U-Net encoder
     """
 
-    def __init__(self, input_channels=3, features=32, num_layers=4, growth_factor=2, abn_block=ABN):
+    def __init__(
+        self, input_channels=3, features=32, num_layers=4, growth_factor=2, abn_block=Union[ABN, AGN, nn.Module]
+    ):
         feature_maps = [features * growth_factor * (i + 1) for i in range(num_layers)]
         strides = [2 * (i + 1) for i in range(num_layers)]
         super().__init__(feature_maps, strides, layers=list(range(num_layers)))
