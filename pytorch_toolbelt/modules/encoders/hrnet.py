@@ -7,7 +7,7 @@ from torch import nn
 
 from .common import EncoderModule, make_n_channel_input, _take
 
-__all__ = ["HRNetV2Encoder48", "HRNetV2Encoder18", "HRNetV2Encoder34"]
+__all__ = ["HRNetV2Encoder18", "HRNetV2Encoder34", "HRNetV2Encoder48"]
 
 
 HRNETV2_BN_MOMENTUM = 0.1
