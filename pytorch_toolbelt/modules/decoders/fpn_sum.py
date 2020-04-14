@@ -59,10 +59,12 @@ class FPNSumDecoder(SegmentationDecoderModule):
 
         if issubclass(prediction_block, nn.Identity):
             self.outputs = nn.ModuleList([prediction_block() for _ in reversed(feature_maps)])
+            self.channels = [fpn_channels] * len(feature_maps)
         else:
             self.outputs = nn.ModuleList(
                 [prediction_block(fpn_channels, prediction_channels) for _ in reversed(feature_maps)]
             )
+            self.channels = [prediction_channels] * len(feature_maps)
 
         if issubclass(upsample_block, nn.Upsample):
             self.upsamples = nn.ModuleList([upsample_block(scale_factor=2) for _ in reversed(feature_maps)])

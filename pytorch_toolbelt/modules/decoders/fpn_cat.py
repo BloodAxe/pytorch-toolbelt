@@ -1,5 +1,4 @@
-from functools import partial
-from typing import List, Tuple, Optional, Union
+from typing import List, Union
 
 import torch
 from torch import nn, Tensor
@@ -7,7 +6,7 @@ from torch import nn, Tensor
 from .common import SegmentationDecoderModule
 from .. import conv1x1
 from ..activations import ABN
-from ..fpn import FPNFuse, FPNContextBlock, FPNBottleneckBlock
+from ..fpn import FPNContextBlock, FPNBottleneckBlock
 
 __all__ = ["FPNCatDecoderBlock", "FPNCatDecoder"]
 
@@ -84,8 +83,10 @@ class FPNCatDecoder(SegmentationDecoderModule):
         )
 
         if issubclass(output_block, nn.Identity):
+            self.channels = [fpn_channels] * len(feature_maps)
             self.outputs = nn.ModuleList([output_block() for _ in reversed(feature_maps)])
         else:
+            self.channels = [prediction_channels] * len(feature_maps)
             self.outputs = nn.ModuleList(
                 [output_block(fpn_channels, prediction_channels) for _ in reversed(feature_maps)]
             )
