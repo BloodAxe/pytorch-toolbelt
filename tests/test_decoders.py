@@ -3,6 +3,7 @@ import torch
 from torch import nn
 
 import pytorch_toolbelt.modules.encoders as E
+from pytorch_toolbelt.modules import FPNFuse
 from pytorch_toolbelt.modules.decoders import FPNSumDecoder, FPNCatDecoder
 from pytorch_toolbelt.utils.torch_utils import count_parameters
 
@@ -49,6 +50,10 @@ def test_fpn_cat_with_encoder():
     print(count_parameters(decoder))
     for o in output:
         print(o.size(), o.mean(), o.std())
+
+    fuse = FPNFuse()
+    o = fuse(output)
+    print(o.size(), o.mean(), o.std())
 
 
 @torch.no_grad()
