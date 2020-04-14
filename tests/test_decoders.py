@@ -1,10 +1,10 @@
 import pytest
 import torch
+from torch import nn
 
 import pytorch_toolbelt.modules.encoders as E
-from pytorch_toolbelt.modules.backbone.inceptionv4 import inceptionv4
 from pytorch_toolbelt.modules.decoders import FPNSumDecoder, FPNCatDecoder
-from pytorch_toolbelt.utils.torch_utils import maybe_cuda, count_parameters
+from pytorch_toolbelt.utils.torch_utils import count_parameters
 
 skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="Cuda is not available")
 
@@ -21,6 +21,34 @@ def test_fpn_sum():
 
     print(output.size(), output.mean(), output.std())
     print(count_parameters(net))
+
+
+@torch.no_grad()
+def test_fpn_sum_with_encoder():
+    input = torch.randn((16, 3, 256, 256)).cuda()
+    encoder = E.Resnet18Encoder(pretrained=False)
+    decoder = FPNSumDecoder(encoder.channels, 128)
+    model = nn.Sequential(encoder, decoder).cuda()
+
+    output = model(input)
+
+    print(count_parameters(decoder))
+    for o in output:
+        print(o.size(), o.mean(), o.std())
+
+
+@torch.no_grad()
+def test_fpn_cat_with_encoder():
+    input = torch.randn((16, 3, 256, 256)).cuda()
+    encoder = E.Resnet18Encoder(pretrained=False)
+    decoder = FPNCatDecoder(encoder.channels, 128)
+    model = nn.Sequential(encoder, decoder).cuda()
+
+    output = model(input)
+
+    print(count_parameters(decoder))
+    for o in output:
+        print(o.size(), o.mean(), o.std())
 
 
 @torch.no_grad()

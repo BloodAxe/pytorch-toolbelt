@@ -1,178 +1,117 @@
 from __future__ import absolute_import
 
 import torch
-from torch import nn
+from torch import nn, Tensor
 from torch.nn import functional as F
-
+from typing import List, Dict, Union, Tuple
 from ..modules.activations import ABN
 
 __all__ = [
+    "FPNContextBlock",
     "FPNBottleneckBlock",
-    "FPNBottleneckBlockBN",
-    "FPNPredictionBlock",
     "FPNFuse",
     "FPNFuseSum",
-    "FPNFinalBottleneckBlock",
-    "FPNFinalTransposeConvBlock",
-    "UpsampleAdd",
-    "UpsampleAddConv",
+    "HFF"
 ]
 
 
-class FPNBottleneckBlock(nn.Module):
-    def __init__(self, input_channels, output_channels):
+class FPNContextBlock(nn.Module):
+    def __init__(
+        self, in_channels: int, out_channels: int, abn_block=ABN, dropout=0.0,
+    ):
+        """
+        Center FPN block that aggregates multi-scale context using strided average poolings
+
+        :param in_channels: Number of input features
+        :param out_channels: Number of output features
+        :param abn_block: Block for Activation + BatchNorm2d
+        :param dropout: Dropout rate after context fusion
+        """
         super().__init__()
-        self.conv = nn.Conv2d(input_channels, output_channels, kernel_size=1)
+        self.bottleneck = nn.Conv2d(in_channels, in_channels // 2, kernel_size=1)
 
-    def forward(self, x):
-        x = self.conv(x)
-        return x
+        self.pool2 = nn.AvgPool2d(kernel_size=2, stride=2)
+        self.proj2 = nn.Conv2d(in_channels // 2, in_channels // 8, kernel_size=1)
 
+        self.pool4 = nn.AvgPool2d(kernel_size=4, stride=4)
+        self.proj4 = nn.Conv2d(in_channels // 2, in_channels // 8, kernel_size=1)
 
-class FPNBottleneckBlockBN(nn.Module):
-    def __init__(self, input_channels, output_channels):
-        super().__init__()
-        self.conv = nn.Conv2d(input_channels, output_channels, kernel_size=1, bias=False)
-        self.bn = nn.BatchNorm2d(output_channels)
+        self.pool8 = nn.AvgPool2d(kernel_size=8, stride=8)
+        self.proj8 = nn.Conv2d(in_channels // 2, in_channels // 8, kernel_size=1)
 
-    def forward(self, x):
-        x = self.conv(x)
-        x = self.bn(x)
-        return x
+        self.pool_global = nn.AdaptiveAvgPool2d(1)
+        self.proj_global = nn.Conv2d(in_channels // 2, in_channels // 8, kernel_size=1)
 
+        self.blend = nn.Conv2d(4 * in_channels // 8, out_channels, kernel_size=1)
 
-class FPNPredictionBlock(nn.Module):
-    def __init__(self, input_channels: int, output_channels: int):
-        super().__init__()
-        self.input_channels = input_channels
-        self.output_channels = output_channels
-        self.conv = nn.Conv2d(self.input_channels, self.output_channels, kernel_size=3, padding=1)
+        self.conv1 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False)
+        self.abn1 = abn_block(out_channels)
 
-    def forward(self, x):
-        x = self.conv(x)
-        return x
+        self.dropout = nn.Dropout2d(dropout, inplace=True)
 
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False)
+        self.abn2 = abn_block(out_channels)
 
-class FPNFinalBottleneckBlock(nn.Module):
-    def __init__(self, input_channels: int, output_channels: int, reduction=4, abn_block=ABN):
-        super().__init__()
-
-        features = input_channels // reduction
-
-        self.bottleneck = nn.Conv2d(input_channels, features, kernel_size=1, bias=False)
-
-        self.conv1 = nn.Conv2d(features, features, kernel_size=3, padding=1, bias=False)
-        self.abn1 = abn_block(features)
-
-        self.conv2 = nn.Conv2d(features, features, kernel_size=3, padding=1, bias=False)
-        self.abn2 = abn_block(features)
-
-        self.final = nn.Conv2d(features, output_channels, kernel_size=1, bias=True)
-
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         x = self.bottleneck(x)
 
+        p2 = self.proj2(self.pool2(x))
+        p4 = self.proj4(self.pool4(x))
+        p8 = self.proj8(self.pool8(x))
+        pg = self.proj_global(self.pool_global(x))
+
+        out_size = p2.size()[2:]
+
+        x = torch.cat(
+            [
+                p2,
+                F.interpolate(p4, size=out_size, mode="nearest"),
+                F.interpolate(p8, size=out_size, mode="nearest"),
+                F.interpolate(pg, size=out_size, mode="nearest"),
+            ],
+            dim=1,
+        )
+
+        x = self.blend(x)
         x = self.conv1(x)
         x = self.abn1(x)
-
+        x = self.dropout(x)
         x = self.conv2(x)
         x = self.abn2(x)
-
-        x = self.final(x)
         return x
 
 
-class FPNFinalTransposeConvBlock(nn.Module):
-    def __init__(self, input_channels: int, output_channels: int, reduction=4, abn_block=ABN):
+class FPNBottleneckBlock(nn.Module):
+    def __init__(
+        self, in_channels: int, out_channels: int, abn_block=ABN, dropout=0.0,
+    ):
         """
 
         Args:
-            input_channels:
-            output_channels:
-            reduction:
+            encoder_features:
+            decoder_features:
+            output_features:
+            supervision_channels:
             abn_block:
+            dropout:
         """
         super().__init__()
 
-        features = input_channels // reduction
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, bias=False)
+        self.abn1 = abn_block(out_channels)
+        self.drop1 = nn.Dropout2d(dropout, inplace=True)
 
-        self.bottleneck = nn.Conv2d(input_channels, features, kernel_size=1, bias=False)
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False)
+        self.abn2 = abn_block(out_channels)
 
-        self.conv1 = nn.ConvTranspose2d(features, features, kernel_size=3, stride=2, padding=1, bias=False)
-        self.abn1 = abn_block(features)
-
-        self.conv2 = nn.ConvTranspose2d(features, features, kernel_size=3, stride=2, padding=1, bias=False)
-        self.abn2 = abn_block(features)
-
-        self.final = nn.Conv2d(features, output_channels, kernel_size=1, bias=True)
-
-    def forward(self, x):
-        x = self.bottleneck(x)
+    def forward(self, x: Tensor) -> Tensor:
 
         x = self.conv1(x)
         x = self.abn1(x)
+        x = self.drop1(x)
 
         x = self.conv2(x)
         x = self.abn2(x)
-
-        x = self.final(x)
-        return x
-
-
-class UpsampleAdd(nn.Module):
-    """
-    Compute pixelwise sum of first tensor and upsampled second tensor.
-    """
-
-    def __init__(self, filters: int, upsample_scale=None, mode="nearest", align_corners=None):
-        super().__init__()
-        self.interpolation_mode = mode
-        self.upsample_scale = upsample_scale
-        self.align_corners = align_corners
-
-    def forward(self, x, y=None):
-        if y is not None:
-            if self.upsample_scale is not None:
-                y = F.interpolate(
-                    y, scale_factor=self.upsample_scale, mode=self.interpolation_mode, align_corners=self.align_corners
-                )
-            else:
-                y = F.interpolate(
-                    y, size=(x.size(2), x.size(3)), mode=self.interpolation_mode, align_corners=self.align_corners
-                )
-
-            x = x + y
-
-        return x
-
-
-class UpsampleAddConv(nn.Module):
-    """
-    Compute pixelwise sum of first tensor and upsampled second tensor and convolve with 3x3 kernel
-    to smooth aliasing artifacts
-    """
-
-    def __init__(self, filters: int, upsample_scale=None, mode="nearest", align_corners=None):
-        super().__init__()
-        self.interpolation_mode = mode
-        self.upsample_scale = upsample_scale
-        self.align_corners = align_corners
-        self.conv = nn.Conv2d(filters, filters, kernel_size=3, padding=1)
-
-    def forward(self, x, y=None):
-        if y is not None:
-            if self.upsample_scale is not None:
-                y = F.interpolate(
-                    y, scale_factor=self.upsample_scale, mode=self.interpolation_mode, align_corners=self.align_corners
-                )
-            else:
-                y = F.interpolate(
-                    y, size=(x.size(2), x.size(3)), mode=self.interpolation_mode, align_corners=self.align_corners
-                )
-
-            x = x + y
-
-        x = self.conv(x)
         return x
 
 
@@ -217,8 +156,8 @@ class HFF(nn.Module):
     https://arxiv.org/pdf/1803.06815.pdf
 
     What it does is easily explained in code:
-    feature_map_N - feature_map of the smallest resolution
     feature_map_0 - feature_map of the highest resolution
+    feature_map_N - feature_map of the smallest resolution
 
     >>> feature_map = feature_map_0 + up(feature_map[1] + up(feature_map[2] + up(feature_map[3] + ...))))
     """

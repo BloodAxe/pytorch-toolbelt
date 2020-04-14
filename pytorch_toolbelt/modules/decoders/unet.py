@@ -4,14 +4,13 @@ import torch
 from torch import nn
 
 from .common import DecoderModule
+from ..simple import conv1x1
 from ..activations import ABN
 from ..unet import UnetCentralBlock, UnetDecoderBlock
 
 __all__ = ["UNetDecoder"]
 
 
-def conv1x1(input, output):
-    return nn.Conv2d(input, output, kernel_size=1)
 
 
 class UNetDecoder(DecoderModule):

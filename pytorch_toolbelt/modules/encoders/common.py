@@ -11,6 +11,8 @@ from torch import nn
 
 __all__ = ["EncoderModule", "_take", "make_n_channel_input"]
 
+from pytorch_toolbelt.utils.support import pytorch_toolbelt_deprecated
+
 
 def _take(elements, indexes):
     return list([elements[i] for i in indexes])
@@ -68,12 +70,22 @@ class EncoderModule(nn.Module):
         return _take(output_features, self._layers)
 
     @property
-    def output_strides(self) -> List[int]:
-        return self._output_strides
+    def channels(self) -> List[int]:
+        return self._output_filters
 
     @property
-    def output_filters(self) -> List[int]:
+    def strides(self) -> List[int]:
         return self._output_filters
+
+    @property
+    @pytorch_toolbelt_deprecated("This property is deprecated, please use .channels instead.")
+    def output_strides(self) -> List[int]:
+        return self.strides
+
+    @property
+    @pytorch_toolbelt_deprecated("This property is deprecated, please use .channels instead.")
+    def output_filters(self) -> List[int]:
+        return self.channels
 
     @property
     def encoder_layers(self) -> List[nn.Module]:
