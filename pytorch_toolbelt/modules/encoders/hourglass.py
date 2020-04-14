@@ -101,9 +101,10 @@ class HGBlock(nn.Module):
         nf = features + increase
         self.up1 = HGResidualBlock(input_features, features, activation=activation)
         # Lower branch
-        self.down = nn.Conv2d(features, features, kernel_size=3, padding=1, stride=2, groups=features, bias=False)
         # Start with average pool
-        torch.nn.init.constant_(self.down.weight, 1.0 / 9.0)
+        # torch.nn.init.constant_(self.down.weight, 1.0 / 9.0)
+        # self.down = nn.Conv2d(features, features, kernel_size=3, padding=1, stride=2, groups=features, bias=False)
+        self.down = nn.AvgPool2d(kernel_size=3, padding=1, stride=2)
 
         self.low1 = HGResidualBlock(input_features, nf, activation=activation)
         self.depth = depth
