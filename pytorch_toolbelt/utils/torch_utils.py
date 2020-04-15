@@ -8,6 +8,22 @@ import numpy as np
 import torch
 from torch import nn
 
+__all__ = [
+    "set_trainable",
+    "rgb_image_from_tensor",
+    "tensor_from_mask_image",
+    "tensor_from_rgb_image",
+    "count_parameters",
+    "get_optimizable_parameters",
+    "transfer_weights",
+    "maybe_cuda",
+    "mask_from_tensor",
+    "freeze_bn",
+    "logit",
+    "to_numpy",
+    "to_tensor",
+]
+
 
 def set_trainable(module: nn.Module, trainable=True, freeze_bn=True):
     """
@@ -119,6 +135,16 @@ def rgb_image_from_tensor(image: torch.Tensor, mean, std, max_pixel_value=255.0,
     std = to_numpy(std)
     rgb_image = (max_pixel_value * (image * std + mean)).astype(dtype)
     return rgb_image
+
+
+def mask_from_tensor(mask: torch.Tensor, squeeze_single_channel=False, dtype=None) -> np.ndarray:
+    mask = np.moveaxis(to_numpy(mask), 0, -1)
+    if squeeze_single_channel and mask.shape[-1] == 1:
+        mask = np.squeeze(mask, -1)
+
+    if dtype is not None:
+        mask = mask.astype(dtype)
+    return mask
 
 
 def maybe_cuda(x):
