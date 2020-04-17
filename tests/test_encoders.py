@@ -63,6 +63,25 @@ def test_encoders(encoder: E.EncoderModule, encoder_params):
 
 @torch.no_grad()
 @skip_if_no_cuda
+def test_unet_encoder():
+    net = E.UnetEncoder().eval()
+    print(net.__class__.__name__, count_parameters(net))
+    print(net.output_strides)
+    print(net.channels)
+    input = torch.rand((4, 3, 256, 256))
+    input = maybe_cuda(input)
+    net = maybe_cuda(net)
+    output = net(input)
+    assert len(output) == len(net.output_filters)
+    for feature_map, expected_stride, expected_channels in zip(output, net.output_strides, net.output_filters):
+        print(feature_map.size(), feature_map.mean(), feature_map.std())
+        assert feature_map.size(1) == expected_channels
+        assert feature_map.size(2) * expected_stride == 256
+        assert feature_map.size(3) * expected_stride == 256
+
+
+@torch.no_grad()
+@skip_if_no_cuda
 def test_inceptionv4_encoder():
     backbone = inceptionv4(pretrained=False)
     backbone.last_linear = None

@@ -6,16 +6,19 @@ from torch import nn
 
 from ..modules.activations import ABN
 
-__all__ = ["UnetEncoderBlock", "UnetCentralBlock", "UnetDecoderBlock"]
+__all__ = ["UnetBlock", "UnetCentralBlock", "UnetDecoderBlock"]
 
 
-class UnetEncoderBlock(nn.Module):
-    def __init__(self, in_dec_filters: int, out_filters: int, abn_block=ABN):
+class UnetBlock(nn.Module):
+    """
+    Vanilla U-Net block containing of two convolutions interleaved with batch-norm and RELU
+    """
+    def __init__(self, in_channels: int, out_channels: int, abn_block=ABN):
         super().__init__()
-        self.conv1 = nn.Conv2d(in_dec_filters, out_filters, kernel_size=3, padding=1, stride=2, bias=False)
-        self.abn1 = abn_block(out_filters)
-        self.conv2 = nn.Conv2d(out_filters, out_filters, kernel_size=3, padding=1, stride=1, bias=False)
-        self.abn2 = abn_block(out_filters)
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, stride=1, bias=False)
+        self.abn1 = abn_block(out_channels)
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, stride=1, bias=False)
+        self.abn2 = abn_block(out_channels)
 
     def forward(self, x):
         x = self.conv1(x)

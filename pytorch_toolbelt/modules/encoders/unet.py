@@ -1,10 +1,11 @@
+from collections import OrderedDict
+from functools import partial
 from typing import Union
 
 from torch import nn
 
 from .common import EncoderModule, make_n_channel_input
-from ..activations import ABN, AGN
-from ..unet import UnetEncoderBlock
+from ..unet import UnetBlock
 
 __all__ = ["UnetEncoder"]
 
@@ -15,16 +16,30 @@ class UnetEncoder(EncoderModule):
     """
 
     def __init__(
-        self, input_channels=3, features=32, num_layers=4, growth_factor=2, abn_block=Union[ABN, AGN, nn.Module]
+        self,
+        in_channels=3,
+        out_channels=32,
+        num_layers=4,
+        growth_factor=2,
+        pool_block: Union[nn.MaxPool2d, nn.AvgPool2d] = None,
+        unet_block: Union[nn.Module, UnetBlock] = UnetBlock,
     ):
-        feature_maps = [features * growth_factor * (i + 1) for i in range(num_layers)]
-        strides = [2 * (i + 1) for i in range(num_layers)]
+        if pool_block is None:
+            pool_block = partial(nn.MaxPool2d, kernel_size=2, stride=2)
+
+        feature_maps = [out_channels * growth_factor ** (i + 1) for i in range(num_layers)]
+        strides = [2 ** i for i in range(num_layers)]
         super().__init__(feature_maps, strides, layers=list(range(num_layers)))
 
-        input_filters = input_channels
+        input_filters = in_channels
         self.num_layers = num_layers
         for layer in range(num_layers):
-            block = UnetEncoderBlock(input_filters, feature_maps[layer], abn_block=abn_block)
+            block = unet_block(input_filters, feature_maps[layer])
+
+            if layer > 0:
+                pool = pool_block()
+                block = nn.Sequential(OrderedDict([("pool", pool), ("conv", block)]))
+
             input_filters = feature_maps[layer]
             self.add_module(f"layer{layer}", block)
 

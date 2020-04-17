@@ -75,7 +75,7 @@ class EncoderModule(nn.Module):
 
     @property
     def strides(self) -> List[int]:
-        return self._output_filters
+        return self._output_strides
 
     @property
     @pytorch_toolbelt_deprecated("This property is deprecated, please use .channels instead.")
