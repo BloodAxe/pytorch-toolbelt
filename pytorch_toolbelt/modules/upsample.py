@@ -99,6 +99,9 @@ class BilinearAdditiveUpsample2d(nn.Module):
 
     def __init__(self, in_channels: int, scale_factor: int = 2, n: int = 4):
         super().__init__()
+        if in_channels % n != 0:
+            raise ValueError(f"Number of input channels ({in_channels})must be divisable by n ({n})")
+
         self.in_channels = in_channels
         self.out_channels = in_channels // n
         self.upsample = nn.UpsamplingBilinear2d(scale_factor=scale_factor)
@@ -135,4 +138,5 @@ class ResidualDeconvolutionUpsample2d(nn.Module):
         self.residual = BilinearAdditiveUpsample2d(in_channels, scale_factor=scale_factor, n=n)
 
     def forward(self, x):
-        return self.conv(x) + self.residual(x)
+        residual_up = self.residual(x)
+        return self.conv(x, output_size=residual_up.size()) + residual_up
