@@ -8,20 +8,16 @@ def torch_none(x: Tensor):
     return x
 
 
-def torch_rot90_(x: Tensor):
-    return x.transpose_(2, 3).flip(2)
-
-
 def torch_rot90(x: Tensor):
-    return x.transpose(2, 3).flip(2)
+    return torch.rot90(x, k=1, dims=(2, 3))
 
 
 def torch_rot180(x: Tensor):
-    return x.flip(2).flip(3)
+    return torch.rot90(x, k=2, dims=(2, 3))
 
 
 def torch_rot270(x: Tensor):
-    return x.transpose(2, 3).flip(3)
+    return torch.rot90(x, k=3, dims=(2, 3))
 
 
 def torch_flipud(x: Tensor):
@@ -100,7 +96,7 @@ def pad_image_tensor(image_tensor: Tensor, pad_size: int = 32):
 def unpad_image_tensor(image_tensor, pad):
     pad_left, pad_right, pad_top, pad_btm = pad
     rows, cols = image_tensor.size(2), image_tensor.size(3)
-    return image_tensor[..., pad_top : rows - pad_btm, pad_left : cols - pad_right]
+    return image_tensor[..., pad_top: rows - pad_btm, pad_left: cols - pad_right]
 
 
 def unpad_xyxy_bboxes(bboxes_tensor: torch.Tensor, pad, dim=-1):
