@@ -95,7 +95,7 @@ class DiceLoss(_Loss):
         # for this case, however it will be a modified jaccard loss
 
         mask = y_true.sum(dims) > 0
-        loss *= mask.float()
+        loss *= mask.to(loss.dtype)
 
         if self.classes is not None:
             loss = loss[self.classes]
