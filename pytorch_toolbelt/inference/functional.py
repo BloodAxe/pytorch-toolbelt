@@ -1,4 +1,5 @@
 from collections import Sized, Iterable
+from typing import Union, Tuple
 
 import torch
 from torch import Tensor
@@ -50,7 +51,7 @@ def torch_transpose2(x: Tensor):
     return x.transpose(3, 2)
 
 
-def pad_image_tensor(image_tensor: Tensor, pad_size: int = 32):
+def pad_image_tensor(image_tensor: Tensor, pad_size: Union[int, Tuple[int, int]] = 32):
     """Pad input tensor to make it's height and width dividable by @pad_size
 
     :param image_tensor: Input tensor of shape NCHW
@@ -96,7 +97,7 @@ def pad_image_tensor(image_tensor: Tensor, pad_size: int = 32):
 def unpad_image_tensor(image_tensor, pad):
     pad_left, pad_right, pad_top, pad_btm = pad
     rows, cols = image_tensor.size(2), image_tensor.size(3)
-    return image_tensor[..., pad_top: rows - pad_btm, pad_left: cols - pad_right]
+    return image_tensor[..., pad_top : rows - pad_btm, pad_left : cols - pad_right]
 
 
 def unpad_xyxy_bboxes(bboxes_tensor: torch.Tensor, pad, dim=-1):
