@@ -56,10 +56,12 @@ class DiceLoss(_Loss):
 
         if self.from_logits:
             # Apply activations to get [0..1] class probabilities
+            # Using Log-Exp as this gives more numerically stable result and does not cause vanishing gradient on
+            # extreme values 0 and 1
             if self.mode == MULTICLASS_MODE:
-                y_pred = y_pred.softmax(dim=1)
+                y_pred = y_pred.log_softmax(dim=1).exp()
             else:
-                y_pred = y_pred.sigmoid()
+                y_pred = F.logsigmoid(y_pred).exp()
 
         bs = y_true.size(0)
         num_classes = y_pred.size(1)
@@ -93,7 +95,7 @@ class DiceLoss(_Loss):
         # for this case, however it will be a modified jaccard loss
 
         mask = y_true.sum(dims) > 0
-        loss *= mask.float()
+        loss *= mask.to(loss.dtype)
 
         if self.classes is not None:
             loss = loss[self.classes]

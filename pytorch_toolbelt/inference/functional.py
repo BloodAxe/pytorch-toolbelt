@@ -1,4 +1,5 @@
 from collections import Sized, Iterable
+from typing import Union, Tuple
 
 import torch
 from torch import Tensor
@@ -8,20 +9,16 @@ def torch_none(x: Tensor):
     return x
 
 
-def torch_rot90_(x: Tensor):
-    return x.transpose_(2, 3).flip(2)
-
-
 def torch_rot90(x: Tensor):
-    return x.transpose(2, 3).flip(2)
+    return torch.rot90(x, k=1, dims=(2, 3))
 
 
 def torch_rot180(x: Tensor):
-    return x.flip(2).flip(3)
+    return torch.rot90(x, k=2, dims=(2, 3))
 
 
 def torch_rot270(x: Tensor):
-    return x.transpose(2, 3).flip(3)
+    return torch.rot90(x, k=3, dims=(2, 3))
 
 
 def torch_flipud(x: Tensor):
@@ -54,7 +51,7 @@ def torch_transpose2(x: Tensor):
     return x.transpose(3, 2)
 
 
-def pad_image_tensor(image_tensor: Tensor, pad_size: int = 32):
+def pad_image_tensor(image_tensor: Tensor, pad_size: Union[int, Tuple[int, int]] = 32):
     """Pad input tensor to make it's height and width dividable by @pad_size
 
     :param image_tensor: Input tensor of shape NCHW

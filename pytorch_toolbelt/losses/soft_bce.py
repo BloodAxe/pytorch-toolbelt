@@ -36,9 +36,12 @@ class SoftBCEWithLogitsLoss(nn.Module):
         )
 
         if self.ignore_index is not None:
-            not_ignored_mask = (target != self.ignore_index).to(loss.dtype)
-            loss *= not_ignored_mask.float()
+            not_ignored_mask = (target != self.ignore_index)
             size = not_ignored_mask.sum()
+            if size == 0:
+                # If there are zero elements, loss is zero
+                return 0
+            loss *= not_ignored_mask.to(loss.dtype)
         else:
             size = loss.numel()
 
