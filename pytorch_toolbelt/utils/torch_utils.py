@@ -2,7 +2,7 @@
 
 """
 import collections
-from typing import Optional, Sequence
+from typing import Optional, Sequence, Iterator, Union, Dict
 
 import numpy as np
 import torch
@@ -22,6 +22,8 @@ __all__ = [
     "to_numpy",
     "to_tensor",
 ]
+
+from torch.nn import Parameter
 
 
 def freeze_model(module: nn.Module, freeze_parameters: Optional[bool] = True, freeze_bn: Optional[bool] = True):
@@ -50,12 +52,12 @@ def freeze_model(module: nn.Module, freeze_parameters: Optional[bool] = True, fr
                 module.track_running_stats = not freeze_bn
 
 
-def logit(x: torch.Tensor, eps=1e-5):
+def logit(x: torch.Tensor, eps=1e-5) -> torch.Tensor:
     x = torch.clamp(x.float(), eps, 1.0 - eps)
     return torch.log(x / (1.0 - x))
 
 
-def count_parameters(model: nn.Module, keys: Optional[Sequence[str]] = None) -> dict:
+def count_parameters(model: nn.Module, keys: Optional[Sequence[str]] = None) -> Dict[str, int]:
     """
     Count number of total and trainable parameters of a model
     :param model: A model
@@ -64,13 +66,13 @@ def count_parameters(model: nn.Module, keys: Optional[Sequence[str]] = None) -> 
     """
     if keys is None:
         keys = ["encoder", "decoder", "logits", "head", "final"]
-    total = sum(p.numel() for p in model.parameters())
-    trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    total = int(sum(p.numel() for p in model.parameters()))
+    trainable = int(sum(p.numel() for p in model.parameters() if p.requires_grad))
     parameters = {"total": total, "trainable": trainable}
 
     for key in keys:
         if hasattr(model, key) and model.__getattr__(key) is not None:
-            parameters[key] = sum(p.numel() for p in model.__getattr__(key).parameters())
+            parameters[key] = int(sum(p.numel() for p in model.__getattr__(key).parameters()))
 
     return parameters
 
@@ -142,17 +144,23 @@ def mask_from_tensor(mask: torch.Tensor, squeeze_single_channel=False, dtype=Non
     return mask
 
 
-def maybe_cuda(x):
+def maybe_cuda(x: Union[torch.Tensor, nn.Module]) -> Union[torch.Tensor, nn.Module]:
+    """
+    Move input Tensor or Module to CUDA device if CUDA is available.
+    :param x:
+    :return: 
+    """
     if torch.cuda.is_available():
         return x.cuda()
     return x
 
 
-def get_optimizable_parameters(model: nn.Module):
+def get_optimizable_parameters(model: nn.Module) -> Iterator[Parameter]:
     """
-    Return list of optimizable parameters from the model
-    :param model:
-    :return:
+    Return list of parameters with requires_grad=True from the model.
+    This function allows easily get all parameters that should be optimized.
+    :param model: An instance of nn.Module.
+    :return: Parameters with requires_grad=True.
     """
     return filter(lambda x: x.requires_grad, model.parameters())
 
