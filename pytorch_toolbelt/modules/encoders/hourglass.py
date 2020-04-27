@@ -96,17 +96,30 @@ class HGStemBlock(nn.Module):
 
 
 class HGBlock(nn.Module):
-    def __init__(self, depth: int, input_features: int, features, increase=0, activation=nn.ReLU):
+    def __init__(self, depth: int, input_features: int, features, increase=0, activation=nn.ReLU, repeats=1):
         super(HGBlock, self).__init__()
         nf = features + increase
-        self.up1 = HGResidualBlock(input_features, features, activation=activation)
-        # Lower branch
-        # Start with average pool
-        # torch.nn.init.constant_(self.down.weight, 1.0 / 9.0)
-        # self.down = nn.Conv2d(features, features, kernel_size=3, padding=1, stride=2, groups=features, bias=False)
+
         self.down = nn.AvgPool2d(kernel_size=3, padding=1, stride=2)
 
-        self.low1 = HGResidualBlock(input_features, nf, activation=activation)
+        if repeats == 1:
+            self.up1 = HGResidualBlock(input_features, features, activation=activation)
+            self.low1 = HGResidualBlock(input_features, nf, activation=activation)
+        else:
+            up_blocks = []
+            up_input_features = input_features
+            for r in range(repeats):
+                up_blocks.append(HGResidualBlock(up_input_features, features))
+                up_input_features = features
+            self.up1 = nn.Sequential(*up_blocks)
+
+            down_blocks = []
+            down_input_features = input_features
+            for r in range(repeats):
+                up_blocks.append(HGResidualBlock(down_input_features, nf))
+                down_input_features = nf
+            self.low1 = nn.Sequential(*down_blocks)
+
         self.depth = depth
         # Recursive hourglass
         if self.depth > 1:
@@ -158,7 +171,13 @@ class StackedHGEncoder(EncoderModule):
     """
 
     def __init__(
-        self, input_channels: int = 3, stack_level: int = 8, depth: int = 4, features: int = 256, activation=ACT_RELU
+        self,
+        input_channels: int = 3,
+        stack_level: int = 8,
+        depth: int = 4,
+        features: int = 256,
+        activation=ACT_RELU,
+        repeats=1,
     ):
         super().__init__(
             channels=[features] + [features] * stack_level,
@@ -172,7 +191,7 @@ class StackedHGEncoder(EncoderModule):
         modules = []
 
         for _ in range(stack_level):
-            modules.append(HGBlock(depth, input_features, features, increase=0, activation=act))
+            modules.append(HGBlock(depth, input_features, features, increase=0, activation=act, repeats=repeats))
             input_features = features
 
         self.num_blocks = len(modules)
@@ -215,9 +234,17 @@ class StackedSupervisedHGEncoder(StackedHGEncoder):
         depth: int = 4,
         features: int = 256,
         activation=ACT_RELU,
+        repeats=1,
         supervision_block=HGSupervisionBlock,
     ):
-        super().__init__(input_channels, stack_level, depth, features, activation)
+        super().__init__(
+            input_channels=input_channels,
+            stack_level=stack_level,
+            depth=depth,
+            features=features,
+            activation=activation,
+            repeats=repeats,
+        )
 
         self.supervision_blocks = nn.ModuleList(
             [supervision_block(features, supervision_channels) for _ in range(stack_level - 1)]
