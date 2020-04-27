@@ -13,6 +13,7 @@ class UnetBlock(nn.Module):
     """
     Vanilla U-Net block containing of two convolutions interleaved with batch-norm and RELU
     """
+
     def __init__(self, in_channels: int, out_channels: int, abn_block=ABN):
         super().__init__()
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, stride=1, bias=False)

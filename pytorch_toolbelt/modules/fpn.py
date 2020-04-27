@@ -6,13 +6,7 @@ from torch.nn import functional as F
 from typing import List, Dict, Union, Tuple
 from ..modules.activations import ABN
 
-__all__ = [
-    "FPNContextBlock",
-    "FPNBottleneckBlock",
-    "FPNFuse",
-    "FPNFuseSum",
-    "HFF"
-]
+__all__ = ["FPNContextBlock", "FPNBottleneckBlock", "FPNFuse", "FPNFuseSum", "HFF"]
 
 
 class FPNContextBlock(nn.Module):

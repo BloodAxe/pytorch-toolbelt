@@ -36,7 +36,7 @@ class SoftBCEWithLogitsLoss(nn.Module):
         )
 
         if self.ignore_index is not None:
-            not_ignored_mask = (target != self.ignore_index)
+            not_ignored_mask = target != self.ignore_index
             size = not_ignored_mask.sum()
             if size == 0:
                 # If there are zero elements, loss is zero
