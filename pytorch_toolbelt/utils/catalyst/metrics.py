@@ -1,6 +1,6 @@
 import warnings
 from functools import partial
-from typing import List, Callable
+from typing import List
 
 import numpy as np
 import torch
@@ -220,11 +220,12 @@ def binary_dice_iou_score(
     :param nan_score_on_empty: If true, return np.nan if target has no positive pixels;
         If false, return 1. if both target and input are empty, and 0 otherwise.
     :param eps: Small value to add to denominator for numerical stability
+    :param ignore_index:
     :return: Float scalar
     """
     assert mode in {"dice", "iou"}
 
-    # Binarize predictions
+    # Make binary predictions
     if threshold is not None:
         y_pred = (y_pred > threshold).to(y_true.dtype)
 
@@ -335,7 +336,6 @@ class IoUMetricsCallback(Callback):
         :param mode: One of: 'binary', 'multiclass', 'multilabel'.
         :param input_key: input key to use for precision calculation; specifies our `y_true`.
         :param output_key: output key to use for precision calculation; specifies our `y_pred`.
-        :param accuracy_for_empty:
         """
         super().__init__(CallbackOrder.Metric)
         assert mode in {BINARY_MODE, MULTILABEL_MODE, MULTICLASS_MODE}
@@ -429,45 +429,3 @@ class IoUMetricsCallback(Callback):
             scores_per_class = np.nanmean(scores, axis=0)
             for class_name, score_per_class in zip(class_names, scores_per_class):
                 state.metrics.epoch_values[state.loader_name][self.prefix + "_" + class_name] = float(score_per_class)
-
-
-class OutputDistributionCallback(Callback):
-    """
-    Log output distribution to Tensorboard.
-    """
-
-    def __init__(self, output_key: str, activation: Callable, prefix: str = None, bins=255):
-        """
-        :param output_key: output key to use for precision calculation; specifies our `y_pred`.
-        """
-        super().__init__(CallbackOrder.Metric)
-
-        if prefix is None:
-            prefix = output_key
-
-        self.output_key = output_key
-        self.activation = activation
-        self.prefix = prefix
-        self.bins = bins
-
-    def on_loader_start(self, state):
-        self.predictions = []
-
-    @torch.no_grad()
-    def on_batch_end(self, state: RunnerState):
-        outputs = self.activation(state.output[self.output_key].detach())
-
-        batch_size, num_classes = outputs.size(0), outputs.size(1)
-
-        # Make output of shape [num_samples, num_classes]
-        outputs = outputs.view(batch_size, num_classes, -1).permute(1, 0, 2).reshape(num_classes, -1)
-        self.predictions.extend(to_numpy(outputs))
-
-    def on_loader_end(self, state):
-
-        logger = get_tensorboard_logger(state)
-
-        for key, hist in self.predictions.items():
-            logger.add_histogram(f"{self.prefix}/{key}", self.predictions[key], bins=self.bins, global_step=state.step)
-
-        state.metrics.epoch_values[state.loader_name][self.prefix] = float(mean_score)
