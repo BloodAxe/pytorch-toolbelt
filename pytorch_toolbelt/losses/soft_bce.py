@@ -8,9 +8,9 @@ __all__ = ["SoftBCEWithLogitsLoss"]
 
 class SoftBCEWithLogitsLoss(nn.Module):
     """
-        Drop-in replacement for nn.BCEWithLogitsLoss with few additions:
-        - Support of ignore_index value
-        - Support of label smoothing
+    Drop-in replacement for nn.BCEWithLogitsLoss with few additions:
+    - Support of ignore_index value
+    - Support of label smoothing
     """
 
     __constants__ = ["weight", "pos_weight", "reduction", "ignore_index", "smooth_factor"]
