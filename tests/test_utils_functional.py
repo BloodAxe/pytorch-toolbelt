@@ -1,9 +1,8 @@
 import pytest
 import torch
-from torch import nn
-import torch.nn.functional as F
-from pytorch_toolbelt.inference.functional import *
+from pytorch_toolbelt.inference.functional import unpad_xyxy_bboxes, pad_image_tensor, unpad_image_tensor
 from pytorch_toolbelt.modules.encoders import make_n_channel_input
+from torch import nn
 
 
 def test_unpad_xyxy_bboxes():

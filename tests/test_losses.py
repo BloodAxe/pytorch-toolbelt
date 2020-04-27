@@ -1,7 +1,6 @@
 import pytest
 import pytorch_toolbelt.losses.functional as F
 import torch
-from pytorch_toolbelt.losses import *
 
 
 def test_sigmoid_focal_loss():
