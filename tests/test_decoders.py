@@ -44,13 +44,14 @@ def test_fpn_sum():
     channels = [256, 512, 1024, 2048]
     sizes = [64, 32, 16, 8]
 
-    net = FPNSumDecoder(channels, 5).eval()
+    decoder = FPNSumDecoder(channels, 5).eval()
 
     input = [torch.randn(4, ch, sz, sz) for sz, ch in zip(sizes, channels)]
-    output = net(input)
+    outputs = decoder(input)
 
-    print(output.size(), output.mean(), output.std())
-    print(count_parameters(net))
+    print(count_parameters(decoder))
+    for o in outputs:
+        print(o.size(), o.mean(), o.std())
 
 
 @torch.no_grad()
