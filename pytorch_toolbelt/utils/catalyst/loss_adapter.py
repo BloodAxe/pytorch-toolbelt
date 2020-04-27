@@ -144,7 +144,7 @@ class LossWrapper(nn.Module):
         self.losses = nn.ModuleList([losses[key] for key in self.loss_names])
 
     def forward(self, **input: Dict[str, Tensor]) -> Dict[str, Tensor]:
-        output: Dict[Tensor] = self.model(input[self.input_key])
+        output: Dict[str, Tensor] = self.model(input[self.input_key])
 
         for output_loss_key, loss in zip(self.loss_names, self.losses):
             output[output_loss_key] = loss(output, input)
