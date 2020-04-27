@@ -184,6 +184,11 @@ class StackedHGEncoder(EncoderModule):
             strides=[4] + [4] * stack_level,
             layers=list(range(0, stack_level + 1)),
         )
+
+        self.stack_level = stack_level
+        self.depth_level = depth
+        self.num_features = features
+
         act = get_activation_block(activation)
         self.stem = HGStemBlock(input_channels, features, activation=act)
 
@@ -202,6 +207,9 @@ class StackedHGEncoder(EncoderModule):
         self.merge_features = nn.ModuleList(
             [nn.Conv2d(features, features, kernel_size=1) for _ in range(stack_level - 1)]
         )
+
+    def __repr__(self):
+        return f"hg_s{self.stack_level}_d{self.depth_level}_f{self.num_features}"
 
     def forward(self, x):
         x = self.stem(x)

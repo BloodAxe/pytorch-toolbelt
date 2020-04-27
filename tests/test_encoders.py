@@ -169,20 +169,30 @@ def test_xresnet_encoder(encoder, encoder_params):
         assert feature_map.size(3) * expected_stride == 256
 
 
-@pytest.mark.parametrize(["encoder", "encoder_params"], [[E.StackedHGEncoder, {}]])
+@pytest.mark.parametrize(
+    ["encoder", "encoder_params"],
+    [
+        [E.StackedHGEncoder, {"repeats": 1}],
+        [E.StackedHGEncoder, {"repeats": 3}],
+        [E.StackedHGEncoder, {"repeats": 1, "stack_level": 4}],
+        [E.StackedHGEncoder, {"repeats": 3, "stack_level": 4}],
+        [E.StackedHGEncoder, {"repeats": 1, "stack_level": 4, "features": 128}],
+        [E.StackedHGEncoder, {"repeats": 3, "stack_level": 4, "features": 128}],
+    ],
+)
 @torch.no_grad()
 @skip_if_no_cuda
 def test_hourglass_encoder(encoder, encoder_params):
     net = encoder(**encoder_params).eval()
-    print(net.__class__.__name__, count_parameters(net))
-    print(net.output_strides)
-    print(net.output_filters)
+    print(repr(net), count_parameters(net))
+    print("Strides ", net.strides)
+    print("Channels", net.channels)
     input = torch.rand((4, 3, 256, 256))
     input = maybe_cuda(input)
     net = maybe_cuda(net)
     output = net(input)
-    assert len(output) == len(net.output_filters)
-    for feature_map, expected_stride, expected_channels in zip(output, net.output_strides, net.output_filters):
+    assert len(output) == len(net.channels)
+    for feature_map, expected_stride, expected_channels in zip(output, net.strides, net.channels):
         assert feature_map.size(1) == expected_channels
         assert feature_map.size(2) * expected_stride == 256
         assert feature_map.size(3) * expected_stride == 256
