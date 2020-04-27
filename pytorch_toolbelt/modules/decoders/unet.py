@@ -4,9 +4,7 @@ import torch
 from torch import nn
 
 from .common import DecoderModule
-from ..simple import conv1x1
-from ..activations import ABN
-from ..unet import UnetBlock, UnetDecoderBlock
+from ..unet import UnetBlock
 
 __all__ = ["UNetDecoder"]
 
