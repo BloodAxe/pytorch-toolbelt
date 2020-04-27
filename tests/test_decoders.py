@@ -15,8 +15,8 @@ skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="Cuda
 def test_unet_encoder_decoder():
     encoder = E.UnetEncoder(3, 32, 5)
     decoder = D.UNetDecoder(encoder.channels)
-    input = torch.randn((16, 3, 256, 256)).cuda()
-    model = nn.Sequential(encoder, decoder).cuda()
+    input = torch.randn((2, 3, 256, 256)).cuda()
+    model = nn.Sequential(encoder, decoder).cuda().eval()
     output = model(input)
 
     print(count_parameters(encoder))

@@ -46,22 +46,23 @@ def test_hff_static_size():
     assert output.size(3) == 512
 
 
-def test_upsample():
-    block = DepthToSpaceUpsample2d(1)
-    original = np.expand_dims(cv2.imread("lena.png", cv2.IMREAD_GRAYSCALE), -1)
-    input = tensor_from_rgb_image(original / 255.0).unsqueeze(0).float()
-    output = block(input)
-
-    output_rgb = rgb_image_from_tensor(output.squeeze(0), mean=0, std=1, max_pixel_value=1, dtype=np.float32)
-
-    cv2.imshow("Original", original)
-    cv2.imshow("Upsampled (cv2)", cv2.resize(original, None, fx=2, fy=2, interpolation=cv2.INTER_LINEAR))
-    cv2.imshow("Upsampled", cv2.normalize(output_rgb, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U))
-    cv2.waitKey(-1)
+# def test_upsample():
+#     block = DepthToSpaceUpsample2d(1)
+#     original = np.expand_dims(cv2.imread("lena.png", cv2.IMREAD_GRAYSCALE), -1)
+#     input = tensor_from_rgb_image(original / 255.0).unsqueeze(0).float()
+#     output = block(input)
+#
+#     output_rgb = rgb_image_from_tensor(output.squeeze(0), mean=0, std=1, max_pixel_value=1, dtype=np.float32)
+#
+#     cv2.imshow("Original", original)
+#     cv2.imshow("Upsampled (cv2)", cv2.resize(original, None, fx=2, fy=2, interpolation=cv2.INTER_LINEAR))
+#     cv2.imshow("Upsampled", cv2.normalize(output_rgb, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U))
+#     cv2.waitKey(-1)
 
 
 def test_residualdeconvolutionupsampleblock():
     input = torch.randn((4, 16, 32, 32))
     block = ResidualDeconvolutionUpsample2d(16)
     output = block(input)
-    print(output.size())
+    print(input.size(), input.mean(), input.std())
+    print(output.size(), output.mean(), input.std())
