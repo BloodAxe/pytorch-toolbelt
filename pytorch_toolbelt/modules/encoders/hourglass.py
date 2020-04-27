@@ -6,7 +6,6 @@ import torch
 from pytorch_toolbelt.modules import ACT_RELU, get_activation_block
 from pytorch_toolbelt.modules.encoders import EncoderModule, make_n_channel_input
 from torch import nn
-import torch.nn.functional as F
 
 __all__ = ["StackedHGEncoder", "StackedSupervisedHGEncoder"]
 

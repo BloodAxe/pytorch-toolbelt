@@ -1,15 +1,9 @@
-from functools import partial
-from itertools import repeat
-from typing import List, Tuple, Optional, Union
+from typing import List, Union
 
-import torch
-import torch.nn.functional as F
 from torch import Tensor, nn
 
 from .common import SegmentationDecoderModule
 from .. import conv1x1, FPNContextBlock, FPNBottleneckBlock
-from ..activations import ABN
-from ..identity import Identity
 
 __all__ = ["FPNSumDecoder"]
 

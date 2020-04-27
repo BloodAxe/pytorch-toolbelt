@@ -1,17 +1,5 @@
-import cv2
 import pytest
-import torch
-import numpy as np
 
-import pytorch_toolbelt.modules.encoders as E
-from pytorch_toolbelt.modules.backbone.inceptionv4 import inceptionv4
-from pytorch_toolbelt.modules.fpn import HFF
-from pytorch_toolbelt.utils.torch_utils import (
-    maybe_cuda,
-    count_parameters,
-    tensor_from_rgb_image,
-    rgb_image_from_tensor,
-)
 from pytorch_toolbelt.modules import *
 
 skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="Cuda is not available")
