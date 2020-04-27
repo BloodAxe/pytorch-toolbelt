@@ -60,12 +60,11 @@ class EncoderModule(nn.Module):
         self._output_filters = _take(channels, layers)
 
     def forward(self, x):
-        input = x
         output_features = []
         for layer in self.encoder_layers:
-            output = layer(input)
+            output = layer(x)
             output_features.append(output)
-            input = output
+            x = output
         # Return only features that were requested
         return _take(output_features, self._layers)
 

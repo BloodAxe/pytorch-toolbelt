@@ -8,16 +8,16 @@ from pytorch_toolbelt.modules import FPNFuse
 from pytorch_toolbelt.modules.decoders import FPNSumDecoder, FPNCatDecoder
 from pytorch_toolbelt.utils.torch_utils import count_parameters
 
-skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="Cuda is not available")
+skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA is not available")
 
 
 @torch.no_grad()
 def test_unet_encoder_decoder():
     encoder = E.UnetEncoder(3, 32, 5)
     decoder = D.UNetDecoder(encoder.channels)
-    input = torch.randn((2, 3, 256, 256)).cuda()
+    x = torch.randn((2, 3, 256, 256)).cuda()
     model = nn.Sequential(encoder, decoder).cuda().eval()
-    output = model(input)
+    output = model(x)
 
     print(count_parameters(encoder))
     print(count_parameters(decoder))
@@ -29,9 +29,9 @@ def test_unet_encoder_decoder():
 def test_unet_decoder():
     encoder = E.Resnet18Encoder(pretrained=False, layers=[0, 1, 2, 3, 4])
     decoder = D.UNetDecoder(encoder.channels)
-    input = torch.randn((16, 3, 256, 256)).cuda()
+    x = torch.randn((16, 3, 256, 256)).cuda()
     model = nn.Sequential(encoder, decoder).cuda()
-    output = model(input)
+    output = model(x)
 
     print(count_parameters(encoder))
     print(count_parameters(decoder))
@@ -46,8 +46,8 @@ def test_fpn_sum():
 
     decoder = FPNSumDecoder(channels, 5).eval()
 
-    input = [torch.randn(4, ch, sz, sz) for sz, ch in zip(sizes, channels)]
-    outputs = decoder(input)
+    x = [torch.randn(4, ch, sz, sz) for sz, ch in zip(sizes, channels)]
+    outputs = decoder(x)
 
     print(count_parameters(decoder))
     for o in outputs:
@@ -56,12 +56,12 @@ def test_fpn_sum():
 
 @torch.no_grad()
 def test_fpn_sum_with_encoder():
-    input = torch.randn((16, 3, 256, 256)).cuda()
+    x = torch.randn((16, 3, 256, 256)).cuda()
     encoder = E.Resnet18Encoder(pretrained=False)
     decoder = FPNSumDecoder(encoder.channels, 128)
     model = nn.Sequential(encoder, decoder).cuda()
 
-    output = model(input)
+    output = model(x)
 
     print(count_parameters(decoder))
     for o in output:
@@ -70,12 +70,12 @@ def test_fpn_sum_with_encoder():
 
 @torch.no_grad()
 def test_fpn_cat_with_encoder():
-    input = torch.randn((16, 3, 256, 256)).cuda()
+    x = torch.randn((16, 3, 256, 256)).cuda()
     encoder = E.Resnet18Encoder(pretrained=False)
     decoder = FPNCatDecoder(encoder.channels, 128)
     model = nn.Sequential(encoder, decoder).cuda()
 
-    output = model(input)
+    output = model(x)
 
     print(count_parameters(decoder))
     for o in output:
@@ -93,8 +93,8 @@ def test_fpn_cat():
 
     net = FPNCatDecoder(channels, 5).eval()
 
-    input = [torch.randn(4, ch, sz, sz) for sz, ch in zip(sizes, channels)]
-    outputs = net(input)
+    x = [torch.randn(4, ch, sz, sz) for sz, ch in zip(sizes, channels)]
+    outputs = net(x)
 
     print(count_parameters(net))
     for output in outputs:

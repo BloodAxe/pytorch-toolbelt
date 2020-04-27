@@ -293,8 +293,8 @@ class InceptionV4(nn.Module):
         x = self.last_linear(x)
         return x
 
-    def forward(self, input):
-        x = self.features(input)
+    def forward(self, x):
+        x = self.features(x)
         x = self.logits(x)
         return x
 
