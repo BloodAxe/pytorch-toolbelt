@@ -70,7 +70,7 @@ def count_parameters(model: nn.Module, keys=None) -> dict:
     :return: Tuple (total, trainable)
     """
     if keys is None:
-        keys = ["encoder", "decoder"]
+        keys = ["encoder", "decoder", "logits", "head", "final"]
     total = sum(p.numel() for p in model.parameters())
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
     parameters = {"total": total, "trainable": trainable}

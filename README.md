@@ -25,45 +25,96 @@ During 2018 I achieved a [Kaggle Master](https://www.kaggle.com/bloodaxe) badge 
 Very often I found myself re-using most of the old pipelines over and over again. 
 At some point it crystallized into this repository. 
 
-This lib is not meant to replace catalyst / ignite / fast.ai. Instead it's designed to complement them.
+This lib is not meant to replace catalyst / ignite / fast.ai high-level frameworks. Instead it's designed to complement them.
 
 # Installation
 
 `pip install pytorch_toolbelt`
 
-# Showcase
+# How do I ... 
 
-## Encoder-decoder models construction
+## Model creation
+
+### Create Encoder-Decoder U-Net model
 
 ```python
+from torch import nn
 from pytorch_toolbelt.modules import encoders as E
 from pytorch_toolbelt.modules import decoders as D
 
-class FPNSegmentationModel(nn.Module):
-    def __init__(self, encoder:E.EncoderModule, num_classes, fpn_features=128):
-        self.encoder = encoder
-        self.decoder = D.FPNDecoder(encoder.output_filters, fpn_features=fpn_features)
-        self.fuse = D.FPNFuse()
-        input_channels = sum(self.decoder.output_filters)
-        self.logits = nn.Conv2d(input_channels, num_classes,kernel_size=1)
-        
-    def forward(self, input):
-        features = self.encoder(input)
-        features = self.decoder(features)
-        features = self.fuse(features)
-        logits = self.logits(features)
-        return logits
-        
-def fpn_resnext50(num_classes):
-  encoder = E.SEResNeXt50Encoder()
-  return FPNSegmentationModel(encoder, num_classes)
-  
-def fpn_mobilenet(num_classes):
-  encoder = E.MobilenetV2Encoder()
-  return FPNSegmentationModel(encoder, num_classes)
+class UNet(nn.Module):
+    def __init__(self, input_channels, num_classes):
+        super().__init__()
+        self.encoder = E.UnetEncoder(in_channels=input_channels, out_channels=32, growth_factor=2)
+        self.decoder = D.UNetDecoder(self.encoder.channels, decoder_features=32)
+        self.logits = nn.Conv2d(self.decoder.channels[0], num_classes, kernel_size=1)
+
+    def forward(self, x):
+        x = self.encoder(x)
+        x = self.decoder(x)
+        return self.logits(x[0])
 ```
 
-## Compose multiple losses
+### Create Encoder-Decoder FPN model with pretrained encoder
+
+ ```python
+from torch import nn
+from pytorch_toolbelt.modules import encoders as E
+from pytorch_toolbelt.modules import decoders as D
+
+class SEResNeXt50FPN(nn.Module):
+    def __init__(self, num_classes, fpn_channels):
+        super().__init__()
+        self.encoder = E.SEResNeXt50Encoder()
+        self.decoder = D.FPNCatDecoder(self.encoder.channels, fpn_channels)
+        self.logits = nn.Conv2d(self.decoder.channels[0], num_classes, kernel_size=1)
+
+    def forward(self, x):
+        x = self.encoder(x)
+        x = self.decoder(x)
+        return self.logits(x[0])
+```
+
+### Change number of input channels for the Encoder
+
+```python
+from pytorch_toolbelt.modules import encoders as E
+
+encoder = E.SEResnet101Encoder()
+encoder = encoder.change_input_channels(6)
+```
+
+
+## Misc
+
+
+## Count number of parameters in encoder/decoder and other modules
+
+```python
+from torch import nn
+from pytorch_toolbelt.modules import encoders as E
+from pytorch_toolbelt.modules import decoders as D
+from pytorch_toolbelt.utils import count_parameters
+
+class SEResNeXt50FPN(nn.Module):
+    def __init__(self, num_classes, fpn_channels):
+        super().__init__()
+        self.encoder = E.SEResNeXt50Encoder()
+        self.decoder = D.FPNCatDecoder(self.encoder.channels, fpn_channels)
+        self.logits = nn.Conv2d(self.decoder.channels[0], num_classes, kernel_size=1)
+
+    def forward(self, x):
+        x = self.encoder(x)
+        x = self.decoder(x)
+        return self.logits(x[0])
+
+net = SEResNeXt50FPN(1, 128)
+print(count_parameters(net))
+# Prints {'total': 34232561, 'trainable': 34232561, 'encoder': 25510896, 'decoder': 8721536, 'logits': 129}
+
+```
+
+### Compose multiple losses
 
 ```python
 from pytorch_toolbelt import losses as L
@@ -71,10 +122,15 @@ from pytorch_toolbelt import losses as L
 loss = L.JointLoss(L.FocalLoss(), 1.0, L.LovaszLoss(), 0.5)
 ```
 
-## Test-time augmentation
+
+## TTA / Inferencing
+
+### Apply Test-time augmentation (TTA) for the model
 
 ```python
 from pytorch_toolbelt.inference import tta
+
+model = ...
 
 # Truly functional TTA for image classification using horizontal flips:
 logits = tta.fliplr_image2label(model, input)
@@ -87,11 +143,11 @@ tta_model = tta.TTAWrapper(model, tta.fivecrop_image2label, crop_size=512)
 logits = tta_model(input)
 ```
 
-## Inference on huge images:
+### Inference on huge images:
 
 ```python
 import numpy as np
-import torch
+from torch.utils.data import DataLoader
 import cv2
 
 from pytorch_toolbelt.inference.tiles import ImageSlicer, CudaTileMerger
