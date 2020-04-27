@@ -2,14 +2,14 @@
 
 """
 import collections
-import warnings
+from typing import Optional, Sequence
 
 import numpy as np
 import torch
 from torch import nn
 
 __all__ = [
-    "set_trainable",
+    "freeze_model",
     "rgb_image_from_tensor",
     "tensor_from_mask_image",
     "tensor_from_rgb_image",
@@ -18,44 +18,36 @@ __all__ = [
     "transfer_weights",
     "maybe_cuda",
     "mask_from_tensor",
-    "freeze_bn",
     "logit",
     "to_numpy",
     "to_tensor",
 ]
 
 
-def set_trainable(module: nn.Module, trainable=True, freeze_bn=True):
+def freeze_model(module: nn.Module, freeze_parameters: Optional[bool] = True, freeze_bn: Optional[bool] = True):
     """
     Change 'requires_grad' value for module and it's child modules and
     optionally freeze batchnorm modules.
     :param module: Module to change
-    :param trainable: True to enable training
-    :param freeze_bn: True to freeze batch norm
+    :param freeze_parameters: True to freeze parameters; False - to enable parameters optimization.
+        If None - current state is not changed.
+    :param freeze_bn: True to freeze batch norm; False - to enable BatchNorm updates.
+        If None - current state is not changed.
     :return: None
     """
-    trainable = bool(trainable)
-    freeze_bn = bool(freeze_bn)
-
-    for param in module.parameters():
-        param.requires_grad = trainable
-
-    # TODO: Add support for ABN, InplaceABN
     bn_types = nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d, nn.SyncBatchNorm
 
-    if isinstance(module, bn_types):
-        module.track_running_stats = freeze_bn
+    if freeze_parameters is not None:
+        for param in module.parameters():
+            param.requires_grad = not freeze_parameters
 
-    for m in module.modules():
-        if isinstance(m, bn_types):
-            module.track_running_stats = freeze_bn
+    if freeze_bn is not None:
+        if isinstance(module, bn_types):
+            module.track_running_stats = not freeze_bn
 
-
-def freeze_bn(module: nn.Module):
-    """Freezes BatchNorm
-    """
-    warnings.warn("This method is deprecated. Please use `set_trainable`.")
-    set_trainable(module, True, False)
+        for m in module.modules():
+            if isinstance(m, bn_types):
+                module.track_running_stats = not freeze_bn
 
 
 def logit(x: torch.Tensor, eps=1e-5):
@@ -63,10 +55,11 @@ def logit(x: torch.Tensor, eps=1e-5):
     return torch.log(x / (1.0 - x))
 
 
-def count_parameters(model: nn.Module, keys=None) -> dict:
+def count_parameters(model: nn.Module, keys: Optional[Sequence[str]] = None) -> dict:
     """
     Count number of total and trainable parameters of a model
     :param model: A model
+    :param keys: Optional list of top-level blocks
     :return: Tuple (total, trainable)
     """
     if keys is None:
