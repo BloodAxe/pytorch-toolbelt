@@ -1,6 +1,6 @@
-import math
 import torch
 from torch import nn
+from math import hypot
 
 __all__ = [
     "bilinear_upsample_initializer",
@@ -19,7 +19,7 @@ def bilinear_upsample_initializer(x):
 
     for i in range(x.size(2)):
         for j in range(x.size(3)):
-            x[..., i, j] = math.sqrt((cc - i) ** 2 + (cr - j) ** 2)
+            x[..., i, j] = hypot(cc - i, cr - j)
 
     y = 1 - x / x.sum(dim=(2, 3), keepdim=True)
     y = y / y.sum(dim=(2, 3), keepdim=True)
