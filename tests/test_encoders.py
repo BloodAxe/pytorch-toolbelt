@@ -88,7 +88,6 @@ def test_inceptionv4_encoder():
 
     net = E.InceptionV4Encoder(pretrained=False, layers=[0, 1, 2, 3, 4]).cuda()
 
-    print(count_parameters(backbone))
     print(count_parameters(net))
 
     x = torch.randn((4, 3, 512, 512)).cuda()

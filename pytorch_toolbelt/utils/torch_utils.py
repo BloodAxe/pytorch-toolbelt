@@ -76,7 +76,7 @@ def count_parameters(model: nn.Module, keys=None) -> dict:
     parameters = {"total": total, "trainable": trainable}
 
     for key in keys:
-        if hasattr(model, key):
+        if hasattr(model, key) and model.__getattr__(key) is not None:
             parameters[key] = sum(p.numel() for p in model.__getattr__(key).parameters())
 
     return parameters
