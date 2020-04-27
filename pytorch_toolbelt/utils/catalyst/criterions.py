@@ -1,8 +1,7 @@
 import math
 
 import torch
-from catalyst.dl import RunnerState, CriterionCallback
-from catalyst.dl.callbacks.criterion import _add_loss_to_state
+from catalyst.core import CriterionCallback, State
 from torch import nn
 from torch.nn import functional as F
 
@@ -66,16 +65,16 @@ class LPRegularizationCallback(CriterionCallback):
 
         return threshold * (end - start) + start
 
-    def on_loader_start(self, state: RunnerState):
+    def on_loader_start(self, state: State):
         self.is_needed = not self.on_train_only or state.loader_name.startswith("train")
         if self.is_needed:
             state.metrics.epoch_values[state.loader_name][f"l{self.p}_weight_decay"] = self.multiplier
 
-    def on_epoch_start(self, state: RunnerState):
+    def on_epoch_start(self, state: State):
         training_progress = float(state.epoch) / float(state.num_epochs)
         self.multiplier = self.get_multiplier(training_progress, self.schedule, self.start_wd, self.end_wd)
 
-    def on_batch_end(self, state: RunnerState):
+    def on_batch_end(self, state: State):
         if not self.is_needed:
             return
 
@@ -140,12 +139,12 @@ class TSACriterionCallback(CriterionCallback):
             threshold = 1 - math.exp((-training_progress) * scale)
         return threshold * (end - start) + start
 
-    def on_epoch_start(self, state: RunnerState):
+    def on_epoch_start(self, state: State):
         if state.loader_name == "train":
             self.tsa_threshold = self.get_tsa_threshold(state.epoch, "exp_schedule", 1.0 / self.num_classes, 1.0)
             state.metrics.epoch_values["train"]["tsa_threshold"] = self.tsa_threshold
 
-    def _compute_loss(self, state: RunnerState, criterion):
+    def _compute_loss(self, state: State, criterion):
 
         logits = state.output[self.output_key]
         targets = state.input[self.input_key]

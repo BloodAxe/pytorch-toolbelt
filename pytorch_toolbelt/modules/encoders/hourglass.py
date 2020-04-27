@@ -108,14 +108,14 @@ class HGBlock(nn.Module):
         else:
             up_blocks = []
             up_input_features = input_features
-            for r in range(repeats):
+            for _ in range(repeats):
                 up_blocks.append(HGResidualBlock(up_input_features, features))
                 up_input_features = features
             self.up1 = nn.Sequential(*up_blocks)
 
             down_blocks = []
             down_input_features = input_features
-            for r in range(repeats):
+            for _ in range(repeats):
                 up_blocks.append(HGResidualBlock(down_input_features, nf))
                 down_input_features = nf
             self.low1 = nn.Sequential(*down_blocks)
