@@ -1,9 +1,11 @@
 from __future__ import absolute_import
 
+from typing import List
+
 import torch
 from torch import nn, Tensor
 from torch.nn import functional as F
-from typing import List, Dict, Union, Tuple
+
 from ..modules.activations import ABN
 
 __all__ = ["FPNContextBlock", "FPNBottleneckBlock", "FPNFuse", "FPNFuseSum", "HFF"]
@@ -115,7 +117,7 @@ class FPNFuse(nn.Module):
         self.mode = mode
         self.align_corners = align_corners
 
-    def forward(self, features):
+    def forward(self, features: List[Tensor]):
         layers = []
         dst_size = features[0].size()[-2:]
 
@@ -133,7 +135,7 @@ class FPNFuseSum(nn.Module):
         self.mode = mode
         self.align_corners = align_corners
 
-    def forward(self, features):
+    def forward(self, features: List[Tensor]) -> Tensor:
         output = features[0]
         dst_size = features[0].size()[-2:]
 
@@ -163,7 +165,7 @@ class HFF(nn.Module):
         self.align_corners = align_corners
         self.upsample_scale = upsample_scale
 
-    def forward(self, features):
+    def forward(self, features: List[Tensor]) -> Tensor:
         num_feature_maps = len(features)
 
         current_map = features[-1]
