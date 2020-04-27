@@ -2,10 +2,30 @@ import math
 
 import torch
 from catalyst.dl import CriterionCallback, RunnerState
+from catalyst.dl.callbacks.criterion import _add_loss_to_state
 from torch import nn
 from torch.nn import functional as F
 
 __all__ = ["LPRegularizationCallback", "TSACriterionCallback"]
+
+
+def get_multiplier(training_progress, schedule, start, end):
+    if schedule is None or schedule == "none":
+        threshold = 0
+    elif schedule == "linear_schedule":
+        threshold = training_progress
+    elif schedule == "exp_schedule":
+        scale = 5
+        threshold = math.exp((training_progress - 1) * scale)
+        # [exp(-5), exp(0)] = [1e-2, 1]
+    elif schedule == "log_schedule":
+        scale = 5
+        # [1 - exp(0), 1 - exp(-5)] = [0, 0.99]
+        threshold = 1 - math.exp((-training_progress) * scale)
+    else:
+        raise KeyError(schedule)
+
+    return threshold * (end - start) + start
 
 
 class LPRegularizationCallback(CriterionCallback):
@@ -47,24 +67,6 @@ class LPRegularizationCallback(CriterionCallback):
         self.p = p
         self.multiplier = None
 
-    def get_multiplier(self, training_progress, schedule, start, end):
-        if schedule is None or schedule == "none":
-            threshold = 0
-        if schedule == "linear_schedule":
-            threshold = training_progress
-        elif schedule == "exp_schedule":
-            scale = 5
-            threshold = math.exp((training_progress - 1) * scale)
-            # [exp(-5), exp(0)] = [1e-2, 1]
-        elif schedule == "log_schedule":
-            scale = 5
-            # [1 - exp(0), 1 - exp(-5)] = [0, 0.99]
-            threshold = 1 - math.exp((-training_progress) * scale)
-        else:
-            raise KeyError(schedule)
-
-        return threshold * (end - start) + start
-
     def on_loader_start(self, state: RunnerState):
         self.is_needed = not self.on_train_only or state.loader_name.startswith("train")
         if self.is_needed:
@@ -72,7 +74,7 @@ class LPRegularizationCallback(CriterionCallback):
 
     def on_epoch_start(self, state: RunnerState):
         training_progress = float(state.epoch) / float(state.num_epochs)
-        self.multiplier = self.get_multiplier(training_progress, self.schedule, self.start_wd, self.end_wd)
+        self.multiplier = get_multiplier(training_progress, self.schedule, self.start_wd, self.end_wd)
 
     def on_batch_end(self, state: RunnerState):
         if not self.is_needed:
@@ -114,11 +116,16 @@ class TSACriterionCallback(CriterionCallback):
         output_key: str = "logits",
         prefix: str = "loss",
         criterion_key: str = None,
-        loss_key: str = None,
         multiplier: float = 1.0,
         unsupervised_label=-100,
     ):
-        super().__init__(input_key, output_key, prefix, criterion_key, loss_key, multiplier)
+        super().__init__(
+            input_key=input_key,
+            output_key=output_key,
+            prefix=prefix,
+            criterion_key=criterion_key,
+            multiplier=multiplier,
+        )
         self.num_epochs = num_epochs
         self.num_classes = num_classes
         self.tsa_threshold = None
@@ -126,7 +133,7 @@ class TSACriterionCallback(CriterionCallback):
 
     def get_tsa_threshold(self, current_epoch, schedule, start, end) -> float:
         training_progress = float(current_epoch) / float(self.num_epochs)
-
+        threshold = None
         if schedule == "linear_schedule":
             threshold = training_progress
         elif schedule == "exp_schedule":
@@ -137,6 +144,8 @@ class TSACriterionCallback(CriterionCallback):
             scale = 5
             # [1 - exp(0), 1 - exp(-5)] = [0, 0.99]
             threshold = 1 - math.exp((-training_progress) * scale)
+        else:
+            raise KeyError(f"Unsupported schedule name {schedule}")
         return threshold * (end - start) + start
 
     def on_epoch_start(self, state: RunnerState):
@@ -157,11 +166,11 @@ class TSACriterionCallback(CriterionCallback):
             return torch.tensor(0, dtype=logits.dtype, device=logits.device)
 
         with torch.no_grad():
-            one_hot_targets = F.one_hot(targets, num_classes=self.num_classes).float()
+            one_hot_targets = F.one_hot(targets, num_classes=self.num_classes).to(logits.dtype)
             sup_probs = logits.detach().softmax(dim=1)
             correct_label_probs = torch.sum(one_hot_targets * sup_probs, dim=1)
             larger_than_threshold = correct_label_probs > self.tsa_threshold
-            loss_mask = 1.0 - larger_than_threshold.float()
+            loss_mask = 1.0 - larger_than_threshold.to(logits.dtype)
 
         loss = criterion(logits, targets)
         loss = loss * loss_mask
