@@ -7,7 +7,7 @@ import warnings
 from typing import List
 
 import torch
-from torch import nn
+from torch import nn, Tensor
 
 __all__ = ["EncoderModule", "_take", "make_n_channel_input"]
 
@@ -59,7 +59,7 @@ class EncoderModule(nn.Module):
         self._output_strides = _take(strides, layers)
         self._output_filters = _take(channels, layers)
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> List[Tensor]:  # skipcq: PYL-W0221
         output_features = []
         for layer in self.encoder_layers:
             output = layer(x)

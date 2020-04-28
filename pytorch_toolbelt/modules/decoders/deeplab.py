@@ -18,7 +18,7 @@ class ASPPModule(nn.Module):
         )
         self.abn = abn_block(planes)
 
-    def forward(self, x):
+    def forward(self, x):  # skipcq: PYL-W0221
         x = self.atrous_conv(x)
         x = self.abn(x)
         return x
@@ -51,7 +51,7 @@ class ASPP(nn.Module):
         self.abn1 = abn_block(output_features)
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, x):
+    def forward(self, x):  # skipcq: PYL-W0221
         x1 = self.aspp1(x)
         x2 = self.aspp2(x)
         x3 = self.aspp3(x)

@@ -44,12 +44,12 @@ class AddCoords(nn.Module):
         super().__init__()
         self.with_r = with_r
 
-    def forward(self, input_tensor):
+    def forward(self, x):  # skipcq: PYL-W0221
         """
         Args:
-            input_tensor: shape(batch, channel, x_dim, y_dim)
+            x: shape(batch, channel, x_dim, y_dim)
         """
-        return append_coords(input_tensor, self.with_r)
+        return append_coords(x, self.with_r)
 
 
 class CoordConv(nn.Module):
@@ -61,7 +61,7 @@ class CoordConv(nn.Module):
             in_size += 1
         self.conv = nn.Conv2d(in_size, out_channels, **kwargs)
 
-    def forward(self, x):
+    def forward(self, x):  # skipcq: PYL-W0221
         ret = self.addcoords(x)
         ret = self.conv(ret)
         return ret
