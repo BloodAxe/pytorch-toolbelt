@@ -1,7 +1,7 @@
 from typing import List
 
 import torch
-import torch.nn as nn
+from torch import nn, Tensor
 import torch.nn.functional as F
 
 from .common import DecoderModule
@@ -102,7 +102,7 @@ class DeeplabV3Decoder(DecoderModule):
 
         self.dsv = nn.Conv2d(high_level_bottleneck, num_classes, kernel_size=1)
 
-    def forward(self, feature_maps):
+    def forward(self, feature_maps: List[Tensor]) -> List[Tensor]:
         low_level_feat = feature_maps[0]
         low_level_feat = self.conv1(low_level_feat)
         low_level_feat = self.abn1(low_level_feat)
@@ -118,4 +118,4 @@ class DeeplabV3Decoder(DecoderModule):
         high_level_features = torch.cat([high_level_features, low_level_feat], dim=1)
         mask = self.last_conv(high_level_features)
 
-        return mask, mask_dsv
+        return [mask, mask_dsv]

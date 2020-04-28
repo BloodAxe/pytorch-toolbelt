@@ -108,7 +108,7 @@ class LossModule(nn.Module):
         self.target_ley = target_key
         self.loss_fn = loss_fn
 
-    def forward(self, outputs, targets):
+    def forward(self, outputs, targets):  # skipcq: PYL-W0221
         return self.loss_fn(outputs[self.output_key], targets[self.target_ley])
 
 
@@ -143,7 +143,7 @@ class LossWrapper(nn.Module):
         self.loss_names = list(losses.keys())
         self.losses = nn.ModuleList([losses[key] for key in self.loss_names])
 
-    def forward(self, **input: Dict[str, Tensor]) -> Dict[str, Tensor]:
+    def forward(self, **input: Dict[str, Tensor]) -> Dict[str, Tensor]:  # skipcq: PYL-W0221
         output: Dict[str, Tensor] = self.model(input[self.input_key])
 
         for output_loss_key, loss in zip(self.loss_names, self.losses):

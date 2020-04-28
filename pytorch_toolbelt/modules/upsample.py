@@ -1,5 +1,5 @@
 import torch
-from torch import nn
+from torch import nn, Tensor
 from math import hypot
 
 __all__ = [
@@ -84,7 +84,7 @@ class DepthToSpaceUpsample2d(nn.Module):
             )
         self.shuffle = nn.PixelShuffle(upscale_factor=scale_factor)
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:  # skipcq: PYL-W0221
         x = self.shuffle(self.conv(x))
         return x
 
@@ -104,7 +104,7 @@ class BilinearAdditiveUpsample2d(nn.Module):
         self.upsample = nn.UpsamplingBilinear2d(scale_factor=scale_factor)
         self.n = n
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:  # skipcq: PYL-W0221
         x = self.upsample(x)
         n, c, h, w = x.size()
         x = x.reshape(n, c // self.n, self.n, h, w).mean(2)
@@ -118,7 +118,7 @@ class DeconvolutionUpsample2d(nn.Module):
         self.out_channels = in_channels // n
         self.conv = nn.ConvTranspose2d(in_channels, in_channels // n, kernel_size=3, padding=1, stride=2)
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:  # skipcq: PYL-W0221
         return self.conv(x)
 
 
@@ -134,6 +134,6 @@ class ResidualDeconvolutionUpsample2d(nn.Module):
         )
         self.residual = BilinearAdditiveUpsample2d(in_channels, scale_factor=scale_factor, n=n)
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:  # skipcq: PYL-W0221
         residual_up = self.residual(x)
         return self.conv(x, output_size=residual_up.size()) + residual_up

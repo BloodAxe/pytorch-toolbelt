@@ -9,7 +9,7 @@ class DecoderModule(nn.Module):
     def __init__(self):
         super().__init__()
 
-    def forward(self, features: List[Tensor]) -> List[Tensor]:  # skipcq: PYL-W0221
+    def forward(self, feature_maps: List[Tensor]) -> List[Tensor]:  # skipcq: PYL-W0221
         raise NotImplementedError
 
     def set_trainable(self, trainable):
