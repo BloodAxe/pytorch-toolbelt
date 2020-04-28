@@ -95,7 +95,8 @@ class FPNBottleneckBlock(nn.Module):
 
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, bias=False)
         self.abn1 = abn_block(out_channels)
-        self.drop1 = nn.Dropout2d(dropout, inplace=True)
+
+        self.drop1 = nn.Dropout2d(dropout, inplace=False)
 
         self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False)
         self.abn2 = abn_block(out_channels)
