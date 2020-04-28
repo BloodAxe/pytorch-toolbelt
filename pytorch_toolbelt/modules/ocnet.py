@@ -3,7 +3,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from .activated_batch_norm import ABN
+from ..modules.activations import ABN
 
 __all__ = ["ObjectContextBlock", "ASPObjectContextBlock", "PyramidObjectContextBlock"]
 
@@ -50,7 +50,7 @@ class _SelfAttentionBlock(nn.Module):
         # nn.init.constant(self.W.weight, 0)
         nn.init.constant_(self.W.bias, 0)
 
-    def forward(self, x):
+    def forward(self, x):  # skipcq: PYL-W0221
         batch_size, h, w = x.size(0), x.size(2), x.size(3)
         if self.scale > 1:
             x = self.pool(x)

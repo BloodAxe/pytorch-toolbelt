@@ -1,11 +1,11 @@
 from typing import List
 
 import torch
-import torch.nn as nn
+from torch import nn, Tensor
 import torch.nn.functional as F
 
 from .common import DecoderModule
-from ..activated_batch_norm import ABN
+from ..activations import ABN
 
 __all__ = ["DeeplabV3Decoder"]
 
@@ -18,7 +18,7 @@ class ASPPModule(nn.Module):
         )
         self.abn = abn_block(planes)
 
-    def forward(self, x):
+    def forward(self, x):  # skipcq: PYL-W0221
         x = self.atrous_conv(x)
         x = self.abn(x)
         return x
@@ -51,7 +51,7 @@ class ASPP(nn.Module):
         self.abn1 = abn_block(output_features)
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, x):
+    def forward(self, x):  # skipcq: PYL-W0221
         x1 = self.aspp1(x)
         x2 = self.aspp2(x)
         x3 = self.aspp3(x)
@@ -102,7 +102,7 @@ class DeeplabV3Decoder(DecoderModule):
 
         self.dsv = nn.Conv2d(high_level_bottleneck, num_classes, kernel_size=1)
 
-    def forward(self, feature_maps):
+    def forward(self, feature_maps: List[Tensor]) -> List[Tensor]:
         low_level_feat = feature_maps[0]
         low_level_feat = self.conv1(low_level_feat)
         low_level_feat = self.abn1(low_level_feat)
@@ -118,4 +118,4 @@ class DeeplabV3Decoder(DecoderModule):
         high_level_features = torch.cat([high_level_features, low_level_feat], dim=1)
         mask = self.last_conv(high_level_features)
 
-        return mask, mask_dsv
+        return [mask, mask_dsv]

@@ -59,10 +59,9 @@ class DenseNetEncoder(EncoderModule):
         return self._output_filters
 
     def forward(self, x):
-        input = x
         output_features = []
         for layer in self.encoder_layers:
-            output = layer(input)
+            output = layer(x)
             output_features.append(output)
 
             if layer == self.layer0:
@@ -71,7 +70,7 @@ class DenseNetEncoder(EncoderModule):
             else:
                 output = self.avg_pool(output)
 
-            input = output
+            x = output
 
         # Return only features that were requested
         return _take(output_features, self._layers)

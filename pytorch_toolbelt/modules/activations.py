@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -25,19 +27,24 @@ __all__ = [
     "instantiate_activation_block",
     "get_activation_block",
     "sanitize_activation_name",
+    "ABN",
+    "AGN",
 ]
 
 # Activation names
+ACT_CELU = "celu"
+ACT_ELU = "elu"
+ACT_GLU = "glu"
+ACT_HARD_SIGMOID = "hard_sigmoid"
+ACT_HARD_SWISH = "hard_swish"
+ACT_LEAKY_RELU = "leaky_relu"
+ACT_MISH = "mish"
+ACT_NONE = "none"
+ACT_PRELU = "prelu"
 ACT_RELU = "relu"
 ACT_RELU6 = "relu6"
-ACT_LEAKY_RELU = "leaky_relu"
-ACT_ELU = "elu"
-ACT_NONE = "none"
 ACT_SELU = "selu"
 ACT_SWISH = "swish"
-ACT_MISH = "mish"
-ACT_HARD_SWISH = "hard_swish"
-ACT_HARD_SIGMOID = "hard_sigmoid"
 ACT_SWISH_NAIVE = "swish_naive"
 
 
@@ -146,20 +153,20 @@ class HardSwish(nn.Module):
 
 def get_activation_block(activation_name: str):
     ACTIVATIONS = {
-        ACT_RELU: nn.ReLU,
-        ACT_RELU6: nn.ReLU6,
-        ACT_LEAKY_RELU: nn.LeakyReLU,
+        ACT_CELU: nn.CELU,
+        ACT_GLU: nn.GLU,
+        ACT_PRELU: nn.PReLU,
         ACT_ELU: nn.ELU,
-        ACT_SELU: nn.SELU,
-        "celu": nn.CELU,
-        "glu": nn.GLU,
-        "prelu": nn.PReLU,
-        ACT_SWISH: Swish,
-        ACT_SWISH_NAIVE: SwishNaive,
-        ACT_MISH: Mish,
         ACT_HARD_SIGMOID: HardSigmoid,
         ACT_HARD_SWISH: HardSwish,
+        ACT_LEAKY_RELU: nn.LeakyReLU,
+        ACT_MISH: Mish,
         ACT_NONE: Identity,
+        ACT_RELU6: nn.ReLU6,
+        ACT_RELU: nn.ReLU,
+        ACT_SELU: nn.SELU,
+        ACT_SWISH: Swish,
+        ACT_SWISH_NAIVE: SwishNaive,
     }
 
     return ACTIVATIONS[activation_name.lower()]
@@ -167,7 +174,16 @@ def get_activation_block(activation_name: str):
 
 def instantiate_activation_block(activation_name: str, **kwargs) -> nn.Module:
     block = get_activation_block(activation_name)
-    return block(**kwargs)
+
+    act_params = {}
+
+    if "inplace" in kwargs and activation_name in {ACT_RELU, ACT_RELU6, ACT_LEAKY_RELU, ACT_SELU, ACT_CELU, ACT_ELU}:
+        act_params["inplace"] = kwargs["inplace"]
+
+    if "slope" in kwargs and activation_name in {ACT_LEAKY_RELU}:
+        act_params["slope"] = kwargs["slope"]
+
+    return block(**act_params)
 
 
 def sanitize_activation_name(activation_name: str) -> str:
@@ -178,3 +194,26 @@ def sanitize_activation_name(activation_name: str) -> str:
         return ACT_LEAKY_RELU
 
     return activation_name
+
+
+def ABN(
+    num_features: int,
+    eps=1e-5,
+    momentum=0.1,
+    affine=True,
+    track_running_stats=True,
+    activation=ACT_RELU,
+    slope=0.01,
+    inplace=True,
+):
+    bn = nn.BatchNorm2d(
+        num_features, eps=eps, momentum=momentum, affine=affine, track_running_stats=track_running_stats
+    )
+    act = instantiate_activation_block(activation, inplace=inplace, slope=slope)
+    return nn.Sequential(OrderedDict([("bn", bn), (activation, act)]))
+
+
+def AGN(num_features: int, num_groups: int, eps=1e-5, affine=True, activation=ACT_RELU, slope=0.01, inplace=True):
+    gn = nn.GroupNorm(num_channels=num_features, num_groups=num_groups, eps=eps, affine=affine)
+    act = instantiate_activation_block(activation, inplace=inplace, slope=slope)
+    return nn.Sequential(OrderedDict([("gn", gn), (activation, act)]))

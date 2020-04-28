@@ -8,9 +8,7 @@ from torch import nn
 from torch.nn import functional as F
 from torch.nn.init import kaiming_uniform_
 
-from ..activated_batch_norm import ABN
-from ..activated_group_norm import AGN
-from ..activations import ACT_HARD_SWISH, sanitize_activation_name
+from ..activations import ABN, AGN, ACT_HARD_SWISH, sanitize_activation_name, ACT_SWISH
 from ..scse import SpatialGate2d
 
 
@@ -143,19 +141,25 @@ class MBConvBlock(nn.Module):
         self.input_filters = block_args.input_filters
         self.output_filters = block_args.output_filters
 
-        self.reset_parameters()
+        self.reset_parameters(abn_params)
 
-    def reset_parameters(self):
+    def reset_parameters(self, abn_params):
         if hasattr(self, "expand_conv"):
             kaiming_uniform_(
-                self.expand_conv.weight, a=self.abn0.slope, nonlinearity=sanitize_activation_name(self.abn0.activation)
+                self.expand_conv.weight,
+                a=abn_params.get("slope", 0),
+                nonlinearity=sanitize_activation_name(abn_params["activation"]),
             )
 
         kaiming_uniform_(
-            self.depthwise_conv.weight, a=self.abn1.slope, nonlinearity=sanitize_activation_name(self.abn1.activation)
+            self.depthwise_conv.weight,
+            a=abn_params.get("slope", 0),
+            nonlinearity=sanitize_activation_name(abn_params["activation"]),
         )
         kaiming_uniform_(
-            self.project_conv.weight, a=self.abn1.slope, nonlinearity=sanitize_activation_name(self.abn2.activation)
+            self.project_conv.weight,
+            a=abn_params.get("slope", 0),
+            nonlinearity=sanitize_activation_name(abn_params["activation"]),
         )
 
     def forward(self, inputs, drop_connect_rate=None):
@@ -292,8 +296,7 @@ class EfficientNet(nn.Module):
         assert len(blocks_args) > 0, "block args must be greater than 0"
 
         if abn_params is None:
-            assert issubclass(abn_block, ABN)
-            abn_params = {"activation": "swish", "momentum": 0.01, "eps": 1e-3}
+            abn_params = {"activation": ACT_SWISH, "momentum": 0.01, "eps": 1e-3}
 
         first_block_args = blocks_args[0]
         last_block_args = blocks_args[-1]

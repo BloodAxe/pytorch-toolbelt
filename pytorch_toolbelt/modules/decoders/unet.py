@@ -1,66 +1,100 @@
-from typing import List
+from typing import List, Union
 
 import torch
 from torch import nn
 
 from .common import DecoderModule
-from ..activated_batch_norm import ABN
-from ..unet import UnetCentralBlock, UnetDecoderBlock
+from ..unet import UnetBlock
 
 __all__ = ["UNetDecoder"]
-
-
-def conv1x1(input, output):
-    return nn.Conv2d(input, output, kernel_size=1)
 
 
 class UNetDecoder(DecoderModule):
     def __init__(
         self,
         feature_maps: List[int],
-        decoder_features: int,
-        mask_channels: int,
-        abn_block=ABN,
-        dropout=0.0,
-        final_block=conv1x1,
+        decoder_features: Union[int, List[int]] = None,
+        unet_block=UnetBlock,
+        upsample_block: Union[nn.Upsample, nn.ConvTranspose2d] = None,
     ):
         super().__init__()
 
-        if not isinstance(decoder_features, list):
-            decoder_features = [decoder_features * (2 ** i) for i in range(len(feature_maps))]
-        else:
-            assert len(decoder_features) == len(
-                feature_maps
-            ), f"Incorrect number of decoder features: {decoder_features}, {feature_maps}"
+        # if not isinstance(decoder_features, list):
+        #     decoder_features = [decoder_features * (2 ** i) for i in range(len(feature_maps))]
+        # else:
+        #     assert len(decoder_features) == len(
+        #         feature_maps
+        #     ), f"Incorrect number of decoder features: {decoder_features}, {feature_maps}"
 
-        self.center = UnetCentralBlock(
-            in_dec_filters=feature_maps[-1], out_filters=decoder_features[-1], abn_block=abn_block
-        )
+        if upsample_block is None:
+            upsample_block = nn.ConvTranspose2d
 
         blocks = []
-        for block_index, in_enc_features in enumerate(feature_maps[:-1]):
-            blocks.append(
-                UnetDecoderBlock(
-                    in_dec_filters=decoder_features[block_index + 1],
-                    in_enc_filters=in_enc_features,
-                    out_filters=decoder_features[block_index],
-                    abn_block=abn_block,
+        upsamples = []
+
+        num_blocks = len(feature_maps) - 1  # Number of outputs is one less than encoder layers
+
+        if decoder_features is None:
+            decoder_features = [None] * num_blocks
+        else:
+            if len(decoder_features) != num_blocks:
+                raise ValueError(f"decoder_features must have length of {num_blocks}")
+        in_channels_for_upsample_block = feature_maps[-1]
+
+        for block_index in reversed(range(num_blocks)):
+            features_from_encoder = feature_maps[block_index]
+
+            if isinstance(upsample_block, nn.Upsample):
+                upsamples.append(upsample_block)
+                out_channels_from_upsample_block = in_channels_for_upsample_block
+            elif issubclass(upsample_block, nn.Upsample):
+                upsamples.append(upsample_block(scale_factor=2))
+                out_channels_from_upsample_block = in_channels_for_upsample_block
+            elif issubclass(upsample_block, nn.ConvTranspose2d):
+                up = upsample_block(
+                    in_channels_for_upsample_block,
+                    in_channels_for_upsample_block // 2,
+                    kernel_size=3,
+                    stride=2,
+                    padding=1,
                 )
-            )
+                upsamples.append(up)
+                out_channels_from_upsample_block = up.out_channels
+            else:
+                up = upsample_block(in_channels_for_upsample_block)
+                upsamples.append(up)
+                out_channels_from_upsample_block = up.out_channels
+
+            in_channels = features_from_encoder + out_channels_from_upsample_block
+            out_channels = decoder_features[block_index] or in_channels // 2
+            blocks.append(unet_block(in_channels, out_channels))
+
+            in_channels_for_upsample_block = out_channels
+            decoder_features[block_index] = out_channels
 
         self.blocks = nn.ModuleList(blocks)
+        self.upsamples = nn.ModuleList(upsamples)
         self.output_filters = decoder_features
 
-        self.final_drop = nn.Dropout2d(dropout)
-        self.final = final_block(decoder_features[0], mask_channels)
+    @property
+    def channels(self) -> List[int]:
+        return self.output_filters
 
-    def forward(self, feature_maps: List[torch.Tensor]) -> torch.Tensor:
-        output = self.center(feature_maps[-1])
+    def forward(self, feature_maps: List[torch.Tensor]) -> List[torch.Tensor]:
+        x = feature_maps[-1]
+        outputs = []
+        num_feature_maps = len(feature_maps)
+        for index, (upsample_block, decoder_block) in enumerate(zip(self.upsamples, self.blocks)):
+            encoder_input = feature_maps[num_feature_maps - index - 2]
 
-        for decoder_block, encoder_output in zip(reversed(self.blocks), reversed(feature_maps[:-1])):
-            x = decoder_block(output, encoder_output)
-            output = x
+            if isinstance(upsample_block, nn.ConvTranspose2d):
+                x = upsample_block(x, output_size=encoder_input.size())
+            else:
+                x = upsample_block(x)
 
-        output = self.final_drop(output)
-        output = self.final(output)
-        return output
+            x = torch.cat([x, encoder_input], dim=1)
+            x = decoder_block(x)
+            outputs.append(x)
+
+        # Returns list of tensors in same order as input (fine-to-coarse)
+        return outputs[::-1]

@@ -5,7 +5,7 @@ import pytorch_toolbelt.modules.encoders as E
 from pytorch_toolbelt.modules.backbone.inceptionv4 import inceptionv4
 from pytorch_toolbelt.utils.torch_utils import maybe_cuda, count_parameters
 
-skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="Cuda is not available")
+skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA is not available")
 
 
 @pytest.mark.parametrize(
@@ -50,12 +50,31 @@ def test_encoders(encoder: E.EncoderModule, encoder_params):
     print(net.__class__.__name__, count_parameters(net))
     print(net.output_strides)
     print(net.output_filters)
-    input = torch.rand((4, 3, 256, 256))
-    input = maybe_cuda(input)
+    x = torch.rand((4, 3, 256, 256))
+    x = maybe_cuda(x)
     net = maybe_cuda(net)
-    output = net(input)
+    output = net(x)
     assert len(output) == len(net.output_filters)
     for feature_map, expected_stride, expected_channels in zip(output, net.output_strides, net.output_filters):
+        assert feature_map.size(1) == expected_channels
+        assert feature_map.size(2) * expected_stride == 256
+        assert feature_map.size(3) * expected_stride == 256
+
+
+@torch.no_grad()
+@skip_if_no_cuda
+def test_unet_encoder():
+    net = E.UnetEncoder().eval()
+    print(net.__class__.__name__, count_parameters(net))
+    print(net.output_strides)
+    print(net.channels)
+    x = torch.rand((4, 3, 256, 256))
+    x = maybe_cuda(x)
+    net = maybe_cuda(net)
+    output = net(x)
+    assert len(output) == len(net.output_filters)
+    for feature_map, expected_stride, expected_channels in zip(output, net.output_strides, net.output_filters):
+        print(feature_map.size(), feature_map.mean(), feature_map.std())
         assert feature_map.size(1) == expected_channels
         assert feature_map.size(2) * expected_stride == 256
         assert feature_map.size(3) * expected_stride == 256
@@ -69,7 +88,6 @@ def test_inceptionv4_encoder():
 
     net = E.InceptionV4Encoder(pretrained=False, layers=[0, 1, 2, 3, 4]).cuda()
 
-    print(count_parameters(backbone))
     print(count_parameters(net))
 
     x = torch.randn((4, 3, 512, 512)).cuda()
@@ -106,10 +124,10 @@ def test_hrnet_encoder(encoder: E.EncoderModule, encoder_params):
     print(net.__class__.__name__, count_parameters(net))
     print(net.output_strides)
     print(net.output_filters)
-    input = torch.rand((4, 3, 256, 256))
-    input = maybe_cuda(input)
+    x = torch.rand((4, 3, 256, 256))
+    x = maybe_cuda(x)
     net = maybe_cuda(net)
-    output = net(input)
+    output = net(x)
     assert len(output) == len(net.output_filters)
     for feature_map, expected_stride, expected_channels in zip(output, net.output_strides, net.output_filters):
         assert feature_map.size(1) == expected_channels
@@ -139,12 +157,67 @@ def test_xresnet_encoder(encoder, encoder_params):
     print(net.__class__.__name__, count_parameters(net))
     print(net.output_strides)
     print(net.output_filters)
-    input = torch.rand((4, 3, 256, 256))
-    input = maybe_cuda(input)
+    x = torch.rand((4, 3, 256, 256))
+    x = maybe_cuda(x)
     net = maybe_cuda(net)
-    output = net(input)
+    output = net(x)
     assert len(output) == len(net.output_filters)
     for feature_map, expected_stride, expected_channels in zip(output, net.output_strides, net.output_filters):
         assert feature_map.size(1) == expected_channels
         assert feature_map.size(2) * expected_stride == 256
         assert feature_map.size(3) * expected_stride == 256
+
+
+@pytest.mark.parametrize(
+    ["encoder", "encoder_params"],
+    [
+        [E.StackedHGEncoder, {"repeats": 1}],
+        [E.StackedHGEncoder, {"repeats": 3}],
+        [E.StackedHGEncoder, {"repeats": 1, "stack_level": 4}],
+        [E.StackedHGEncoder, {"repeats": 3, "stack_level": 4}],
+        [E.StackedHGEncoder, {"repeats": 1, "stack_level": 4, "features": 128}],
+        [E.StackedHGEncoder, {"repeats": 3, "stack_level": 4, "features": 128}],
+    ],
+)
+@torch.no_grad()
+@skip_if_no_cuda
+def test_hourglass_encoder(encoder, encoder_params):
+    net = encoder(**encoder_params).eval()
+    print(repr(net), count_parameters(net))
+    print("Strides ", net.strides)
+    print("Channels", net.channels)
+    x = torch.rand((4, 3, 256, 256))
+    x = maybe_cuda(x)
+    net = maybe_cuda(net)
+    output = net(x)
+    assert len(output) == len(net.channels)
+    for feature_map, expected_stride, expected_channels in zip(output, net.strides, net.channels):
+        assert feature_map.size(1) == expected_channels
+        assert feature_map.size(2) * expected_stride == 256
+        assert feature_map.size(3) * expected_stride == 256
+
+
+@pytest.mark.parametrize(["encoder", "encoder_params"], [[E.StackedSupervisedHGEncoder, {"supervision_channels": 1}]])
+@torch.no_grad()
+@skip_if_no_cuda
+def test_supervised_hourglass_encoder(encoder, encoder_params):
+    net = encoder(**encoder_params).eval()
+    print(net.__class__.__name__, count_parameters(net))
+    print(net.output_strides)
+    print(net.output_filters)
+    x = torch.rand((4, 3, 256, 256))
+    x = maybe_cuda(x)
+    net = maybe_cuda(net)
+    output, supervision = net(x)
+    assert len(output) == len(net.output_filters)
+    assert len(supervision) == len(net.output_filters) - 2
+
+    for feature_map, expected_stride, expected_channels in zip(output, net.output_strides, net.output_filters):
+        assert feature_map.size(1) == expected_channels
+        assert feature_map.size(2) * expected_stride == 256
+        assert feature_map.size(3) * expected_stride == 256
+
+    # for feature_map, expected_stride, expected_channels in zip(supervision, net.output_strides, net.output_filters):
+    #     assert feature_map.size(1) == expected_channels
+    #     assert feature_map.size(2) * expected_stride == 256
+    #     assert feature_map.size(3) * expected_stride == 256

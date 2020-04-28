@@ -2,64 +2,54 @@
 
 """
 import collections
-import warnings
+from typing import Optional, Sequence, Union, Dict
 
 import numpy as np
 import torch
 from torch import nn
 
+__all__ = [
+    "rgb_image_from_tensor",
+    "tensor_from_mask_image",
+    "tensor_from_rgb_image",
+    "count_parameters",
+    "transfer_weights",
+    "maybe_cuda",
+    "mask_from_tensor",
+    "logit",
+    "to_numpy",
+    "to_tensor",
+]
 
-def set_trainable(module: nn.Module, trainable=True, freeze_bn=True):
+
+def logit(x: torch.Tensor, eps=1e-5) -> torch.Tensor:
     """
-    Change 'requires_grad' value for module and it's child modules and
-    optionally freeze batchnorm modules.
-    :param module: Module to change
-    :param trainable: True to enable training
-    :param freeze_bn: True to freeze batch norm
-    :return: None
+    Compute logit (e.g inverse of sigmoid).
+    Note: This function has not been tested for numerical stability
+    :param x:
+    :param eps:
+    :return:
     """
-    trainable = bool(trainable)
-    freeze_bn = bool(freeze_bn)
-
-    for param in module.parameters():
-        param.requires_grad = trainable
-
-    # TODO: Add support for ABN, InplaceABN
-    bn_types = nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d, nn.SyncBatchNorm
-
-    if isinstance(module, bn_types):
-        module.track_running_stats = freeze_bn
-
-    for m in module.modules():
-        if isinstance(m, bn_types):
-            module.track_running_stats = freeze_bn
-
-
-def freeze_bn(module: nn.Module):
-    """Freezes BatchNorm
-    """
-    warnings.warn("This method is deprecated. Please use `set_trainable`.")
-    set_trainable(module, True, False)
-
-
-def logit(x: torch.Tensor, eps=1e-5):
-    x = torch.clamp(x.float(), eps, 1.0 - eps)
+    x = torch.clamp(x, eps, 1.0 - eps)
     return torch.log(x / (1.0 - x))
 
 
-def count_parameters(model: nn.Module) -> dict:
+def count_parameters(model: nn.Module, keys: Optional[Sequence[str]] = None) -> Dict[str, int]:
     """
     Count number of total and trainable parameters of a model
     :param model: A model
+    :param keys: Optional list of top-level blocks
     :return: Tuple (total, trainable)
     """
-    total = sum(p.numel() for p in model.parameters())
-    trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    if keys is None:
+        keys = ["encoder", "decoder", "logits", "head", "final"]
+    total = int(sum(p.numel() for p in model.parameters()))
+    trainable = int(sum(p.numel() for p in model.parameters() if p.requires_grad))
     parameters = {"total": total, "trainable": trainable}
 
-    for key in ["encoder", "decoder"]:
-        if hasattr(model, key):
-            parameters[key] = sum(p.numel() for p in model.__getattr__(key).parameters())
+    for key in keys:
+        if hasattr(model, key) and model.__getattr__(key) is not None:
+            parameters[key] = int(sum(p.numel() for p in model.__getattr__(key).parameters()))
 
     return parameters
 
@@ -121,19 +111,25 @@ def rgb_image_from_tensor(image: torch.Tensor, mean, std, max_pixel_value=255.0,
     return rgb_image
 
 
-def maybe_cuda(x):
+def mask_from_tensor(mask: torch.Tensor, squeeze_single_channel=False, dtype=None) -> np.ndarray:
+    mask = np.moveaxis(to_numpy(mask), 0, -1)
+    if squeeze_single_channel and mask.shape[-1] == 1:
+        mask = np.squeeze(mask, -1)
+
+    if dtype is not None:
+        mask = mask.astype(dtype)
+    return mask
+
+
+def maybe_cuda(x: Union[torch.Tensor, nn.Module]) -> Union[torch.Tensor, nn.Module]:
+    """
+    Move input Tensor or Module to CUDA device if CUDA is available.
+    :param x:
+    :return: 
+    """
     if torch.cuda.is_available():
         return x.cuda()
     return x
-
-
-def get_optimizable_parameters(model: nn.Module):
-    """
-    Return list of optimizable parameters from the model
-    :param model:
-    :return:
-    """
-    return filter(lambda x: x.requires_grad, model.parameters())
 
 
 def transfer_weights(model: nn.Module, model_state_dict: collections.OrderedDict):

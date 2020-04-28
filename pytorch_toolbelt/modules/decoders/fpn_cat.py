@@ -1,12 +1,12 @@
-from functools import partial
-from typing import List, Tuple, Optional, Union
+from typing import List, Union
 
+import torch
 from torch import nn, Tensor
 
 from .common import SegmentationDecoderModule
-from .fpn import FPNDecoder
-from ..activated_batch_norm import ABN
-from ..fpn import FPNFuse, UpsampleAdd
+from .. import conv1x1
+from ..activations import ABN
+from ..fpn import FPNContextBlock, FPNBottleneckBlock
 
 __all__ = ["FPNCatDecoderBlock", "FPNCatDecoder"]
 
@@ -35,79 +35,83 @@ class FPNCatDecoderBlock(nn.Module):
 
 class FPNCatDecoder(SegmentationDecoderModule):
     """
+    Feature pyramid network decoder with concatenation between intermediate layers:
 
+        Input
+        fm[0] -> predict(concat(bottleneck[0](fm[0]), upsample(fpn[1]))) -> fpn[0] -> output[0](fpn[0])
+        fm[1] -> predict(concat(bottleneck[1](fm[1]), upsample(fpn[2]))) -> fpn[1] -> output[1](fpn[1])
+        fm[2] -> predict(concat(bottleneck[2](fm[2]), upsample(fpn[3]))) -> fpn[2] -> output[2](fpn[2])
+        ...
+        fm[n] -> predict(concat(bottleneck[n](fm[n]), upsample(context)) -> fpn[n] -> output[n](fpn[n])
+        fm[n] -> context_block(feature_map[n]) -> context
     """
 
     def __init__(
         self,
         feature_maps: List[int],
-        output_channels: int,
-        fpn_channels=128,
-        dsv_channels: Optional[int] = None,
-        dropout=0.0,
-        abn_block=ABN,
-        upsample_add=UpsampleAdd,
-        prediction_block=FPNCatDecoderBlock,
-        final_block=partial(nn.Conv2d, kernel_size=1),
-        interpolation_mode: str = "bilinear",
-        align_corners: Optional[bool] = False,
+        fpn_channels: int,
+        context_block=FPNContextBlock,
+        bottleneck_block=FPNBottleneckBlock,
+        predict_block: Union[nn.Identity, conv1x1, nn.Module] = conv1x1,
+        output_block: Union[nn.Identity, conv1x1, nn.Module] = nn.Identity,
+        prediction_channels: int = None,
+        upsample_block=nn.Upsample,
     ):
         """
 
-        Args:
-            feature_maps:
-            output_channels:
-            fpn_channels:
-            dsv_channels:
-            dropout:
-            abn_block:
-            upsample_add:
-            prediction_block:
-            final_block:
+        :param feature_maps: Number of channels in input feature maps (fine to coarse).
+            For instance - [64, 256, 512, 2048]
+        :param fpn_channels: FPN channels
+        :param context_block:
+        :param bottleneck_block:
+        :param predict_block:
+        :param output_block: Optional prediction block to apply to FPN feature maps before returning from decoder
+        :param prediction_channels: Number of prediction channels
+        :param upsample_block:
         """
+
         super().__init__()
 
-        self.fpn = FPNDecoder(
-            feature_maps,
-            upsample_add_block=upsample_add,
-            prediction_block=prediction_block,
-            fpn_features=fpn_channels,
-            prediction_features=fpn_channels,
-            mode=interpolation_mode,
-            align_corners=align_corners,
+        self.context = context_block(feature_maps[-1], fpn_channels)
+
+        self.bottlenecks = nn.ModuleList(
+            [bottleneck_block(in_channels, fpn_channels) for in_channels in reversed(feature_maps)]
         )
 
-        self.fuse = FPNFuse(mode=interpolation_mode, align_corners=align_corners)
-        self.dropout = nn.Dropout2d(dropout, inplace=True)
+        self.predicts = nn.ModuleList(
+            [predict_block(fpn_channels + fpn_channels, fpn_channels) for _ in reversed(feature_maps)]
+        )
 
-        # dsv blocks are for deep supervision
-        if dsv_channels is not None:
-            self.dsv = nn.ModuleList(
-                [
-                    nn.Conv2d(fpn_features, dsv_channels, kernel_size=1)
-                    for fpn_features in [fpn_channels] * len(feature_maps)
-                ]
-            )
+        if issubclass(output_block, nn.Identity):
+            self.channels = [fpn_channels] * len(feature_maps)
+            self.outputs = nn.ModuleList([output_block() for _ in reversed(feature_maps)])
         else:
-            self.dsv = None
+            self.channels = [prediction_channels] * len(feature_maps)
+            self.outputs = nn.ModuleList(
+                [output_block(fpn_channels, prediction_channels) for _ in reversed(feature_maps)]
+            )
 
-        features = sum(self.fpn.output_filters)
+        if issubclass(upsample_block, nn.Upsample):
+            self.upsamples = nn.ModuleList([upsample_block(scale_factor=2) for _ in reversed(feature_maps)])
+        else:
+            self.upsamples = nn.ModuleList(
+                [upsample_block(fpn_channels, fpn_channels) for in_channels in reversed(feature_maps)]
+            )
 
-        self.final_block = final_block(features, output_channels)
+    def forward(self, feature_maps: List[Tensor]) -> List[Tensor]:
+        last_feature_map = feature_maps[-1]
+        feature_maps = reversed(feature_maps)
 
-    def forward(self, feature_maps: List[Tensor]) -> Union[Tensor, Tuple[Tensor, List[Tensor]]]:
-        fpn_maps = self.fpn(feature_maps)
+        outputs = []
 
-        fused = self.fuse(fpn_maps)
-        fused = self.dropout(fused)
-        x = self.final_block(fused)
+        fpn = self.context(last_feature_map)
 
-        if self.dsv is not None:
-            dsv_masks = []
-            for dsv_block, fpn in zip(self.dsv, fpn_maps):
-                dsv = dsv_block(fpn)
-                dsv_masks.append(dsv)
+        for feature_map, bottleneck, upsample, predict_block, output_block in zip(
+            feature_maps, self.bottlenecks, self.upsamples, self.predicts, self.outputs
+        ):
+            fpn = torch.cat([bottleneck(feature_map), upsample(fpn)], dim=1)
+            fpn = predict_block(fpn)
+            outputs.append(output_block(fpn))
 
-            return x, dsv_masks
-
-        return x
+        # Returns list of tensors in same order as input (fine-to-coarse)
+        return outputs[::-1]

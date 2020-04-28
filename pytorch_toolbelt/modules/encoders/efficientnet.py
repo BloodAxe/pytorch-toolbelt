@@ -45,13 +45,13 @@ class EfficientNetEncoder(EncoderModule):
         return [self.block0, self.block1, self.block2, self.block3, self.block4, self.block5, self.block6]
 
     def forward(self, x):
-        input = self.stem(x)
+        x = self.stem(x)
 
         output_features = []
         for layer in self.encoder_layers:
-            output = layer(input)
+            output = layer(x)
             output_features.append(output)
-            input = output
+            x = output
 
         # Return only features that were requested
         return _take(output_features, self._layers)

@@ -1,54 +1,52 @@
 from typing import Optional
 
 import torch.nn.functional as F
-from torch import nn
+from torch import nn, Tensor
 
-__all__ = ["BCELoss", "SoftBCELoss"]
+__all__ = ["SoftBCEWithLogitsLoss"]
 
 
-class BCELoss(nn.Module):
-    def __init__(self, ignore_index: Optional[int] = -100, reduction="mean"):
+class SoftBCEWithLogitsLoss(nn.Module):
+    """
+    Drop-in replacement for nn.BCEWithLogitsLoss with few additions:
+    - Support of ignore_index value
+    - Support of label smoothing
+    """
+
+    __constants__ = ["weight", "pos_weight", "reduction", "ignore_index", "smooth_factor"]
+
+    def __init__(
+        self, weight=None, ignore_index: Optional[int] = -100, reduction="mean", smooth_factor=None, pos_weight=None
+    ):
         super().__init__()
         self.ignore_index = ignore_index
         self.reduction = reduction
+        self.smooth_factor = smooth_factor
+        self.register_buffer("weight", weight)
+        self.register_buffer("pos_weight", pos_weight)
 
-    def forward(self, label_input, label_target):
-        if self.ignore_index is not None:
-            not_ignored_mask = (label_target != self.ignore_index).float()
+    def forward(self, input: Tensor, target: Tensor) -> Tensor:
+        if self.smooth_factor is not None:
+            soft_targets = (1 - target) * self.smooth_factor + target * (1 - self.smooth_factor)
+        else:
+            soft_targets = target
 
-        loss = F.binary_cross_entropy_with_logits(label_input, label_target, reduction="none")
+        loss = F.binary_cross_entropy_with_logits(
+            input, soft_targets, self.weight, pos_weight=self.pos_weight, reduction="none"
+        )
+
         if self.ignore_index is not None:
-            loss = loss * not_ignored_mask.float()
+            not_ignored_mask = target != self.ignore_index
+            size = not_ignored_mask.sum()
+            if size == 0:
+                # If there are zero elements, loss is zero
+                return 0
+            loss *= not_ignored_mask.to(loss.dtype)
+        else:
+            size = loss.numel()
 
         if self.reduction == "mean":
-            loss = loss.mean()
-
-        if self.reduction == "sum":
-            loss = loss.sum()
-
-        return loss
-
-
-class SoftBCELoss(nn.Module):
-    def __init__(self, smooth_factor=0, ignore_index: Optional[int] = -100, reduction="mean"):
-        super().__init__()
-        self.smooth_factor = float(smooth_factor)
-        self.ignore_index = ignore_index
-        self.reduction = reduction
-
-    def forward(self, label_input, label_target):
-        if self.ignore_index is not None:
-            not_ignored_mask = (label_target != self.ignore_index).float()
-
-        label_target = (1 - label_target) * self.smooth_factor + label_target * (1 - self.smooth_factor)
-
-        loss = F.binary_cross_entropy_with_logits(label_input, label_target, reduction="none")
-
-        if self.ignore_index is not None:
-            loss = loss * not_ignored_mask.float()
-
-        if self.reduction == "mean":
-            loss = loss.mean()
+            loss = loss.sum() / size
 
         if self.reduction == "sum":
             loss = loss.sum()
