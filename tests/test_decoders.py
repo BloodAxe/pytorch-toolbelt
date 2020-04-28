@@ -1,12 +1,11 @@
 import pytest
-import torch
-from torch import nn
-
-import pytorch_toolbelt.modules.encoders as E
 import pytorch_toolbelt.modules.decoders as D
+import pytorch_toolbelt.modules.encoders as E
+import torch
 from pytorch_toolbelt.modules import FPNFuse
 from pytorch_toolbelt.modules.decoders import FPNSumDecoder, FPNCatDecoder
 from pytorch_toolbelt.utils.torch_utils import count_parameters
+from torch import nn
 
 skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA is not available")
 
@@ -15,8 +14,9 @@ skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA
 def test_unet_encoder_decoder():
     encoder = E.UnetEncoder(3, 32, 5)
     decoder = D.UNetDecoder(encoder.channels)
-    x = torch.randn((2, 3, 256, 256)).cuda()
-    model = nn.Sequential(encoder, decoder).cuda().eval()
+    x = torch.randn((2, 3, 256, 256))
+    model = nn.Sequential(encoder, decoder).eval()
+
     output = model(x)
 
     print(count_parameters(encoder))
@@ -29,8 +29,9 @@ def test_unet_encoder_decoder():
 def test_unet_decoder():
     encoder = E.Resnet18Encoder(pretrained=False, layers=[0, 1, 2, 3, 4])
     decoder = D.UNetDecoder(encoder.channels)
-    x = torch.randn((16, 3, 256, 256)).cuda()
-    model = nn.Sequential(encoder, decoder).cuda()
+    x = torch.randn((16, 3, 256, 256))
+    model = nn.Sequential(encoder, decoder)
+
     output = model(x)
 
     print(count_parameters(encoder))
@@ -56,10 +57,10 @@ def test_fpn_sum():
 
 @torch.no_grad()
 def test_fpn_sum_with_encoder():
-    x = torch.randn((16, 3, 256, 256)).cuda()
+    x = torch.randn((16, 3, 256, 256))
     encoder = E.Resnet18Encoder(pretrained=False)
     decoder = FPNSumDecoder(encoder.channels, 128)
-    model = nn.Sequential(encoder, decoder).cuda()
+    model = nn.Sequential(encoder, decoder)
 
     output = model(x)
 
@@ -70,10 +71,10 @@ def test_fpn_sum_with_encoder():
 
 @torch.no_grad()
 def test_fpn_cat_with_encoder():
-    x = torch.randn((16, 3, 256, 256)).cuda()
+    x = torch.randn((16, 3, 256, 256))
     encoder = E.Resnet18Encoder(pretrained=False)
     decoder = FPNCatDecoder(encoder.channels, 128)
-    model = nn.Sequential(encoder, decoder).cuda()
+    model = nn.Sequential(encoder, decoder)
 
     output = model(x)
 
