@@ -1,216 +1,84 @@
-from functools import partial
-from itertools import repeat
-from typing import List, Tuple, Optional, Union
+from typing import List, Union
 
-import torch
-import torch.nn.functional as F
 from torch import Tensor, nn
 
 from .common import SegmentationDecoderModule
-from ..activated_batch_norm import ABN
-from ..identity import Identity
+from .. import conv1x1, FPNContextBlock, FPNBottleneckBlock
 
-__all__ = ["FPNSumDecoder", "FPNSumDecoderBlock", "FPNSumCenterBlock"]
-
-
-class FPNSumCenterBlock(nn.Module):
-    def __init__(
-        self,
-        encoder_features: int,
-        decoder_features: int,
-        dsv_channels: Optional[int] = None,
-        abn_block=ABN,
-        dropout=0.0,
-    ):
-        """
-        Center FPN block that aggregates multi-scale context using strided average poolings
-
-        Args:
-            encoder_features: Number of input features
-            decoder_features: Number of output features
-            dsv_channels: Number of output features for deep supervision (usually number of channels in final mask)
-            abn_block: Block for Activation + BatchNorm2d
-            dropout: Dropout rate after context fusion
-        """
-        super().__init__()
-        self.bottleneck = nn.Conv2d(encoder_features, encoder_features // 2, kernel_size=1)
-
-        self.pool2 = nn.AvgPool2d(kernel_size=2, stride=2)
-        self.proj2 = nn.Conv2d(encoder_features // 2, encoder_features // 8, kernel_size=1)
-
-        self.pool4 = nn.AvgPool2d(kernel_size=4, stride=4)
-        self.proj4 = nn.Conv2d(encoder_features // 2, encoder_features // 8, kernel_size=1)
-
-        self.pool8 = nn.AvgPool2d(kernel_size=8, stride=8)
-        self.proj8 = nn.Conv2d(encoder_features // 2, encoder_features // 8, kernel_size=1)
-
-        self.blend = nn.Conv2d(encoder_features // 2 + 3 * encoder_features // 8, decoder_features, kernel_size=1)
-        self.dropout = nn.Dropout2d(dropout, inplace=True)
-
-        self.conv1 = nn.Conv2d(decoder_features, decoder_features, kernel_size=3, padding=1, bias=False)
-        self.abn1 = abn_block(decoder_features)
-
-        if dsv_channels is not None:
-            self.dsv = nn.Conv2d(decoder_features, dsv_channels, kernel_size=1)
-        else:
-            self.dsv = None
-
-    def forward(self, x: Tensor) -> Union[Tensor, Tuple[Tensor, Tensor]]:
-        x = self.bottleneck(x)
-
-        p2 = self.proj2(self.pool2(x))
-        p4 = self.proj4(self.pool4(x))
-        p8 = self.proj8(self.pool8(x))
-
-        x_size = x.size()[2:]
-        x = torch.cat(
-            [
-                x,
-                F.interpolate(p2, size=x_size, mode="nearest"),
-                F.interpolate(p4, size=x_size, mode="nearest"),
-                F.interpolate(p8, size=x_size, mode="nearest"),
-            ],
-            dim=1,
-        )
-
-        x = self.blend(x)
-        x = self.dropout(x)
-
-        x = self.conv1(x)
-        x = self.abn1(x)
-
-        if self.dsv is not None:
-            dsv = self.dsv(x)
-            return x, dsv
-
-        return x
-
-
-class FPNSumDecoderBlock(nn.Module):
-    def __init__(
-        self,
-        encoder_features: int,
-        decoder_features: int,
-        output_features: int,
-        dsv_channels: Optional[int] = None,
-        abn_block=ABN,
-        dropout=0.0,
-    ):
-        """
-
-        Args:
-            encoder_features:
-            decoder_features:
-            output_features:
-            dsv_channels:
-            abn_block:
-            dropout:
-        """
-        super().__init__()
-        self.skip = nn.Conv2d(encoder_features, decoder_features, kernel_size=1)
-        if decoder_features == output_features:
-            self.reduction = Identity()
-        else:
-            self.reduction = nn.Conv2d(decoder_features, output_features, kernel_size=1)
-
-        self.conv1 = nn.Conv2d(output_features, output_features, kernel_size=3, padding=1, bias=False)
-        self.abn1 = abn_block(output_features)
-        self.drop1 = nn.Dropout2d(dropout, inplace=True)
-
-        if dsv_channels is not None:
-            self.dsv = nn.Conv2d(decoder_features, dsv_channels, kernel_size=1)
-        else:
-            self.dsv = None
-
-    def forward(self, decoder_fm: Tensor, encoder_fm: Tensor) -> Union[Tensor, Tuple[Tensor, Tensor]]:
-        decoder_fm = F.interpolate(decoder_fm, size=encoder_fm.size()[2:], mode="nearest")
-
-        encoder_fm = self.skip(encoder_fm)
-        x = decoder_fm + encoder_fm
-
-        x = self.reduction(x)
-
-        x = self.conv1(x)
-        x = self.abn1(x)
-        x = self.drop1(x)
-
-        if self.dsv is not None:
-            dsv = self.dsv(x)
-            return x, dsv
-
-        return x
+__all__ = ["FPNSumDecoder"]
 
 
 class FPNSumDecoder(SegmentationDecoderModule):
+    """
+    Feature pyramid network decoder with summation between intermediate layers:
+
+        Input
+        feature_map[0] -> bottleneck[0](feature_map[0]) + upsample(fpn[1]) -> fpn[0]
+        feature_map[1] -> bottleneck[1](feature_map[1]) + upsample(fpn[2]) -> fpn[1]
+        feature_map[2] -> bottleneck[2](feature_map[2]) + upsample(fpn[3]) -> fpn[2]
+        ...
+        feature_map[n] -> bottleneck[n](feature_map[n]) + upsample(context) -> fpn[n]
+        feature_map[n] -> context_block(feature_map[n]) -> context
+    """
+
     def __init__(
         self,
         feature_maps: List[int],
-        output_channels: int,
-        dsv_channels: Optional[int] = None,
-        fpn_channels=256,
-        dropout=0.0,
-        abn_block=ABN,
-        center_block=FPNSumCenterBlock,
-        decoder_block=FPNSumDecoderBlock,
-        final_block=partial(nn.Conv2d, kernel_size=1),
+        fpn_channels: int,
+        context_block=FPNContextBlock,
+        bottleneck_block=FPNBottleneckBlock,
+        prediction_block: Union[nn.Identity, conv1x1, nn.Module] = nn.Identity,
+        prediction_channels: int = None,
+        upsample_block=nn.Upsample,
     ):
         """
-
-        Args:
-            feature_maps:
-            output_channels:
-            dsv_channels:
-            fpn_channels:
-            dropout:
-            abn_block:
-            center_block:
-            decoder_block:
-            final_block:
+        Create a new instance of FPN decoder with summation of consecutive feature maps.
+        :param feature_maps: Number of channels in input feature maps (fine to coarse).
+            For instance - [64, 256, 512, 2048]
+        :param fpn_channels: FPN channels
+        :param context_block:
+        :param bottleneck_block:
+        :param prediction_block: Optional prediction block to apply to FPN feature maps before returning from decoder
+        :param prediction_channels: Number of prediction channels
+        :param upsample_block:
         """
         super().__init__()
 
-        self.center = center_block(
-            feature_maps[-1], fpn_channels, dsv_channels=dsv_channels, dropout=dropout, abn_block=abn_block
+        self.context = context_block(feature_maps[-1], fpn_channels)
+
+        self.bottlenecks = nn.ModuleList(
+            [bottleneck_block(in_channels, fpn_channels) for in_channels in reversed(feature_maps)]
         )
 
-        self.fpn_modules = nn.ModuleList(
-            [
-                decoder_block(
-                    encoder_fm, decoder_fm, decoder_fm, dsv_channels=dsv_channels, dropout=dropout, abn_block=abn_block
-                )
-                for decoder_fm, encoder_fm in zip(repeat(fpn_channels), reversed(feature_maps[:-1]))
-            ]
-        )
-
-        self.final_block = final_block(fpn_channels, output_channels)
-        self.dsv_channels = dsv_channels
-
-    def forward(self, feature_maps: List[Tensor]) -> Union[Tensor, Tuple[Tensor, List[Tensor]]]:
-        last_feature_map = feature_maps[-1]
-        feature_maps = reversed(feature_maps[:-1])
-
-        dsv_masks = []
-
-        output = self.center(last_feature_map)
-
-        if self.dsv_channels:
-            x, dsv = output
-            dsv_masks.append(dsv)
+        if issubclass(prediction_block, nn.Identity):
+            self.outputs = nn.ModuleList([prediction_block() for _ in reversed(feature_maps)])
+            self.channels = [fpn_channels] * len(feature_maps)
         else:
-            x = output
+            self.outputs = nn.ModuleList(
+                [prediction_block(fpn_channels, prediction_channels) for _ in reversed(feature_maps)]
+            )
+            self.channels = [prediction_channels] * len(feature_maps)
 
-        for fpn_block, encoder_fm in zip(self.fpn_modules, feature_maps):
-            output = fpn_block(x, encoder_fm)
+        if issubclass(upsample_block, nn.Upsample):
+            self.upsamples = nn.ModuleList([upsample_block(scale_factor=2) for _ in reversed(feature_maps)])
+        else:
+            self.upsamples = nn.ModuleList(
+                [upsample_block(fpn_channels, fpn_channels) for in_channels in reversed(feature_maps)]
+            )
 
-            if self.dsv_channels:
-                x, dsv = output
-                dsv_masks.append(dsv)
-            else:
-                x = output
+    def forward(self, feature_maps: List[Tensor]) -> List[Tensor]:
+        last_feature_map = feature_maps[-1]
+        feature_maps = reversed(feature_maps)
 
-        x = self.final_block(x)
+        outputs = []
 
-        if self.dsv_channels:
-            return x, dsv_masks
+        fpn = self.context(last_feature_map)
 
-        return x
+        for feature_map, bottleneck, upsample, output_block in zip(
+            feature_maps, self.bottlenecks, self.upsamples, self.outputs
+        ):
+            fpn = bottleneck(feature_map) + upsample(fpn)
+            outputs.append(output_block(fpn))
+
+        # Returns list of tensors in same order as input (fine-to-coarse)
+        return outputs[::-1]

@@ -1,8 +1,8 @@
+import pytest
 import torch
-from torch import nn
-import torch.nn.functional as F
-from pytorch_toolbelt.inference.functional import unpad_xyxy_bboxes
+from pytorch_toolbelt.inference.functional import unpad_xyxy_bboxes, pad_image_tensor, unpad_image_tensor
 from pytorch_toolbelt.modules.encoders import make_n_channel_input
+from torch import nn
 
 
 def test_unpad_xyxy_bboxes():
@@ -36,3 +36,30 @@ def test_make_n_channel_input():
     assert conv5.weight.size(1) == 5
     assert conv5.weight.size(2) == conv.weight.size(2)
     assert conv5.weight.size(3) == conv.weight.size(3)
+
+
+@pytest.mark.parametrize(
+    ["shape", "padding"],
+    [((1, 3, 221, 234), 32), ((1, 3, 256, 256), 32), ((1, 3, 512, 512), 16), ((1, 3, 512, 512), 7)],
+)
+def test_pad_unpad(shape, padding):
+    x = torch.randn(shape)
+
+    x_padded, pad_params = pad_image_tensor(x, pad_size=padding)
+    assert x_padded.size(2) % padding == 0
+    assert x_padded.size(3) % padding == 0
+
+    y = unpad_image_tensor(x_padded, pad_params)
+    assert (x == y).all()
+
+
+@pytest.mark.parametrize(["shape", "padding"], [((1, 3, 512, 512), (7, 13))])
+def test_pad_unpad_nonsymmetric(shape, padding):
+    x = torch.randn(shape)
+
+    x_padded, pad_params = pad_image_tensor(x, pad_size=padding)
+    assert x_padded.size(2) % padding[0] == 0
+    assert x_padded.size(3) % padding[1] == 0
+
+    y = unpad_image_tensor(x_padded, pad_params)
+    assert (x == y).all()

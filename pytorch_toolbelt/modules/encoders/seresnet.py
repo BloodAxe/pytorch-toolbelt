@@ -63,17 +63,16 @@ class SEResnetEncoder(EncoderModule):
         return self._output_filters
 
     def forward(self, x: Tensor) -> List[Tensor]:
-        input = x
         output_features = []
         for layer in self.encoder_layers:
-            output = layer(input)
+            output = layer(x)
             output_features.append(output)
 
             if layer == self.layer0:
                 # Fist maxpool operator is not a part of layer0
                 # because we want that layer0 output to have stride of 2
                 output = self.maxpool(output)
-            input = output
+            x = output
 
         # Return only features that were requested
         return _take(output_features, self._layers)

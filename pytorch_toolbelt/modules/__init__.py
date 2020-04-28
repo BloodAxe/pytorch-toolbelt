@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 
-from .activated_batch_norm import *
-from .activated_group_norm import *
+from .simple import *
 from .activations import *
 from .coord_conv import *
 from .dropblock import *
@@ -14,3 +13,6 @@ from .pooling import *
 from .scse import *
 from .srm import *
 from .unet import *
+from .upsample import *
+from .encoders import *
+from .decoders import *

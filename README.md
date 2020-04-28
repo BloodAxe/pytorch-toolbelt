@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/BloodAxe/pytorch-toolbelt.svg?branch=develop)](https://travis-ci.org/BloodAxe/pytorch-toolbelt)
 [![Documentation Status](https://readthedocs.org/projects/pytorch-toolbelt/badge/?version=latest)](https://pytorch-toolbelt.readthedocs.io/en/latest/?badge=latest)
-
+[![DeepSource](https://static.deepsource.io/deepsource-badge-light-mini.svg)](https://deepsource.io/gh/BloodAxe/pytorch-toolbelt/?ref=repository-badge)
 
 A `pytorch-toolbelt` is a Python library with a set of bells and whistles for PyTorch for fast R&D prototyping and Kaggle farming:
 
@@ -25,56 +25,134 @@ During 2018 I achieved a [Kaggle Master](https://www.kaggle.com/bloodaxe) badge 
 Very often I found myself re-using most of the old pipelines over and over again. 
 At some point it crystallized into this repository. 
 
-This lib is not meant to replace catalyst / ignite / fast.ai. Instead it's designed to complement them.
+This lib is not meant to replace catalyst / ignite / fast.ai high-level frameworks. Instead it's designed to complement them.
 
 # Installation
 
 `pip install pytorch_toolbelt`
 
-# Showcase
+# How do I ... 
 
-## Encoder-decoder models construction
+## Model creation
 
+### Create Encoder-Decoder U-Net model
+
+Below a code snippet that creates vanilla U-Net model for binary segmentation. 
+By design, both encoder and decoder produces a list of tensors, from fine (high-resolution, indexed `0`) to coarse (low-resolution) feature maps. 
+Access to all intermediate feature maps is beneficial if you want to apply deep supervision losses on them or encoder-decoder of object detection task, 
+where access to intermediate feature maps is necessary.
+ 
 ```python
+from torch import nn
 from pytorch_toolbelt.modules import encoders as E
 from pytorch_toolbelt.modules import decoders as D
 
-class FPNSegmentationModel(nn.Module):
-    def __init__(self, encoder:E.EncoderModule, num_classes, fpn_features=128):
-        self.encoder = encoder
-        self.decoder = D.FPNDecoder(encoder.output_filters, fpn_features=fpn_features)
-        self.fuse = D.FPNFuse()
-        input_channels = sum(self.decoder.output_filters)
-        self.logits = nn.Conv2d(input_channels, num_classes,kernel_size=1)
-        
-    def forward(self, input):
-        features = self.encoder(input)
-        features = self.decoder(features)
-        features = self.fuse(features)
-        logits = self.logits(features)
-        return logits
-        
-def fpn_resnext50(num_classes):
-  encoder = E.SEResNeXt50Encoder()
-  return FPNSegmentationModel(encoder, num_classes)
-  
-def fpn_mobilenet(num_classes):
-  encoder = E.MobilenetV2Encoder()
-  return FPNSegmentationModel(encoder, num_classes)
+class UNet(nn.Module):
+    def __init__(self, input_channels, num_classes):
+        super().__init__()
+        self.encoder = E.UnetEncoder(in_channels=input_channels, out_channels=32, growth_factor=2)
+        self.decoder = D.UNetDecoder(self.encoder.channels, decoder_features=32)
+        self.logits = nn.Conv2d(self.decoder.channels[0], num_classes, kernel_size=1)
+
+    def forward(self, x):
+        x = self.encoder(x)
+        x = self.decoder(x)
+        return self.logits(x[0])
 ```
 
-## Compose multiple losses
+### Create Encoder-Decoder FPN model with pretrained encoder
+
+Similarly to previous example, you can change decoder to FPN with contatenation. 
+
+ ```python
+from torch import nn
+from pytorch_toolbelt.modules import encoders as E
+from pytorch_toolbelt.modules import decoders as D
+
+class SEResNeXt50FPN(nn.Module):
+    def __init__(self, num_classes, fpn_channels):
+        super().__init__()
+        self.encoder = E.SEResNeXt50Encoder()
+        self.decoder = D.FPNCatDecoder(self.encoder.channels, fpn_channels)
+        self.logits = nn.Conv2d(self.decoder.channels[0], num_classes, kernel_size=1)
+
+    def forward(self, x):
+        x = self.encoder(x)
+        x = self.decoder(x)
+        return self.logits(x[0])
+```
+
+### Change number of input channels for the Encoder
+
+All encoders from `pytorch_toolbelt` supports changing number of input channels. Simply call `encoder.change_input_channels(num_channels)` and first convolution layer will be changed.
+Whenever possible, existing weights of convolutional layer will be re-used (in case new number of channels is greater than default, new weight tensor will be padded with randomly-initialized weigths).
+Class method returns `self`, so this call can be chained.
+
+
+```python
+from pytorch_toolbelt.modules import encoders as E
+
+encoder = E.SEResnet101Encoder()
+encoder = encoder.change_input_channels(6)
+```
+
+
+## Misc
+
+
+## Count number of parameters in encoder/decoder and other modules
+
+When designing a model and optimizing number of features in neural network, I found it's quite useful to print number of parameters in high-level blocks (like `encoder` and `decoder`).
+Here is how to do it with `pytorch_toolbelt`:
+
+
+```python
+from torch import nn
+from pytorch_toolbelt.modules import encoders as E
+from pytorch_toolbelt.modules import decoders as D
+from pytorch_toolbelt.utils import count_parameters
+
+class SEResNeXt50FPN(nn.Module):
+    def __init__(self, num_classes, fpn_channels):
+        super().__init__()
+        self.encoder = E.SEResNeXt50Encoder()
+        self.decoder = D.FPNCatDecoder(self.encoder.channels, fpn_channels)
+        self.logits = nn.Conv2d(self.decoder.channels[0], num_classes, kernel_size=1)
+
+    def forward(self, x):
+        x = self.encoder(x)
+        x = self.decoder(x)
+        return self.logits(x[0])
+
+net = SEResNeXt50FPN(1, 128)
+print(count_parameters(net))
+# Prints {'total': 34232561, 'trainable': 34232561, 'encoder': 25510896, 'decoder': 8721536, 'logits': 129}
+
+```
+
+### Compose multiple losses
+
+There are multiple ways to combine multiple losses, and high-level DL frameworks like Catalyst offers way more flexible way to achieve this, but here's 100%-pure PyTorch implementation of mine:
 
 ```python
 from pytorch_toolbelt import losses as L
 
+# Creates a loss function that is a weighted sum of focal loss 
+# and lovasz loss with weigths 1.0 and 0.5 accordingly.
 loss = L.JointLoss(L.FocalLoss(), 1.0, L.LovaszLoss(), 0.5)
 ```
 
-## Test-time augmentation
+
+## TTA / Inferencing
+
+### Apply Test-time augmentation (TTA) for the model
+
+Test-time augmetnation (TTA) can be used in both training and testing phases. 
 
 ```python
 from pytorch_toolbelt.inference import tta
+
+model = UNet()
 
 # Truly functional TTA for image classification using horizontal flips:
 logits = tta.fliplr_image2label(model, input)
@@ -87,11 +165,19 @@ tta_model = tta.TTAWrapper(model, tta.fivecrop_image2label, crop_size=512)
 logits = tta_model(input)
 ```
 
-## Inference on huge images:
+### Inference on huge images:
+
+Quite often, there is a need to perform image segmentation for enormously big image (5000px and more). There are a few problems with such a big pixel arrays:
+ 1. There are size limitations on maximum size of CUDA tensors (Concrete numbers depends on driver and GPU version)
+ 2. Heavy CNNs architectures may eat up all available GPU memory with ease when inferencing relatively small 1024x1024 images, leaving no room to bigger image resolution.
+  
+One of the solutions is to slice input image into tiles (optionally overlapping) and feed each through model and concatenate the results back. 
+In this way you can guarantee upper limit of GPU ram usage, while keeping ability to process arbitrary-sized images on GPU.
+  
 
 ```python
 import numpy as np
-import torch
+from torch.utils.data import DataLoader
 import cv2
 
 from pytorch_toolbelt.inference.tiles import ImageSlicer, CudaTileMerger
@@ -102,7 +188,7 @@ image = cv2.imread('really_huge_image.jpg')
 model = get_model(...)
 
 # Cut large image into overlapping tiles
-tiler = ImageSlicer(image.shape, tile_size=(512, 512), tile_step=(256, 256), weight='pyramid')
+tiler = ImageSlicer(image.shape, tile_size=(512, 512), tile_step=(256, 256))
 
 # HCW -> CHW. Optionally, do normalization here
 tiles = [tensor_from_rgb_image(tile) for tile in tiler.split(image)]

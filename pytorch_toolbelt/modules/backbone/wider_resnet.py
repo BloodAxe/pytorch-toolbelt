@@ -3,7 +3,7 @@ from functools import partial
 
 from torch import nn
 
-from ..activated_batch_norm import ABN
+from ..activations import ABN
 from ..pooling import GlobalAvgPool2d
 
 

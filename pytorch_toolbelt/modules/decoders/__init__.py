@@ -2,7 +2,6 @@ from __future__ import absolute_import
 
 from .common import *
 from .deeplab import *
-from .fpn import *
 from .fpn_cat import *
 from .fpn_sum import *
 from .hrnet import *

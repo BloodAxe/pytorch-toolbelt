@@ -46,11 +46,11 @@ class HRNetSegmentationDecoder(SegmentationDecoderModule):
             )
         )
 
-    def forward(self, features: List[Tensor]):
-        x_size = features[0].size()[2:]
+    def forward(self, feature_maps: List[Tensor]):
+        x_size = feature_maps[0].size()[2:]
 
-        resized_feature_maps = [features[0]]
-        for feature_map in features[1:]:
+        resized_feature_maps = [feature_maps[0]]
+        for feature_map in feature_maps[1:]:
             feature_map = F.interpolate(
                 feature_map, size=x_size, mode=self.interpolation_mode, align_corners=self.align_corners
             )

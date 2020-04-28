@@ -19,7 +19,7 @@ class ChannelGate2d(nn.Module):
         super().__init__()
         self.squeeze = nn.Conv2d(channels, 1, kernel_size=1, padding=0)
 
-    def forward(self, x: Tensor):
+    def forward(self, x: Tensor):  # skipcq: PYL-W0221
         module_input = x
         x = self.squeeze(x)
         x = x.sigmoid()
@@ -49,7 +49,7 @@ class SpatialGate2d(nn.Module):
         self.squeeze = nn.Conv2d(channels, squeeze_channels, kernel_size=1)
         self.expand = nn.Conv2d(squeeze_channels, channels, kernel_size=1)
 
-    def forward(self, x: Tensor):
+    def forward(self, x: Tensor):  # skipcq: PYL-W0221
         module_input = x
         x = self.avg_pool(x)
         x = self.squeeze(x)
@@ -69,7 +69,7 @@ class ChannelSpatialGate2d(nn.Module):
         self.channel_gate = ChannelGate2d(channels)
         self.spatial_gate = SpatialGate2d(channels, reduction=reduction)
 
-    def forward(self, x):
+    def forward(self, x):  # skipcq: PYL-W0221
         return self.channel_gate(x) + self.spatial_gate(x)
 
 
@@ -85,7 +85,7 @@ class SpatialGate2dV2(nn.Module):
         self.conv = nn.Conv2d(squeeze_channels, squeeze_channels, kernel_size=7, dilation=3, padding=3 * 3)
         self.expand = nn.Conv2d(squeeze_channels, channels, kernel_size=1, padding=0)
 
-    def forward(self, x: Tensor):
+    def forward(self, x: Tensor):  # skipcq: PYL-W0221
         module_input = x
 
         x = self.squeeze(x)
@@ -102,5 +102,5 @@ class ChannelSpatialGate2dV2(nn.Module):
         self.channel_gate = ChannelGate2d(channels)
         self.spatial_gate = SpatialGate2dV2(channels, reduction)
 
-    def forward(self, x):
+    def forward(self, x):  # skipcq: PYL-W0221
         return self.channel_gate(x) + self.spatial_gate(x)

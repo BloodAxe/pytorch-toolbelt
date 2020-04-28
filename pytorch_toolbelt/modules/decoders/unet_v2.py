@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from torch import nn
 
 from .common import DecoderModule
-from ..activated_batch_norm import ABN
+from ..activations import ABN
 
 __all__ = ["UNetDecoderV2", "UnetCentralBlockV2", "UnetDecoderBlockV2"]
 

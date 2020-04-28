@@ -7,9 +7,11 @@ import warnings
 from typing import List
 
 import torch
-from torch import nn
+from torch import nn, Tensor
 
 __all__ = ["EncoderModule", "_take", "make_n_channel_input"]
+
+from pytorch_toolbelt.utils.support import pytorch_toolbelt_deprecated
 
 
 def _take(elements, indexes):
@@ -57,23 +59,32 @@ class EncoderModule(nn.Module):
         self._output_strides = _take(strides, layers)
         self._output_filters = _take(channels, layers)
 
-    def forward(self, x):
-        input = x
+    def forward(self, x: Tensor) -> List[Tensor]:  # skipcq: PYL-W0221
         output_features = []
         for layer in self.encoder_layers:
-            output = layer(input)
+            output = layer(x)
             output_features.append(output)
-            input = output
+            x = output
         # Return only features that were requested
         return _take(output_features, self._layers)
 
     @property
-    def output_strides(self) -> List[int]:
+    def channels(self) -> List[int]:
+        return self._output_filters
+
+    @property
+    def strides(self) -> List[int]:
         return self._output_strides
 
     @property
+    @pytorch_toolbelt_deprecated("This property is deprecated, please use .strides instead.")
+    def output_strides(self) -> List[int]:
+        return self.strides
+
+    @property
+    @pytorch_toolbelt_deprecated("This property is deprecated, please use .channels instead.")
     def output_filters(self) -> List[int]:
-        return self._output_filters
+        return self.channels
 
     @property
     def encoder_layers(self) -> List[nn.Module]:
