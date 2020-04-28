@@ -2,19 +2,17 @@
 
 """
 import collections
-from typing import Optional, Sequence, Iterator, Union, Dict
+from typing import Optional, Sequence, Union, Dict
 
 import numpy as np
 import torch
 from torch import nn
 
 __all__ = [
-    "freeze_model",
     "rgb_image_from_tensor",
     "tensor_from_mask_image",
     "tensor_from_rgb_image",
     "count_parameters",
-    "get_optimizable_parameters",
     "transfer_weights",
     "maybe_cuda",
     "mask_from_tensor",
@@ -23,37 +21,16 @@ __all__ = [
     "to_tensor",
 ]
 
-from torch.nn import Parameter
-
-
-def freeze_model(module: nn.Module, freeze_parameters: Optional[bool] = True, freeze_bn: Optional[bool] = True):
-    """
-    Change 'requires_grad' value for module and it's child modules and
-    optionally freeze batchnorm modules.
-    :param module: Module to change
-    :param freeze_parameters: True to freeze parameters; False - to enable parameters optimization.
-        If None - current state is not changed.
-    :param freeze_bn: True to freeze batch norm; False - to enable BatchNorm updates.
-        If None - current state is not changed.
-    :return: None
-    """
-    bn_types = nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d, nn.SyncBatchNorm
-
-    if freeze_parameters is not None:
-        for param in module.parameters():
-            param.requires_grad = not freeze_parameters
-
-    if freeze_bn is not None:
-        if isinstance(module, bn_types):
-            module.track_running_stats = not freeze_bn
-
-        for m in module.modules():
-            if isinstance(m, bn_types):
-                module.track_running_stats = not freeze_bn
-
 
 def logit(x: torch.Tensor, eps=1e-5) -> torch.Tensor:
-    x = torch.clamp(x.float(), eps, 1.0 - eps)
+    """
+    Compute logit (e.g inverse of sigmoid).
+    Note: This function has not been tested for numerical stability
+    :param x:
+    :param eps:
+    :return:
+    """
+    x = torch.clamp(x, eps, 1.0 - eps)
     return torch.log(x / (1.0 - x))
 
 
@@ -153,16 +130,6 @@ def maybe_cuda(x: Union[torch.Tensor, nn.Module]) -> Union[torch.Tensor, nn.Modu
     if torch.cuda.is_available():
         return x.cuda()
     return x
-
-
-def get_optimizable_parameters(model: nn.Module) -> Iterator[Parameter]:
-    """
-    Return list of parameters with requires_grad=True from the model.
-    This function allows easily get all parameters that should be optimized.
-    :param model: An instance of nn.Module.
-    :return: Parameters with requires_grad=True.
-    """
-    return filter(lambda x: x.requires_grad, model.parameters())
 
 
 def transfer_weights(model: nn.Module, model_state_dict: collections.OrderedDict):
