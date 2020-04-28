@@ -12,9 +12,7 @@ __all__ = ["FPNContextBlock", "FPNBottleneckBlock", "FPNFuse", "FPNFuseSum", "HF
 
 
 class FPNContextBlock(nn.Module):
-    def __init__(
-        self, in_channels: int, out_channels: int, abn_block=ABN, dropout=0.0,
-    ):
+    def __init__(self, in_channels: int, out_channels: int, abn_block=ABN, dropout=0.0):
         """
         Center FPN block that aggregates multi-scale context using strided average poolings
 
@@ -48,7 +46,7 @@ class FPNContextBlock(nn.Module):
         self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False)
         self.abn2 = abn_block(out_channels)
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:  # skipcq: PYL-W0221
         x = self.bottleneck(x)
 
         p2 = self.proj2(self.pool2(x))
@@ -78,9 +76,7 @@ class FPNContextBlock(nn.Module):
 
 
 class FPNBottleneckBlock(nn.Module):
-    def __init__(
-        self, in_channels: int, out_channels: int, abn_block=ABN, dropout=0.0,
-    ):
+    def __init__(self, in_channels: int, out_channels: int, abn_block=ABN, dropout=0.0):
         """
 
         Args:
@@ -101,7 +97,7 @@ class FPNBottleneckBlock(nn.Module):
         self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False)
         self.abn2 = abn_block(out_channels)
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:  # skipcq: PYL-W0221
 
         x = self.conv1(x)
         x = self.abn1(x)
@@ -118,7 +114,7 @@ class FPNFuse(nn.Module):
         self.mode = mode
         self.align_corners = align_corners
 
-    def forward(self, features: List[Tensor]):
+    def forward(self, features: List[Tensor]):  # skipcq: PYL-W0221
         layers = []
         dst_size = features[0].size()[-2:]
 
@@ -136,7 +132,7 @@ class FPNFuseSum(nn.Module):
         self.mode = mode
         self.align_corners = align_corners
 
-    def forward(self, features: List[Tensor]) -> Tensor:
+    def forward(self, features: List[Tensor]) -> Tensor:  # skipcq: PYL-W0221
         output = features[0]
         dst_size = features[0].size()[-2:]
 
@@ -166,7 +162,7 @@ class HFF(nn.Module):
         self.align_corners = align_corners
         self.upsample_scale = upsample_scale
 
-    def forward(self, features: List[Tensor]) -> Tensor:
+    def forward(self, features: List[Tensor]) -> Tensor:  # skipcq: PYL-W0221
         num_feature_maps = len(features)
 
         current_map = features[-1]

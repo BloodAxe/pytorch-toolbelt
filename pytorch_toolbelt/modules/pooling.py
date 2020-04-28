@@ -22,7 +22,7 @@ class GlobalAvgPool2d(nn.Module):
         super(GlobalAvgPool2d, self).__init__()
         self.flatten = flatten
 
-    def forward(self, x):
+    def forward(self, x):  # skipcq: PYL-W0221
         x = F.adaptive_avg_pool2d(x, output_size=1)
         if self.flatten:
             x = x.view(x.size(0), x.size(1))
@@ -35,7 +35,7 @@ class GlobalMaxPool2d(nn.Module):
         super(GlobalMaxPool2d, self).__init__()
         self.flatten = flatten
 
-    def forward(self, x):
+    def forward(self, x):  # skipcq: PYL-W0221
         x = F.adaptive_max_pool2d(x, output_size=1)
         if self.flatten:
             x = x.view(x.size(0), x.size(1))
@@ -61,7 +61,7 @@ class GlobalWeightedAvgPool2d(nn.Module):
     def norm(self, x: torch.Tensor):
         return x / x.sum(dim=[2, 3], keepdim=True)
 
-    def forward(self, x):
+    def forward(self, x):  # skipcq: PYL-W0221
         input_x = x
         x = self.fscore(x)
         x = self.norm(x)
@@ -82,7 +82,7 @@ class RMSPool(nn.Module):
         super().__init__()
         self.avg_pool = GlobalAvgPool2d()
 
-    def forward(self, x):
+    def forward(self, x):  # skipcq: PYL-W0221
         x_mean = x.mean(dim=[2, 3])
         avg_pool = self.avg_pool((x - x_mean) ** 2)
         return avg_pool.sqrt()
@@ -100,7 +100,7 @@ class MILCustomPoolingModule(nn.Module):
             nn.Sigmoid(),
         )
 
-    def forward(self, x):
+    def forward(self, x):  # skipcq: PYL-W0221
         weight = self.weight_generator(x)
         loss = self.classifier(x)
         logits = torch.sum(weight * loss, dim=[2, 3]) / (torch.sum(weight, dim=[2, 3]) + 1e-6)
@@ -117,7 +117,7 @@ class GlobalRankPooling(nn.Module):
         self.conv = nn.Conv1d(num_features, num_features, spatial_size, groups=num_features)
         self.flatten = flatten
 
-    def forward(self, x: torch.Tensor):
+    def forward(self, x: torch.Tensor):  # skipcq: PYL-W0221
         spatial_size = x.size(2) * x.size(3)
         assert spatial_size == self.conv.kernel_size[0], (
             f"Expected spatial size {self.conv.kernel_size[0]}, " f"got {x.size(2)}x{x.size(3)}"
