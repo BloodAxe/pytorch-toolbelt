@@ -12,7 +12,7 @@ class ApplySigmoidTo(nn.Module):
         self.output_keys = set(output_key)
         self.model = model
 
-    def forward(self, input):
+    def forward(self, input):  # skipcq: PYL-W0221
         output = self.model(input)
         for key in self.output_keys:
             output[key] = output[key].sigmoid()
@@ -33,7 +33,7 @@ class Ensembler(nn.Module):
         self.models = nn.ModuleList(models)
         self.average = average
 
-    def forward(self, input):
+    def forward(self, input):  # skipcq: PYL-W0221
 
         output_0 = self.models[0](input)
         num_models = len(self.models)

@@ -1,11 +1,11 @@
 from collections import OrderedDict
-from typing import List, Callable
+from typing import List, Callable, Tuple
 
 import torch
 
 from pytorch_toolbelt.modules import ACT_RELU, get_activation_block
 from pytorch_toolbelt.modules.encoders import EncoderModule, make_n_channel_input
-from torch import nn
+from torch import nn, Tensor
 
 __all__ = ["StackedHGEncoder", "StackedSupervisedHGEncoder"]
 
@@ -48,7 +48,7 @@ class HGResidualBlock(nn.Module):
 
         torch.nn.init.zeros_(self.conv3.bias)
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:  # skipcq: PYL-W0221
         residual = self.skip_layer(x)
 
         out = self.bn1(x)
@@ -85,7 +85,7 @@ class HGStemBlock(nn.Module):
         self.residual1 = HGResidualBlock(64, 128)
         self.residual2 = HGResidualBlock(128, output_channels)
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:  # skipcq: PYL-W0221
         x = self.act1(self.bn1(self.conv1(x)))
         x = self.act2(self.bn2(self.conv2(x)))
         x = self.act3(self.bn3(self.conv3(x)))
@@ -128,7 +128,7 @@ class HGBlock(nn.Module):
         self.low3 = HGResidualBlock(nf, features, activation=activation)
         self.up = nn.Upsample(scale_factor=2, mode="nearest")
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:  # skipcq: PYL-W0221
         up1 = self.up1(x)
         pool1 = self.down(x)
         low1 = self.low1(pool1)
@@ -146,7 +146,7 @@ class HGFeaturesBlock(nn.Module):
         self.residuals = nn.Sequential(*residual_blocks)
         self.linear = conv1x1_bn_act(features, features, activation=activation)
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:  # skipcq: PYL-W0221
         x = self.residuals(x)
         x = self.linear(x)
         return x
@@ -158,7 +158,7 @@ class HGSupervisionBlock(nn.Module):
         self.squeeze = nn.Conv2d(features, supervision_channels, kernel_size=1)
         self.expand = nn.Conv2d(supervision_channels, features, kernel_size=1)
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tuple[Tensor, Tensor]:  # skipcq: PYL-W0221
         sup_mask = self.squeeze(x)
         sup_features = self.expand(sup_mask)
         return sup_mask, sup_features
@@ -210,7 +210,7 @@ class StackedHGEncoder(EncoderModule):
     def __repr__(self):
         return f"hg_s{self.stack_level}_d{self.depth_level}_f{self.num_features}"
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> List[Tensor]:  # skipcq: PYL-W0221
         x = self.stem(x)
         outputs = [x]
 
@@ -257,7 +257,7 @@ class StackedSupervisedHGEncoder(StackedHGEncoder):
             [supervision_block(features, supervision_channels) for _ in range(stack_level - 1)]
         )
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tuple[List[Tensor], List[Tensor]]:  # skipcq: PYL-W0221
         x = self.stem(x)
         outputs = [x]
         supervision = []
