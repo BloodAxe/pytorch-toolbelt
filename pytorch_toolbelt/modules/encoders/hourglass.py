@@ -95,11 +95,20 @@ class HGStemBlock(nn.Module):
 
 
 class HGBlock(nn.Module):
-    def __init__(self, depth: int, input_features: int, features, increase=0, activation=nn.ReLU, repeats=1):
+    def __init__(
+        self,
+        depth: int,
+        input_features: int,
+        features,
+        increase=0,
+        activation=nn.ReLU,
+        repeats=1,
+        pooling_block=nn.MaxPool2d,
+    ):
         super(HGBlock, self).__init__()
         nf = features + increase
 
-        self.down = nn.AvgPool2d(kernel_size=3, padding=1, stride=2)
+        self.down = pooling_block(kernel_size=2, padding=0, stride=2)
 
         if repeats == 1:
             self.up1 = HGResidualBlock(input_features, features, activation=activation)
@@ -177,6 +186,7 @@ class StackedHGEncoder(EncoderModule):
         features: int = 256,
         activation=ACT_RELU,
         repeats=1,
+        pooling_block=nn.MaxPool2d,
     ):
         super().__init__(
             channels=[features] + [features] * stack_level,
@@ -195,7 +205,17 @@ class StackedHGEncoder(EncoderModule):
         modules = []
 
         for _ in range(stack_level):
-            modules.append(HGBlock(depth, input_features, features, increase=0, activation=act, repeats=repeats))
+            modules.append(
+                HGBlock(
+                    depth,
+                    input_features,
+                    features,
+                    increase=0,
+                    activation=act,
+                    repeats=repeats,
+                    pooling_block=pooling_block,
+                )
+            )
             input_features = features
 
         self.num_blocks = len(modules)
@@ -242,6 +262,7 @@ class StackedSupervisedHGEncoder(StackedHGEncoder):
         features: int = 256,
         activation=ACT_RELU,
         repeats=1,
+        pooling_block=nn.MaxPool2d,
         supervision_block=HGSupervisionBlock,
     ):
         super().__init__(
@@ -251,6 +272,7 @@ class StackedSupervisedHGEncoder(StackedHGEncoder):
             features=features,
             activation=activation,
             repeats=repeats,
+            pooling_block=pooling_block,
         )
 
         self.supervision_blocks = nn.ModuleList(
