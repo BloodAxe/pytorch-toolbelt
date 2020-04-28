@@ -6,10 +6,12 @@ from typing import Dict
 import safitty
 import torch
 from catalyst import utils
-from catalyst.dl import RunnerState
+from catalyst.dl import RunnerState, Callback, CallbackOrder
 from catalyst.dl.callbacks.checkpoint import BaseCheckpointCallback
 
-__all__ = ["clean_checkpoint", "report_checkpoint", "BestMetricCheckpointCallback"]
+__all__ = ["clean_checkpoint", "report_checkpoint", "BestMetricCheckpointCallback", "HyperParametersCallback"]
+
+from pytorch_toolbelt.utils.catalyst import get_tensorboard_logger
 
 
 def clean_checkpoint(src_fname, dst_fname):
@@ -231,3 +233,28 @@ class BestMetricCheckpointCallback(BaseCheckpointCallback):
             self.save_metric(state.logdir, metrics)
         except Exception:
             pass
+
+
+class HyperParametersCallback(Callback):
+    """
+    Callback that logs hyper-parameters for training session and target metric value.
+    Useful for evaluation of several runs in Tensorboard.
+    """
+
+    def __init__(self, hparam_dict: Dict):
+        if "stage" in hparam_dict:
+            raise KeyError("Key 'stage' is reserved")
+
+        super().__init__(CallbackOrder.Metric)
+        self.hparam_dict = hparam_dict
+
+    def on_stage_end(self, state: RunnerState):
+        logger = get_tensorboard_logger(state)
+
+        hparam_dict = self.hparam_dict.copy()
+        hparam_dict["stage"] = state.stage
+
+        logger.add_hparams(
+            hparam_dict=self.hparam_dict,
+            metric_dict={"best_" + state.main_metric: state.metrics.best_main_metric_value},
+        )
