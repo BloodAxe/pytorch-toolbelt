@@ -8,8 +8,10 @@ import cv2
 import numpy as np
 import torch
 
+__all__ = ["ImageSlicer", "CudaTileMerger", "compute_pyramid_patch_weight_loss"]
 
-def compute_pyramid_patch_weight_loss(width, height) -> np.ndarray:
+
+def compute_pyramid_patch_weight_loss(width: int, height: int) -> np.ndarray:
     """Compute a weight matrix that assigns bigger weight on pixels in center and
     less weight to pixels on image boundary.
     This weight matrix then used for merging individual tile predictions and helps dealing

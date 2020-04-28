@@ -4,26 +4,61 @@ from typing import Union, Tuple
 import torch
 from torch import Tensor
 
+__all__ = [
+    "torch_none",
+    "torch_rot90",
+    "torch_rot180",
+    "torch_rot270",
+    "torch_fliplr",
+    "torch_flipud",
+    "torch_transpose",
+    "torch_transpose2",
+    "torch_transpose_",
+    "pad_image_tensor",
+    "unpad_image_tensor",
+    "unpad_xyxy_bboxes",
+]
 
-def torch_none(x: Tensor):
+
+def torch_none(x: Tensor) -> Tensor:
+    """
+    Returns input argument without any modifications
+    :param x: input tensor
+    :return: x
+    """
     return x
 
 
 def torch_rot90(x: Tensor):
+    """
+    Rotate 4D image tensor by 90 degrees
+    :param x:
+    :return:
+    """
     return torch.rot90(x, k=1, dims=(2, 3))
 
 
 def torch_rot180(x: Tensor):
+    """
+    Rotate 4D image tensor by 180 degrees
+    :param x:
+    :return:
+    """
     return torch.rot90(x, k=2, dims=(2, 3))
 
 
 def torch_rot270(x: Tensor):
+    """
+    Rotate 4D image tensor by 270 degrees
+    :param x:
+    :return:
+    """
     return torch.rot90(x, k=3, dims=(2, 3))
 
 
 def torch_flipud(x: Tensor):
     """
-    Flip image tensor vertically
+    Flip 4D image tensor vertically
     :param x:
     :return:
     """
@@ -32,7 +67,7 @@ def torch_flipud(x: Tensor):
 
 def torch_fliplr(x: Tensor):
     """
-    Flip image tensor horizontally
+    Flip 4D image tensor horizontally
     :param x:
     :return:
     """
@@ -40,6 +75,11 @@ def torch_fliplr(x: Tensor):
 
 
 def torch_transpose(x: Tensor):
+    """
+    Transpose 4D image tensor by main image diagonal
+    :param x:
+    :return:
+    """
     return x.transpose(2, 3)
 
 
@@ -48,13 +88,18 @@ def torch_transpose_(x: Tensor):
 
 
 def torch_transpose2(x: Tensor):
+    """
+    Transpose 4D image tensor by second image diagonal
+    :param x:
+    :return:
+    """
     return x.transpose(3, 2)
 
 
 def pad_image_tensor(image_tensor: Tensor, pad_size: Union[int, Tuple[int, int]] = 32):
     """Pad input tensor to make it's height and width dividable by @pad_size
 
-    :param image_tensor: Input tensor of shape NCHW
+    :param image_tensor: 4D image tensor of shape NCHW
     :param pad_size: Pad size
     :return: Tuple of output tensor and pad params. Second argument can be used to reverse pad operation of model output
     """
@@ -94,7 +139,7 @@ def pad_image_tensor(image_tensor: Tensor, pad_size: Union[int, Tuple[int, int]]
     return image_tensor, pad
 
 
-def unpad_image_tensor(image_tensor, pad):
+def unpad_image_tensor(image_tensor: Tensor, pad) -> Tensor:
     pad_left, pad_right, pad_top, pad_btm = pad
     rows, cols = image_tensor.size(2), image_tensor.size(3)
     return image_tensor[..., pad_top : rows - pad_btm, pad_left : cols - pad_right]
