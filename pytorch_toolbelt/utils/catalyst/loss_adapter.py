@@ -26,13 +26,13 @@ class TrainOnlyCriterionCallback(CriterionCallback):
     """
 
     def _compute_loss_value(self, state: RunnerState, criterion):
-        output = self._get_output(state.output, self.output_key)
-        input = self._get_input(state.input, self.input_key)
+        predictions = self._get_output(state.output, self.output_key)
+        targets = self._get_input(state.input, self.input_key)
 
         if state.loader_name != "train":
-            return torch.tensor(0, device=output.device, dtype=output.dtype)
+            return torch.tensor(0, device=predictions.device, dtype=predictions.dtype)
 
-        loss = criterion(output, input)
+        loss = criterion(predictions, targets)
         return loss
 
     def _compute_loss_key_value(self, state: RunnerState, criterion):

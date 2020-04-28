@@ -49,8 +49,8 @@ def test_hff_static_size():
 
 
 def test_residualdeconvolutionupsampleblock():
-    input = torch.randn((4, 16, 32, 32))
+    x = torch.randn((4, 16, 32, 32))
     block = ResidualDeconvolutionUpsample2d(16)
-    output = block(input)
-    print(input.size(), input.mean(), input.std())
-    print(output.size(), output.mean(), input.std())
+    output = block(x)
+    print(x.size(), x.mean(), x.std())
+    print(output.size(), output.mean(), x.std())
