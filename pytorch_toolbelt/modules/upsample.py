@@ -27,7 +27,7 @@ def bilinear_upsample_initializer(x):
 
 
 def icnr_init(tensor: torch.Tensor, upscale_factor=2, initializer=nn.init.kaiming_normal):
-    """Fills the input Tensor or Variable with values according to the method
+    """Fill the input Tensor or Variable with values according to the method
     described in "Checkerboard artifact free sub-pixel convolution"
     - Andrew Aitken et al. (2017), this inizialization should be used in the
     last convolutional layer before a PixelShuffle operation

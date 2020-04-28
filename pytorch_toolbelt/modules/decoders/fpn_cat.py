@@ -58,7 +58,7 @@ class FPNCatDecoder(SegmentationDecoderModule):
         upsample_block=nn.Upsample,
     ):
         """
-
+        Create a new instance of FPN decoder with concatenation of consecutive feature maps.
         :param feature_maps: Number of channels in input feature maps (fine to coarse).
             For instance - [64, 256, 512, 2048]
         :param fpn_channels: FPN channels

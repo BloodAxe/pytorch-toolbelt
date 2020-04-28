@@ -22,7 +22,7 @@ __all__ = [
 
 def torch_none(x: Tensor) -> Tensor:
     """
-    Returns input argument without any modifications
+    Return input argument without any modifications
     :param x: input tensor
     :return: x
     """

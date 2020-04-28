@@ -24,8 +24,8 @@ __all__ = [
 
 def logit(x: torch.Tensor, eps=1e-5) -> torch.Tensor:
     """
-    Compute logit (e.g inverse of sigmoid).
-    Note: This function has not been tested for numerical stability
+    Compute inverse of sigmoid of the input.
+    Note: This function has not been tested for numerical stability.
     :param x:
     :param eps:
     :return:
@@ -125,7 +125,7 @@ def maybe_cuda(x: Union[torch.Tensor, nn.Module]) -> Union[torch.Tensor, nn.Modu
     """
     Move input Tensor or Module to CUDA device if CUDA is available.
     :param x:
-    :return: 
+    :return:
     """
     if torch.cuda.is_available():
         return x.cuda()

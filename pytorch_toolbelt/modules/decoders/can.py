@@ -4,6 +4,8 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
+from ..dsconv import DepthwiseSeparableConv2d
+
 __all__ = ["CANDecoder"]
 
 
@@ -32,9 +34,6 @@ def cfm_branch(in_channels: int, out_channels: int, kernel_size: int):
         nn.Conv2d(out_channels, out_channels, kernel_size=kernel_size, padding=kernel_size // 2, bias=False),
         nn.BatchNorm2d(out_channels),
     )
-
-
-from pytorch_toolbelt.modules import DepthwiseSeparableConv2d
 
 
 def ds_cfm_branch(in_channels: int, out_channels: int, kernel_size: int):

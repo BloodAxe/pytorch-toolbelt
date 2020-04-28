@@ -31,7 +31,7 @@ def make_conv_bn_act(
     activation: str = ACT_RELU,
 ) -> torch.nn.Sequential:
     """
-        Creates a nn.Conv2d block followed by nn.BatchNorm2d and (optional) activation block.
+    Create a nn.Conv2d block followed by nn.BatchNorm2d and (optional) activation block.
     """
     batch_norm = nn.BatchNorm2d(out_channels)
     # initializer batch normalization to 0 if its the final conv layer

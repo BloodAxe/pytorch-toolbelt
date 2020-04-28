@@ -9,11 +9,9 @@ __all__ = ["pytorch_toolbelt_deprecated"]
 
 def pytorch_toolbelt_deprecated(reason):
     """
-    This is a decorator which can be used to mark functions
-    as deprecated. It will result in a warning being emitted
-    when the function is used.
+    Mark function or class as deprecated.
+    It will result in a warning being emitted when the function is used.
     """
-
     if isinstance(reason, string_types):
 
         # The @deprecated is used with a 'reason'.
