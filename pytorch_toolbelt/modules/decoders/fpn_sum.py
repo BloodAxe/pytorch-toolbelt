@@ -42,7 +42,6 @@ class FPNSumDecoder(SegmentationDecoderModule):
         :param prediction_channels: Number of prediction channels
         :param upsample_block:
         """
-
         super().__init__()
 
         self.context = context_block(feature_maps[-1], fpn_channels)
