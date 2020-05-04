@@ -13,8 +13,8 @@ class ApplySoftmaxTo(nn.Module):
         self.model = model
         self.dim = dim
 
-    def forward(self, input):
-        output = self.model(input)
+    def forward(self, *input, **kwargs):
+        output = self.model(*input, **kwargs)
         for key in self.output_keys:
             output[key] = output[key].softmax(dim=1)
         return output
@@ -28,8 +28,8 @@ class ApplySigmoidTo(nn.Module):
         self.output_keys = set(output_key)
         self.model = model
 
-    def forward(self, input):  # skipcq: PYL-W0221
-        output = self.model(input)
+    def forward(self, *input, **kwargs):  # skipcq: PYL-W0221
+        output = self.model(*input, **kwargs)
         for key in self.output_keys:
             output[key] = output[key].sigmoid()
         return output
@@ -53,8 +53,8 @@ class Ensembler(nn.Module):
         self.models = nn.ModuleList(models)
         self.average = average
 
-    def forward(self, x):  # skipcq: PYL-W0221
-        output_0 = self.models[0](x)
+    def forward(self, *input, **kwargs):  # skipcq: PYL-W0221
+        output_0 = self.models[0](*input, **kwargs)
         num_models = len(self.models)
 
         if self.outputs:
@@ -63,7 +63,7 @@ class Ensembler(nn.Module):
             keys = output_0.keys()
 
         for index in range(1, num_models):
-            output_i = self.models[index](x)
+            output_i = self.models[index](*input, **kwargs)
 
             # Sum outputs
             for key in keys:
@@ -86,6 +86,6 @@ class PickModelOutput(nn.Module):
         self.model = model
         self.target_key = key
 
-    def forward(self, input) -> Tensor:
-        output = self.model(input)
+    def forward(self, *input, **kwargs) -> Tensor:
+        output = self.model(*input, **kwargs)
         return output[self.target_key]
