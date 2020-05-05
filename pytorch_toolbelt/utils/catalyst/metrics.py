@@ -28,6 +28,7 @@ MULTICLASS_MODE = "multiclass"
 MULTILABEL_MODE = "multilabel"
 
 
+@torch.no_grad()
 def pixel_accuracy(outputs: torch.Tensor, targets: torch.Tensor, ignore_index=None):
     """
     Compute the pixel accuracy
@@ -104,6 +105,7 @@ class ConfusionMatrixCallback(Callback):
     def on_loader_start(self, state):
         self.confusion_matrix = ConfusionMeter(self.num_classes)
 
+    @torch.no_grad()
     def on_batch_end(self, state: RunnerState):
         outputs: torch.Tensor = state.output[self.output_key].detach().cpu()
         outputs: torch.Tensor = self.activation_fn(outputs)
@@ -168,6 +170,7 @@ class MacroF1Callback(Callback):
         self.targets = []
         self.ignore_index = ignore_index
 
+    @torch.no_grad()
     def on_batch_end(self, state: RunnerState):
         outputs = to_numpy(state.output[self.output_key])
         targets = to_numpy(state.input[self.input_key])
