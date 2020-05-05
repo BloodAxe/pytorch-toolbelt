@@ -88,7 +88,7 @@ class EfficientNetBlockArgs:
         self.id_skip = id_skip
 
     def __repr__(self):
-        """Encodes a block to a string."""
+        """Encode a block args class to a string representation."""
         args = [
             "r%d" % self.num_repeat,
             "k%d" % self.kernel_size,
@@ -340,7 +340,7 @@ class EfficientNetEncoder(EncoderModule):
             # Layer 0
             [encoder_config[0], encoder_config[1]],
             # Layer 1
-            [encoder_config[2],],
+            [encoder_config[2]],
             # Layer 2
             [encoder_config[3], encoder_config[4]],
             # Layer 3
