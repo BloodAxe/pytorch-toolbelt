@@ -6,7 +6,7 @@ from catalyst.dl.callbacks.criterion import _add_loss_to_state
 from torch import nn
 from torch.nn import functional as F
 
-__all__ = ["LPRegularizationCallback", "TSACriterionCallback"]
+__all__ = ["LPRegularizationCallback", "TSACriterionCallback", "get_multiplier"]
 
 
 def get_multiplier(training_progress, schedule, start, end):
