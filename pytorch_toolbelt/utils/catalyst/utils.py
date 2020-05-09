@@ -120,14 +120,6 @@ class BestMetricCheckpointCallback(BaseCheckpointCallback):
         self, logdir: str, checkpoint: Dict, is_best: bool, main_metric: str = "loss", minimize_metric: bool = True
     ):
         suffix = self.get_checkpoint_suffix(checkpoint)
-        utils.save_checkpoint(
-            logdir=Path(logdir) / Path(self.checkpoints_dir),
-            checkpoint=checkpoint,
-            suffix=f"{suffix}_full",
-            is_best=is_best,
-            is_last=True,
-            special_suffix="_full",
-        )
 
         exclude = ["criterion", "optimizer", "scheduler"]
         checkpoint = {key: value for key, value in checkpoint.items() if all(z not in key for z in exclude)}
