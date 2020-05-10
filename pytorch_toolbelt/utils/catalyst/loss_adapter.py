@@ -10,7 +10,7 @@ from catalyst.dl import (
 )
 from catalyst.dl.callbacks import VerboseLogger, ConsoleLogger, TensorboardLogger, RaiseExceptionCallback
 from torch import nn, Tensor
-from typing import Dict, OrderedDict
+from typing import Dict
 
 __all__ = [
     "TrainOnlyCriterionCallback",
@@ -52,7 +52,7 @@ class ParallelLossSupervisedExperiment(SupervisedExperiment):
     Custom experiment class. To use in conjunction with LossWrapper.
     """
 
-    def get_callbacks(self, stage: str) -> OrderedDict[str, Callback]:
+    def get_callbacks(self, stage: str) -> "OrderedDict[str, Callback]":
         """
         Override of ``BaseExperiment.get_callbacks`` method.
         Will add several of callbacks by default in case they missed.
