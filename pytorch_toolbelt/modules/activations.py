@@ -94,9 +94,10 @@ class Mish(nn.Module):
     Credit: https://github.com/digantamisra98/Mish
     """
 
-    def __init__(self):
+    def __init__(self, inplace=False):
         """
         Init method.
+        :param inplace: Not used, exists only for compatibility
         """
         super().__init__()
 
