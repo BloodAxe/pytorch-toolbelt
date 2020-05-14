@@ -139,7 +139,7 @@ from pytorch_toolbelt import losses as L
 
 # Creates a loss function that is a weighted sum of focal loss 
 # and lovasz loss with weigths 1.0 and 0.5 accordingly.
-loss = L.JointLoss(L.FocalLoss(), 1.0, L.LovaszLoss(), 0.5)
+loss = L.JointLoss(L.FocalLoss(), L.LovaszLoss(), 1.0, 0.5)
 ```
 
 
