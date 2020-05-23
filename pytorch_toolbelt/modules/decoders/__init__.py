@@ -9,3 +9,4 @@ from .pyramid_pooling import *
 from .unet import *
 from .unet_v2 import *
 from .upernet import *
+from .can import *
