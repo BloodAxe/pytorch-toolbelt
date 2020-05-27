@@ -82,11 +82,11 @@ class Ensembler(nn.Module):
 
             # Sum outputs
             for key in keys:
-                output_0[key] += output_i[key]
+                output_0[key].add_(output_i[key])
 
         if self.average:
             for key in keys:
-                output_0[key] /= num_models
+                output_0[key].mul_(1. / num_models)
 
         return output_0
 
