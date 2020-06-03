@@ -6,6 +6,13 @@ __all__ = ["SoftCrossEntropyLoss"]
 
 
 class SoftCrossEntropyLoss(nn.Module):
+    """
+    Drop-in replacement for nn.CrossEntropyLoss with few additions:
+    - Support of label smoothing
+    """
+
+    __constants__ = ["reduction", "ignore_index", "smooth_factor"]
+
     def __init__(self, reduction="mean", smooth_factor=None, ignore_index: Optional[int] = None):
         super().__init__()
         self.smooth_factor = smooth_factor
