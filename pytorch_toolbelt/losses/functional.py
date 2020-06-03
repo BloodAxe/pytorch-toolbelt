@@ -166,7 +166,7 @@ def wing_loss(prediction: torch.Tensor, target: torch.Tensor, width=5, curvature
 
 
 def label_smoothed_nll_loss(
-    lprobs: torch.Tensor, target: torch.Tensor, epsilon: float, ignore_index=None, reduce=True, dim=-1
+    lprobs: torch.Tensor, target: torch.Tensor, epsilon: float, ignore_index=None, reduction="mean", dim=-1
 ) -> torch.Tensor:
     """
 
@@ -181,20 +181,31 @@ def label_smoothed_nll_loss(
     """
     if target.dim() == lprobs.dim() - 1:
         target = target.unsqueeze(dim)
-    nll_loss = -lprobs.gather(dim=dim, index=target)
-    smooth_loss = -lprobs.sum(dim=dim, keepdim=True)
+
     if ignore_index is not None:
         pad_mask = target.eq(ignore_index)
+        target = target.masked_fill(pad_mask, 0)
+        nll_loss = -lprobs.gather(dim=dim, index=target)
+        smooth_loss = -lprobs.sum(dim=dim, keepdim=True)
+
         # nll_loss.masked_fill_(pad_mask, 0.0)
         # smooth_loss.masked_fill_(pad_mask, 0.0)
         nll_loss = nll_loss.masked_fill(pad_mask, 0.0)
         smooth_loss = smooth_loss.masked_fill(pad_mask, 0.0)
     else:
+        nll_loss = -lprobs.gather(dim=dim, index=target)
+        smooth_loss = -lprobs.sum(dim=dim, keepdim=True)
+
         nll_loss = nll_loss.squeeze(dim)
         smooth_loss = smooth_loss.squeeze(dim)
-    if reduce:
+
+    if reduction == "sum":
         nll_loss = nll_loss.sum()
         smooth_loss = smooth_loss.sum()
+    if reduction == "mean":
+        nll_loss = nll_loss.mean()
+        smooth_loss = smooth_loss.mean()
+
     eps_i = epsilon / lprobs.size(dim)
     loss = (1.0 - epsilon) * nll_loss + eps_i * smooth_loss
     return loss
