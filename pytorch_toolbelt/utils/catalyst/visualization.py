@@ -233,7 +233,9 @@ def draw_binary_segmentation_predictions(
     for i in range(num_samples):
         image = rgb_image_from_tensor(input[image_key][i], mean, std)
 
-        if image_format == "bgr":
+        if image_format == "rgb":
+            pass
+        elif image_format == "bgr":
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         elif image_format == "gray":
             image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
@@ -311,14 +313,16 @@ def draw_semantic_segmentation_predictions(
     for i in range(num_samples):
         image = rgb_image_from_tensor(input[image_key][i], mean, std)
 
-        if image_format == "bgr":
+        if image_format == "rgb":
+            pass
+        elif image_format == "bgr":
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         elif image_format == "gray":
             image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
         elif isinstance(image_format, callable):
             image = image_format(image)
 
-        target = to_numpy(input[targets_key][i]).squeeze(0)
+        target = to_numpy(input[targets_key][i])
         logits = to_numpy(output[outputs_key][i]).argmax(axis=0)
 
         if mode == "overlay":
@@ -398,7 +402,9 @@ def draw_multilabel_segmentation_predictions(
     for i in range(num_samples):
         image = rgb_image_from_tensor(input[image_key][i], mean, std)
 
-        if image_format == "bgr":
+        if image_format == "rgb":
+            pass
+        elif image_format == "bgr":
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         elif image_format == "gray":
             image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
