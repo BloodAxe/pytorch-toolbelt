@@ -11,4 +11,4 @@ class Normalize(nn.Module):
         self.register_buffer("std", torch.tensor(std).float().reshape(1, len(std), 1, 1).reciprocal().contiguous())
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        return (input - self.mean) * self.std
+        return (input.type_as(self.mean) - self.mean) * self.std
