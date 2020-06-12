@@ -22,6 +22,7 @@ class JointLoss(_Loss):
     """
     Wrap two loss functions into one. This class computes a weighted sum of two losses.
     """
+
     def __init__(self, first: nn.Module, second: nn.Module, first_weight=1.0, second_weight=1.0):
         super().__init__()
         self.first = WeightedLoss(first, first_weight)
