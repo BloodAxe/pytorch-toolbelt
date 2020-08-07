@@ -9,7 +9,13 @@ from catalyst import utils
 from catalyst.dl import RunnerState, Callback, CallbackOrder
 from catalyst.dl.callbacks.checkpoint import BaseCheckpointCallback
 
-__all__ = ["clean_checkpoint", "report_checkpoint", "BestMetricCheckpointCallback", "HyperParametersCallback"]
+__all__ = [
+    "clean_checkpoint",
+    "report_checkpoint",
+    "sanitize_metric_name",
+    "BestMetricCheckpointCallback",
+    "HyperParametersCallback",
+]
 
 from pytorch_toolbelt.utils.catalyst import get_tensorboard_logger
 
@@ -54,6 +60,15 @@ def report_checkpoint(checkpoint: Dict):
     )
 
 
+def sanitize_metric_name(metric_name: str) -> str:
+    """
+    Replace characters in string that are not path-friendly with underscore
+    """
+    for s in ["?", "/", "\\", ":", "<", ">", "|", "'", '"', "#"]:
+        metric_name = metric_name.replace(s, "_")
+    return metric_name
+
+
 class BestMetricCheckpointCallback(BaseCheckpointCallback):
     """
     Checkpoint callback to save model weights based on user-defined metric value.
@@ -77,7 +92,7 @@ class BestMetricCheckpointCallback(BaseCheckpointCallback):
                 in checkpoint folder. Must ends on ``.json`` or ``.yml``
         """
         if checkpoints_dir is None:
-            checkpoints_dir = "checkpoints_" + target_metric
+            checkpoints_dir = "checkpoints_" + sanitize_metric_name(target_metric)
 
         super().__init__(metric_filename)
         self.main_metric = target_metric
