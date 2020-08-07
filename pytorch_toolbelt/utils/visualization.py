@@ -1,14 +1,14 @@
 from __future__ import absolute_import
 
 import itertools
-
+import warnings
 import numpy as np
 
 from .torch_utils import tensor_from_rgb_image
 
 
 def plot_confusion_matrix(
-    cm, class_names, figsize=(16, 16), normalize=False, title="Confusion matrix", fname=None, noshow=False
+    cm: np.ndarray, class_names, figsize=(16, 16), normalize=False, title="Confusion matrix", fname=None, noshow=False
 ):
     """Render the confusion matrix and return matplotlib's figure with it.
     Normalization can be applied by setting `normalize=True`.
@@ -21,7 +21,9 @@ def plot_confusion_matrix(
     cmap = plt.cm.Oranges
 
     if normalize:
-        cm = cm.astype(np.float32) / cm.sum(axis=1)[:, np.newaxis]
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            cm = cm.astype(np.float32) / cm.sum(axis=1)[:, np.newaxis]
 
     f = plt.figure(figsize=figsize)
     plt.title(title)
