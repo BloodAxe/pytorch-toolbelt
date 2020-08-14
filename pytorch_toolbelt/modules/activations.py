@@ -139,6 +139,9 @@ class SwishNaive(nn.Module):
 
 
 class Swish(nn.Module):
+    def __init__(self, inplace=False):
+        super(Swish, self).__init__()
+
     def forward(self, input_tensor):
         return swish(input_tensor)
 
