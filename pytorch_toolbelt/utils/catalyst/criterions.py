@@ -1,8 +1,7 @@
 import math
 
 import torch
-from catalyst.dl import CriterionCallback, RunnerState
-from catalyst.dl.callbacks.criterion import _add_loss_to_state
+from catalyst.dl import IRunner, CriterionCallback
 from torch import nn
 from torch.nn import functional as F
 
@@ -67,22 +66,22 @@ class LPRegularizationCallback(CriterionCallback):
         self.p = p
         self.multiplier = None
 
-    def on_loader_start(self, state: RunnerState):
-        self.is_needed = not self.on_train_only or state.loader_name.startswith("train")
+    def on_loader_start(self, runner: IRunner):
+        self.is_needed = not self.on_train_only or runner.loader_name.startswith("train")
         if self.is_needed:
-            state.metrics.epoch_values[state.loader_name][f"l{self.p}_weight_decay"] = self.multiplier
+            runner.metrics.epoch_values[runner.loader_name][f"l{self.p}_weight_decay"] = self.multiplier
 
-    def on_epoch_start(self, state: RunnerState):
-        training_progress = float(state.epoch) / float(state.num_epochs)
+    def on_epoch_start(self, runner: IRunner):
+        training_progress = float(runner.epoch) / float(runner.num_epochs)
         self.multiplier = get_multiplier(training_progress, self.schedule, self.start_wd, self.end_wd)
 
-    def on_batch_end(self, state: RunnerState):
+    def on_batch_end(self, runner: IRunner):
         if not self.is_needed:
             return
 
         lp_reg = 0
 
-        for module in state.model.children():
+        for module in runner.model.children():
             if isinstance(module, (nn.BatchNorm1d, nn.BatchNorm1d, nn.BatchNorm3d)):
                 continue
 
@@ -93,8 +92,7 @@ class LPRegularizationCallback(CriterionCallback):
                 if param.requires_grad:
                     lp_reg = param.norm(self.p) * self.multiplier + lp_reg
 
-        state.metrics.add_batch_value(metrics_dict={self.prefix: lp_reg.item()})
-        _add_loss_to_state(self.prefix, state, lp_reg)
+        runner.batch_metrics.update(**{self.prefix: lp_reg.item()})
 
 
 class TSACriterionCallback(CriterionCallback):
@@ -117,7 +115,7 @@ class TSACriterionCallback(CriterionCallback):
         prefix: str = "loss",
         criterion_key: str = None,
         multiplier: float = 1.0,
-        unsupervised_label=-100,
+        ignore_index=-100,
     ):
         super().__init__(
             input_key=input_key,
@@ -129,7 +127,7 @@ class TSACriterionCallback(CriterionCallback):
         self.num_epochs = num_epochs
         self.num_classes = num_classes
         self.tsa_threshold = None
-        self.unsupervised_label = unsupervised_label
+        self.ignore_index = ignore_index
 
     def get_tsa_threshold(self, current_epoch, schedule, start, end) -> float:
         training_progress = float(current_epoch) / float(self.num_epochs)
@@ -148,16 +146,16 @@ class TSACriterionCallback(CriterionCallback):
             raise KeyError(f"Unsupported schedule name {schedule}")
         return threshold * (end - start) + start
 
-    def on_epoch_start(self, state: RunnerState):
-        if state.loader_name == "train":
-            self.tsa_threshold = self.get_tsa_threshold(state.epoch, "exp_schedule", 1.0 / self.num_classes, 1.0)
-            state.metrics.epoch_values["train"]["tsa_threshold"] = self.tsa_threshold
+    def on_epoch_start(self, runner: IRunner):
+        if runner.loader_name == "train":
+            self.tsa_threshold = self.get_tsa_threshold(runner.epoch, "exp_schedule", 1.0 / self.num_classes, 1.0)
+            runner.epoch_metrics["train"]["tsa_threshold"] = self.tsa_threshold
 
-    def _compute_loss(self, state: RunnerState, criterion):
+    def _compute_loss(self, runner: IRunner, criterion):
 
-        logits = state.output[self.output_key]
-        targets = state.input[self.input_key]
-        supervised_mask = targets != self.unsupervised_label  # Mask indicating labeled samples
+        logits = runner.output[self.output_key]
+        targets = runner.input[self.input_key]
+        supervised_mask = targets != self.ignore_index  # Mask indicating labeled samples
 
         targets = targets[supervised_mask]
         logits = logits[supervised_mask]

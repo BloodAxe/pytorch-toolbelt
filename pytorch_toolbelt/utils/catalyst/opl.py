@@ -1,5 +1,5 @@
 import numpy as np
-from catalyst.dl import Callback, CallbackOrder, RunnerState
+from catalyst.dl import Callback, CallbackOrder, IRunner
 
 from ..torch_utils import to_numpy
 

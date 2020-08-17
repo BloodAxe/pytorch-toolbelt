@@ -4,7 +4,7 @@ from typing import List
 
 import numpy as np
 import torch
-from catalyst.dl import Callback, RunnerState, MetricCallback, CallbackOrder
+from catalyst.dl import Callback, MetricCallback, CallbackOrder, IRunner
 from sklearn.metrics import f1_score
 from torchnet.meter import ConfusionMeter
 
