@@ -54,24 +54,24 @@ class MulticlassOnlinePseudolabelingCallback(Callback):
         self.output_key = output_key
         self.unlabeled_class = unlabeled_class
 
-    def on_epoch_start(self, state: RunnerState):
+    def on_epoch_start(self, runner: IRunner):
         pass
 
-    def on_loader_start(self, state: RunnerState):
-        if state.loader_name == self.pseudolabel_loader:
+    def on_loader_start(self, runner: IRunner):
+        if runner.loader_name == self.pseudolabel_loader:
             self.predictions = []
 
-    def get_probabilities(self, state: RunnerState):
-        probs = state.output[self.output_key].detach().softmax(dim=1)
+    def get_probabilities(self, runner: IRunner):
+        probs = runner.output[self.output_key].detach().softmax(dim=1)
         return to_numpy(probs)
 
-    def on_batch_end(self, state: RunnerState):
-        if state.loader_name == self.pseudolabel_loader:
-            probs = self.get_probabilities(state)
+    def on_batch_end(self, runner: IRunner):
+        if runner.loader_name == self.pseudolabel_loader:
+            probs = self.get_probabilities(runner)
             self.predictions.extend(probs)
 
-    def on_loader_end(self, state: RunnerState):
-        if state.loader_name == self.pseudolabel_loader:
+    def on_loader_end(self, runner: IRunner):
+        if runner.loader_name == self.pseudolabel_loader:
             predictions = np.array(self.predictions)
             max_pred = np.argmax(predictions, axis=1)
             max_score = np.amax(predictions, axis=1)
@@ -83,23 +83,17 @@ class MulticlassOnlinePseudolabelingCallback(Callback):
                 self.unlabeled_ds.set_target(index, target)
 
             num_confident_samples = confident_mask.sum()
-            state.metrics.epoch_values[state.loader_name]["pseudolabeling/confident_samples"] = num_confident_samples
-            state.metrics.epoch_values[state.loader_name]["pseudolabeling/confident_samples_mean_score"] = max_score[
-                confident_mask
-            ].mean()
+            runner.loader_metrics["pseudolabeling/confident_samples"] = num_confident_samples
+            runner.loader_metrics["pseudolabeling/confident_samples_mean_score"] = max_score[confident_mask].mean()
 
-            state.metrics.epoch_values[state.loader_name]["pseudolabeling/unconfident_samples"] = (
-                len(predictions) - num_confident_samples
-            )
-            state.metrics.epoch_values[state.loader_name]["pseudolabeling/unconfident_samples_mean_score"] = max_score[
-                ~confident_mask
-            ].mean()
+            runner.loader_metrics["pseudolabeling/unconfident_samples"] = len(predictions) - num_confident_samples
+            runner.loader_metrics["pseudolabeling/unconfident_samples_mean_score"] = max_score[~confident_mask].mean()
 
-    def on_epoch_end(self, state: RunnerState):
+    def on_epoch_end(self, runner: IRunner):
         pass
 
 
 class BCEOnlinePseudolabelingCallback(MulticlassOnlinePseudolabelingCallback):
-    def get_probabilities(self, state: RunnerState):
-        probs = state.output[self.output_key].detach().sigmoid()
+    def get_probabilities(self, runner: IRunner):
+        probs = runner.output[self.output_key].detach().sigmoid()
         return to_numpy(probs)
