@@ -51,7 +51,7 @@ class ShowPolarBatchesCallback(Callback):
         :param min_delta:
         :param targets: Str 'tensorboard' or 'matplotlib, or ['tensorboard', 'matplotlib']
         """
-        super().__init__(CallbackOrder.Other)
+        super().__init__(CallbackOrder.Logging)
         assert isinstance(targets, (list, str))
 
         self.best_score = None
@@ -144,7 +144,7 @@ class ShowEmbeddingsCallback(Callback):
         mean=(0.485, 0.456, 0.406),
         std=(0.229, 0.224, 0.225),
     ):
-        super().__init__(CallbackOrder.Other)
+        super().__init__(CallbackOrder.Logging)
         self.prefix = prefix
         self.embedding_key = embedding_key
         self.input_key = input_key

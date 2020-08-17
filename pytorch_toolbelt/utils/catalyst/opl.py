@@ -45,7 +45,7 @@ class MulticlassOnlinePseudolabelingCallback(Callback):
         output_key="logits",
         unlabeled_class=-100,
     ):
-        super().__init__(CallbackOrder.Other)
+        super().__init__(CallbackOrder.External)
         self.unlabeled_ds = unlabeled_ds
         self.pseudolabel_loader = pseudolabel_loader
         self.prob_threshold = prob_threshold
