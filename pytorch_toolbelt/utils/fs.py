@@ -17,7 +17,7 @@ __all__ = [
     "find_in_dir_glob",
     "has_ext",
     "has_image_ext",
-    "id_from_fname"
+    "id_from_fname",
     "read_image_as_is",
     "read_rgb_image",
 ]
