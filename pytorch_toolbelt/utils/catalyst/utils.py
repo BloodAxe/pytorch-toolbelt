@@ -80,7 +80,7 @@ class BestMetricCheckpointCallback(BaseCheckpointCallback):
         target_metric_minimize=False,
         save_n_best: int = 3,
         checkpoints_dir=None,
-        metric_filename: str = "_metrics.json",
+        metrics_filename: str = "_metrics.json",
     ):
         """
         Args:
@@ -88,13 +88,13 @@ class BestMetricCheckpointCallback(BaseCheckpointCallback):
             target_metric_minimize (bool): define whether metric is minimized.
             save_n_best (int): number of best checkpoint to keep
             checkpoints_dir (str): path to directory where checkpoints will be saved
-            metric_filename (str): filename to save metrics
+            metrics_filename (str): filename to save metrics
                 in checkpoint folder. Must ends on ``.json`` or ``.yml``
         """
         if checkpoints_dir is None:
             checkpoints_dir = "checkpoints_" + sanitize_metric_name(target_metric)
 
-        super().__init__(metric_filename)
+        super().__init__(metrics_filename=metrics_filename)
         self.main_metric = target_metric
         self.minimize_metric = target_metric_minimize
         self.save_n_best = save_n_best
@@ -172,8 +172,8 @@ class BestMetricCheckpointCallback(BaseCheckpointCallback):
             scheduler=state.scheduler,
             epoch_metrics=epoch_metrics,
             valid_metrics=valid_metrics,
-            stage=state.stage,
-            epoch=state.epoch_log,
+            stage=state.stage_name,
+            epoch=state.global_epoch,
             checkpoint_data=state.checkpoint_data,
         )
 
@@ -205,7 +205,7 @@ class BestMetricCheckpointCallback(BaseCheckpointCallback):
         print(top_best_metrics_str)
 
     def save_metric(self, logdir: str, metrics: Dict) -> None:
-        utils.save_config(metrics, f"{logdir}/{self.checkpoints_dir}/{self.metric_filename}")
+        utils.save_config(metrics, f"{logdir}/{self.checkpoints_dir}/{self.metrics_filename}")
 
     def on_exception(self, state: IRunner):
         exception = state.exception
