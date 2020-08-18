@@ -8,6 +8,7 @@ from catalyst import utils
 from catalyst.core.callbacks.checkpoint import BaseCheckpointCallback
 from catalyst.dl import IRunner, Callback, CallbackOrder
 
+
 __all__ = [
     "clean_checkpoint",
     "report_checkpoint",
@@ -204,7 +205,7 @@ class BestMetricCheckpointCallback(BaseCheckpointCallback):
         print(top_best_metrics_str)
 
     def save_metric(self, logdir: str, metrics: Dict) -> None:
-        safitty.save(metrics, f"{logdir}/{self.checkpoints_dir}/{self.metric_filename}")
+        utils.save_config(metrics, f"{logdir}/{self.checkpoints_dir}/{self.metric_filename}")
 
     def on_exception(self, state: IRunner):
         exception = state.exception
