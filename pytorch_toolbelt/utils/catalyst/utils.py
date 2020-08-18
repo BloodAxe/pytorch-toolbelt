@@ -10,11 +10,11 @@ from catalyst.dl import IRunner, Callback, CallbackOrder
 
 
 __all__ = [
+    "BestMetricCheckpointCallback",
+    "HyperParametersCallback",
     "clean_checkpoint",
     "report_checkpoint",
     "sanitize_metric_name",
-    "BestMetricCheckpointCallback",
-    "HyperParametersCallback",
 ]
 
 from pytorch_toolbelt.utils.catalyst import get_tensorboard_logger
