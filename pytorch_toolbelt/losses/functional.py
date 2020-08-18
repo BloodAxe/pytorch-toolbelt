@@ -8,14 +8,14 @@ __all__ = ["focal_loss_with_logits", "sigmoid_focal_loss", "soft_jaccard_score",
 
 
 def focal_loss_with_logits(
-    input: torch.Tensor,
-    target: torch.Tensor,
-    gamma: float = 2.0,
-    alpha: Optional[float] = 0.25,
-    reduction: str = "mean",
-    normalized: bool = False,
-    reduced_threshold: Optional[float] = None,
-    eps: float = 1e-6,
+        input: torch.Tensor,
+        target: torch.Tensor,
+        gamma: float = 2.0,
+        alpha: Optional[float] = 0.25,
+        reduction: str = "mean",
+        normalized: bool = False,
+        reduced_threshold: Optional[float] = None,
+        eps: float = 1e-6,
 ) -> torch.Tensor:
     """Compute binary focal loss between target and output logits.
 
@@ -82,7 +82,8 @@ def reduced_focal_loss(input: torch.Tensor, target: torch.Tensor, threshold=0.5,
     )
 
 
-def soft_jaccard_score(y_pred: torch.Tensor, y_true: torch.Tensor, smooth=0.0, eps=1e-7, dims=None) -> torch.Tensor:
+def soft_jaccard_score(y_pred: torch.Tensor, y_true: torch.Tensor, smooth: float = 0.0, eps: float = 1e-7,
+                       dims=None) -> torch.Tensor:
     """
 
     :param y_pred:
@@ -108,11 +109,12 @@ def soft_jaccard_score(y_pred: torch.Tensor, y_true: torch.Tensor, smooth=0.0, e
         cardinality = torch.sum(y_pred + y_true)
 
     union = cardinality - intersection
-    jaccard_score = (intersection + smooth) / (union.clamp_min(eps) + smooth)
+    jaccard_score = (intersection + smooth) / (union + smooth).clamp_min(eps)
     return jaccard_score
 
 
-def soft_dice_score(y_pred: torch.Tensor, y_true: torch.Tensor, smooth=0, eps=1e-7, dims=None) -> torch.Tensor:
+def soft_dice_score(y_pred: torch.Tensor, y_true: torch.Tensor, smooth: float = 0.0, eps: float = 1e-7,
+                    dims=None) -> torch.Tensor:
     """
 
     :param y_pred:
@@ -135,7 +137,7 @@ def soft_dice_score(y_pred: torch.Tensor, y_true: torch.Tensor, smooth=0, eps=1e
     else:
         intersection = torch.sum(y_pred * y_true)
         cardinality = torch.sum(y_pred + y_true)
-    dice_score = (2.0 * intersection + smooth) / (cardinality.clamp_min(eps) + smooth)
+    dice_score = (2.0 * intersection + smooth) / (cardinality + smooth).clamp_min(eps)
     return dice_score
 
 
@@ -170,7 +172,7 @@ def wing_loss(prediction: torch.Tensor, target: torch.Tensor, width=5, curvature
 
 
 def label_smoothed_nll_loss(
-    lprobs: torch.Tensor, target: torch.Tensor, epsilon: float, ignore_index=None, reduction="mean", dim=-1
+        lprobs: torch.Tensor, target: torch.Tensor, epsilon: float, ignore_index=None, reduction="mean", dim=-1
 ) -> torch.Tensor:
     """
 
