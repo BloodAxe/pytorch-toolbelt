@@ -6,9 +6,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn.functional as F
-from catalyst.dl import Callback, RunnerState, CallbackOrder
+from catalyst.dl import Callback, CallbackOrder, IRunner
 from catalyst.dl.callbacks import TensorboardLogger
-from catalyst.utils.tensorboard import SummaryWriter
+from catalyst.contrib.tools.tensorboard import SummaryWriter
 
 from ..torch_utils import rgb_image_from_tensor, to_numpy
 from ..torch_utils import tensor_from_rgb_image
@@ -22,11 +22,11 @@ __all__ = [
 ]
 
 
-def get_tensorboard_logger(state: RunnerState) -> SummaryWriter:
-    for logger_name, logger in state.loggers.items():
-        if isinstance(logger, TensorboardLogger):
-            return logger.loggers[state.loader_name]
-    raise RuntimeError(f"Cannot find Tensorboard logger for loader {state.loader_name}")
+def get_tensorboard_logger(runner: IRunner, tensorboard_callback_name: str = "_tensorboard") -> SummaryWriter:
+    tb_callback: TensorboardLogger = runner.callbacks[tensorboard_callback_name]
+    if runner.loader_name not in tb_callback.loggers:
+        raise RuntimeError(f"Cannot find Tensorboard logger for loader {runner.loader_name}")
+    return tb_callback.loggers[runner.loader_name]
 
 
 class ShowPolarBatchesCallback(Callback):
@@ -51,7 +51,7 @@ class ShowPolarBatchesCallback(Callback):
         :param min_delta:
         :param targets: Str 'tensorboard' or 'matplotlib, or ['tensorboard', 'matplotlib']
         """
-        super().__init__(CallbackOrder.Other)
+        super().__init__(CallbackOrder.Logging)
         assert isinstance(targets, (list, str))
 
         self.best_score = None
@@ -84,7 +84,7 @@ class ShowPolarBatchesCallback(Callback):
             return [self.to_cpu(value) for value in data]
         return data
 
-    def on_loader_start(self, state):
+    def on_loader_start(self, runner):
         self.best_score = None
         self.best_input = None
         self.best_output = None
@@ -93,32 +93,32 @@ class ShowPolarBatchesCallback(Callback):
         self.worst_input = None
         self.worst_output = None
 
-    def on_batch_end(self, state: RunnerState):
-        value = state.metrics.batch_values.get(self.target_metric, None)
+    def on_batch_end(self, runner: IRunner):
+        value = runner.batch_metrics.get(self.target_metric, None)
         if value is None:
-            warnings.warn(f"Metric value for {self.target_metric} is not available in state.metrics.batch_values")
+            warnings.warn(f"Metric value for {self.target_metric} is not available in runner.metrics.batch_values")
             return
 
         if self.best_score is None or self.is_better(value, self.best_score):
             self.best_score = value
-            self.best_input = self.to_cpu(state.input)
-            self.best_output = self.to_cpu(state.output)
+            self.best_input = self.to_cpu(runner.input)
+            self.best_output = self.to_cpu(runner.output)
 
         if self.worst_score is None or self.is_worse(value, self.worst_score):
             self.worst_score = value
-            self.worst_input = self.to_cpu(state.input)
-            self.worst_output = self.to_cpu(state.output)
+            self.worst_input = self.to_cpu(runner.input)
+            self.worst_output = self.to_cpu(runner.output)
 
-    def on_loader_end(self, state: RunnerState) -> None:
-        logger = get_tensorboard_logger(state)
+    def on_loader_end(self, runner: IRunner):
+        logger = get_tensorboard_logger(runner)
 
         if self.best_score is not None:
             best_samples = self.visualize_batch(self.best_input, self.best_output)
-            self._log_samples(best_samples, "best", logger, state.step)
+            self._log_samples(best_samples, "best", logger, runner.global_batch_step)
 
         if self.worst_score is not None:
             worst_samples = self.visualize_batch(self.worst_input, self.worst_output)
-            self._log_samples(worst_samples, "worst", logger, state.step)
+            self._log_samples(worst_samples, "worst", logger, runner.global_batch_step)
 
     def _log_samples(self, samples, name, logger, step):
         if "tensorboard" in self.targets:
@@ -144,7 +144,7 @@ class ShowEmbeddingsCallback(Callback):
         mean=(0.485, 0.456, 0.406),
         std=(0.229, 0.224, 0.225),
     ):
-        super().__init__(CallbackOrder.Other)
+        super().__init__(CallbackOrder.Logging)
         self.prefix = prefix
         self.embedding_key = embedding_key
         self.input_key = input_key
@@ -156,25 +156,25 @@ class ShowEmbeddingsCallback(Callback):
         self.images = []
         self.targets = []
 
-    def on_loader_start(self, state: RunnerState):
+    def on_loader_start(self, runner: IRunner):
         self.embeddings = []
         self.images = []
         self.targets = []
 
-    def on_loader_end(self, state: RunnerState):
-        logger = get_tensorboard_logger(state)
+    def on_loader_end(self, runner: IRunner):
+        logger = get_tensorboard_logger(runner)
         logger.add_embedding(
             mat=torch.cat(self.embeddings, dim=0),
             metadata=self.targets,
             label_img=torch.cat(self.images, dim=0),
-            global_step=state.epoch,
+            global_step=runner.epoch,
             tag=self.prefix,
         )
 
-    def on_batch_end(self, state: RunnerState):
-        embedding = state.output[self.embedding_key].detach().cpu()
-        image = state.input[self.input_key].detach().cpu()
-        targets = state.input[self.targets_key].detach().cpu().tolist()
+    def on_batch_end(self, runner: IRunner):
+        embedding = runner.output[self.embedding_key].detach().cpu()
+        image = runner.input[self.input_key].detach().cpu()
+        targets = runner.input[self.targets_key].detach().cpu().tolist()
 
         image = F.interpolate(image, size=(256, 256))
         image = image * self.std + self.mean

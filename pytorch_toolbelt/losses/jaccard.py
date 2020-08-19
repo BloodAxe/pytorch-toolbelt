@@ -82,12 +82,12 @@ class JaccardLoss(_Loss):
             y_true = y_true.view(bs, num_classes, -1)
             y_pred = y_pred.view(bs, num_classes, -1)
 
-        scores = soft_jaccard_score(y_pred, y_true.type(y_pred.dtype), self.smooth, self.eps, dims=dims)
+        scores = soft_jaccard_score(y_pred, y_true.type(y_pred.dtype), smooth=self.smooth, eps=self.eps, dims=dims)
 
         if self.log_loss:
             loss = -torch.log(scores.clamp_min(self.eps))
         else:
-            loss = 1 - scores
+            loss = 1.0 - scores
 
         # IoU loss is defined for non-empty classes
         # So we zero contribution of channel that does not have true pixels

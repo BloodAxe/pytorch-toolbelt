@@ -1,10 +1,10 @@
 import warnings
 from functools import partial
-from typing import List
+from typing import List, Optional
 
 import numpy as np
 import torch
-from catalyst.dl import Callback, RunnerState, MetricCallback, CallbackOrder
+from catalyst.dl import Callback, MetricCallback, CallbackOrder, IRunner
 from sklearn.metrics import f1_score
 from torchnet.meter import ConfusionMeter
 
@@ -13,14 +13,17 @@ from ..torch_utils import to_numpy
 from ..visualization import render_figure_to_tensor, plot_confusion_matrix
 
 __all__ = [
-    "pixel_accuracy",
+    "BINARY_MODE",
+    "ConfusionMatrixCallback",
+    "IoUMetricsCallback",
+    "MULTICLASS_MODE",
+    "MULTILABEL_MODE",
+    "MacroF1Callback",
+    "PixelAccuracyCallback",
     "binary_dice_iou_score",
     "multiclass_dice_iou_score",
     "multilabel_dice_iou_score",
-    "PixelAccuracyCallback",
-    "MacroF1Callback",
-    "ConfusionMatrixCallback",
-    "IoUMetricsCallback",
+    "pixel_accuracy",
 ]
 
 BINARY_MODE = "binary"
@@ -106,11 +109,11 @@ class ConfusionMatrixCallback(Callback):
         self.confusion_matrix = ConfusionMeter(self.num_classes)
 
     @torch.no_grad()
-    def on_batch_end(self, state: RunnerState):
-        outputs: torch.Tensor = state.output[self.output_key].detach().cpu()
+    def on_batch_end(self, runner: IRunner):
+        outputs: torch.Tensor = runner.output[self.output_key].detach().cpu()
         outputs: torch.Tensor = self.activation_fn(outputs)
 
-        targets: torch.Tensor = state.input[self.input_key].detach().cpu()
+        targets: torch.Tensor = runner.input[self.input_key].detach().cpu()
 
         # Flatten
         outputs = outputs.view(-1)
@@ -125,7 +128,7 @@ class ConfusionMatrixCallback(Callback):
             targets = targets.type_as(outputs)
             self.confusion_matrix.add(predicted=outputs, target=targets)
 
-    def on_loader_end(self, state):
+    def on_loader_end(self, runner: IRunner):
         if self.class_names is None:
             class_names = [str(i) for i in range(self.num_classes)]
         else:
@@ -143,8 +146,8 @@ class ConfusionMatrixCallback(Callback):
         )
         fig = render_figure_to_tensor(fig)
 
-        logger = get_tensorboard_logger(state)
-        logger.add_image(f"{self.prefix}/epoch", fig, global_step=state.step)
+        logger = get_tensorboard_logger(runner)
+        logger.add_image(f"{self.prefix}/epoch", fig, global_step=runner.global_epoch)
 
 
 class MacroF1Callback(Callback):
@@ -171,7 +174,7 @@ class MacroF1Callback(Callback):
         self.ignore_index = ignore_index
 
     @torch.no_grad()
-    def on_batch_end(self, state: RunnerState):
+    def on_batch_end(self, state: IRunner):
         outputs = to_numpy(state.output[self.output_key])
         targets = to_numpy(state.input[self.input_key])
 
@@ -190,28 +193,28 @@ class MacroF1Callback(Callback):
         self.targets.extend(targets)
 
         # metric = self.metric_fn(self.targets, self.outputs)
-        # state.metrics.add_batch_value(name=self.prefix, value=metric)
+        # runner.metrics.add_batch_value(name=self.prefix, value=metric)
 
-    def on_loader_start(self, state):
+    def on_loader_start(self, runner: IRunner):
         self.outputs = []
         self.targets = []
 
-    def on_loader_end(self, state):
+    def on_loader_end(self, runner: IRunner):
         metric_name = self.prefix
         targets = np.array(self.targets)
         outputs = np.array(self.outputs)
 
         metric = self.metric_fn(outputs, targets)
-        state.metrics.epoch_values[state.loader_name][metric_name] = metric
+        runner.loader_metrics[metric_name] = metric
 
 
 def binary_dice_iou_score(
     y_pred: torch.Tensor,
     y_true: torch.Tensor,
     mode="dice",
-    threshold=None,
+    threshold: Optional[float] = None,
     nan_score_on_empty=False,
-    eps=1e-7,
+    eps: float = 1e-7,
     ignore_index=None,
 ) -> float:
     """
@@ -402,9 +405,9 @@ class IoUMetricsCallback(Callback):
         self.scores = []
 
     @torch.no_grad()
-    def on_batch_end(self, state: RunnerState):
-        outputs = state.output[self.output_key].detach()
-        targets = state.input[self.input_key].detach()
+    def on_batch_end(self, runner: IRunner):
+        outputs = runner.output[self.output_key].detach()
+        targets = runner.input[self.input_key].detach()
 
         batch_size = targets.size(0)
         score_per_image = []
@@ -413,14 +416,14 @@ class IoUMetricsCallback(Callback):
             score_per_image.append(score_per_class)
 
         mean_score = np.nanmean(score_per_image)
-        state.metrics.add_batch_value(self.prefix, float(mean_score))
+        runner.batch_metrics[self.prefix] = float(mean_score)
         self.scores.extend(score_per_image)
 
-    def on_loader_end(self, state):
+    def on_loader_end(self, runner: IRunner):
         scores = np.array(self.scores)
         mean_score = np.nanmean(scores)
 
-        state.metrics.epoch_values[state.loader_name][self.prefix] = float(mean_score)
+        runner.loader_metrics[self.prefix] = float(mean_score)
 
         # Log additional IoU scores per class
         if self.mode in {MULTICLASS_MODE, MULTILABEL_MODE}:
@@ -431,4 +434,4 @@ class IoUMetricsCallback(Callback):
 
             scores_per_class = np.nanmean(scores, axis=0)
             for class_name, score_per_class in zip(class_names, scores_per_class):
-                state.metrics.epoch_values[state.loader_name][self.prefix + "_" + class_name] = float(score_per_class)
+                runner.loader_metrics[self.prefix + "_" + class_name] = float(score_per_class)

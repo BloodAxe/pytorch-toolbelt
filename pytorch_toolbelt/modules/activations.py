@@ -129,7 +129,8 @@ def mish_jit_bwd(x, grad_output):
 
 
 class MishFunction(torch.autograd.Function):
-    """ Mish: A Self Regularized Non-Monotonic Neural Activation Function - https://arxiv.org/abs/1908.08681
+    """
+    Mish: A Self Regularized Non-Monotonic Neural Activation Function - https://arxiv.org/abs/1908.08681
     A memory efficient, jit scripted variant of Mish
     """
 

@@ -86,7 +86,7 @@ class Ensembler(nn.Module):
 
         if self.average:
             for key in keys:
-                output_0[key].mul_(1. / num_models)
+                output_0[key].mul_(1.0 / num_models)
 
         return output_0
 
