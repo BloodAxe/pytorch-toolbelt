@@ -29,7 +29,7 @@ def has_ext(fname: str, extensions: Union[str, List[str]]) -> bool:
     if not isinstance(extensions, (str, list)):
         raise ValueError("Argument extensions must be either string or list of strings")
     if isinstance(extensions, str):
-        extensions = [str]
+        extensions = [extensions]
     extensions = set(map(str.lower, extensions))
 
     name, ext = os.path.splitext(fname)
