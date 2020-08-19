@@ -250,10 +250,10 @@ class MobileNetV3(nn.Module):
         ]
 
         self.bottlenecks_setting = self.bottlenecks_setting_small if small else self.bottlenecks_setting_large
-        for l in self.bottlenecks_setting:
-            l[0] = _make_divisible(l[0] * self.scale, 8)
-            l[1] = _make_divisible(l[1] * self.scale, 8)
-            l[2] = _make_divisible(l[2] * self.scale, 8)
+        for layer_settings in self.bottlenecks_setting:
+            layer_settings[0] = _make_divisible(layer_settings[0] * self.scale, 8)
+            layer_settings[1] = _make_divisible(layer_settings[1] * self.scale, 8)
+            layer_settings[2] = _make_divisible(layer_settings[2] * self.scale, 8)
 
         self.conv1 = nn.Conv2d(
             in_channels, self.bottlenecks_setting[0][0], kernel_size=3, bias=False, stride=2, padding=1

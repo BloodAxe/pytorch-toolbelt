@@ -87,6 +87,7 @@ class EncoderModule(nn.Module):
         return self.channels
 
     @property
+    @pytorch_toolbelt_deprecated("This property is deprecated, please don't use it")
     def encoder_layers(self) -> List[nn.Module]:
         raise NotImplementedError
 

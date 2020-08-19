@@ -1,6 +1,6 @@
 from typing import List, Union
-
 from torch import Tensor, nn
+import inspect
 
 from .common import SegmentationDecoderModule
 from .. import conv1x1, FPNContextBlock, FPNBottleneckBlock
@@ -50,7 +50,7 @@ class FPNSumDecoder(SegmentationDecoderModule):
             [bottleneck_block(in_channels, fpn_channels) for in_channels in reversed(feature_maps)]
         )
 
-        if issubclass(prediction_block, nn.Identity):
+        if inspect.isclass(prediction_block) and issubclass(prediction_block, nn.Identity):
             self.outputs = nn.ModuleList([prediction_block() for _ in reversed(feature_maps)])
             self.channels = [fpn_channels] * len(feature_maps)
         else:

@@ -8,21 +8,25 @@ __all__ = ["focal_loss_with_logits", "sigmoid_focal_loss", "soft_jaccard_score",
 
 
 def focal_loss_with_logits(
-    input: torch.Tensor,
+    output: torch.Tensor,
     target: torch.Tensor,
-    gamma=2.0,
+    gamma: float = 2.0,
     alpha: Optional[float] = 0.25,
-    reduction="mean",
-    normalized=False,
+    reduction: str = "mean",
+    normalized: bool = False,
     reduced_threshold: Optional[float] = None,
+    eps: float = 1e-6,
 ) -> torch.Tensor:
     """Compute binary focal loss between target and output logits.
 
     See :class:`~pytorch_toolbelt.losses.FocalLoss` for details.
 
     Args:
-        input: Tensor of arbitrary shape
+        output: Tensor of arbitrary shape (predictions of the model)
         target: Tensor of the same shape as input
+        gamma: Focal loss power factor
+        alpha: Weight factor to balance positive and negative samples. Alpha must be in [0...1] range,
+            high values will give more weight to positive class.
         reduction (string, optional): Specifies the reduction to apply to the output:
             'none' | 'mean' | 'sum' | 'batchwise_mean'. 'none': no reduction will be applied,
             'mean': the sum of the output will be divided by the number of
@@ -32,18 +36,18 @@ def focal_loss_with_logits(
             'batchwise_mean' computes mean loss per sample in batch. Default: 'mean'
         normalized (bool): Compute normalized focal loss (https://arxiv.org/pdf/1909.07829.pdf).
         reduced_threshold (float, optional): Compute reduced focal loss (https://arxiv.org/abs/1903.01347).
-    References::
 
+    References:
         https://github.com/open-mmlab/mmdetection/blob/master/mmdet/core/loss/losses.py
     """
-    target = target.type(input.type())
+    target = target.type(output.type())
 
-    logpt = F.binary_cross_entropy_with_logits(input, target, reduction="none")
+    logpt = F.binary_cross_entropy_with_logits(output, target, reduction="none")
     pt = torch.exp(-logpt)
 
     # compute the loss
     if reduced_threshold is None:
-        focal_term = (1 - pt).pow(gamma)
+        focal_term = (1.0 - pt).pow(gamma)
     else:
         focal_term = ((1.0 - pt) / reduced_threshold).pow(gamma)
         focal_term[pt < reduced_threshold] = 1
@@ -54,7 +58,7 @@ def focal_loss_with_logits(
         loss *= alpha * target + (1 - alpha) * (1 - target)
 
     if normalized:
-        norm_factor = focal_term.sum() + 1e-5
+        norm_factor = focal_term.sum().clamp_min(eps)
         loss /= norm_factor
 
     if reduction == "mean":
@@ -72,19 +76,22 @@ sigmoid_focal_loss = focal_loss_with_logits
 
 
 # TODO: Mark as deprecated and emit warning
-def reduced_focal_loss(input: torch.Tensor, target: torch.Tensor, threshold=0.5, gamma=2.0, reduction="mean"):
+def reduced_focal_loss(output: torch.Tensor, target: torch.Tensor, threshold=0.5, gamma=2.0, reduction="mean"):
     return focal_loss_with_logits(
-        input, target, alpha=None, gamma=gamma, reduction=reduction, reduced_threshold=threshold
+        output, target, alpha=None, gamma=gamma, reduction=reduction, reduced_threshold=threshold
     )
 
 
-def soft_jaccard_score(y_pred: torch.Tensor, y_true: torch.Tensor, smooth=0.0, eps=1e-7, dims=None) -> torch.Tensor:
+def soft_jaccard_score(
+    output: torch.Tensor, target: torch.Tensor, smooth: float = 0.0, eps: float = 1e-7, dims=None
+) -> torch.Tensor:
     """
 
-    :param y_pred:
-    :param y_true:
+    :param output:
+    :param target:
     :param smooth:
     :param eps:
+    :param dims:
     :return:
 
     Shape:
@@ -94,25 +101,27 @@ def soft_jaccard_score(y_pred: torch.Tensor, y_true: torch.Tensor, smooth=0.0, e
         - Output: scalar.
 
     """
-    assert y_pred.size() == y_true.size()
+    assert output.size() == target.size()
 
     if dims is not None:
-        intersection = torch.sum(y_pred * y_true, dim=dims)
-        cardinality = torch.sum(y_pred + y_true, dim=dims)
+        intersection = torch.sum(output * target, dim=dims)
+        cardinality = torch.sum(output + target, dim=dims)
     else:
-        intersection = torch.sum(y_pred * y_true)
-        cardinality = torch.sum(y_pred + y_true)
+        intersection = torch.sum(output * target)
+        cardinality = torch.sum(output + target)
 
     union = cardinality - intersection
-    jaccard_score = (intersection + smooth) / (union.clamp_min(eps) + smooth)
+    jaccard_score = (intersection + smooth) / (union + smooth).clamp_min(eps)
     return jaccard_score
 
 
-def soft_dice_score(y_pred: torch.Tensor, y_true: torch.Tensor, smooth=0, eps=1e-7, dims=None) -> torch.Tensor:
+def soft_dice_score(
+    output: torch.Tensor, target: torch.Tensor, smooth: float = 0.0, eps: float = 1e-7, dims=None
+) -> torch.Tensor:
     """
 
-    :param y_pred:
-    :param y_true:
+    :param output:
+    :param target:
     :param smooth:
     :param eps:
     :return:
@@ -124,28 +133,28 @@ def soft_dice_score(y_pred: torch.Tensor, y_true: torch.Tensor, smooth=0, eps=1e
         - Output: scalar.
 
     """
-    assert y_pred.size() == y_true.size()
+    assert output.size() == target.size()
     if dims is not None:
-        intersection = torch.sum(y_pred * y_true, dim=dims)
-        cardinality = torch.sum(y_pred + y_true, dim=dims)
+        intersection = torch.sum(output * target, dim=dims)
+        cardinality = torch.sum(output + target, dim=dims)
     else:
-        intersection = torch.sum(y_pred * y_true)
-        cardinality = torch.sum(y_pred + y_true)
-    dice_score = (2.0 * intersection + smooth) / (cardinality.clamp_min(eps) + smooth)
+        intersection = torch.sum(output * target)
+        cardinality = torch.sum(output + target)
+    dice_score = (2.0 * intersection + smooth) / (cardinality + smooth).clamp_min(eps)
     return dice_score
 
 
-def wing_loss(prediction: torch.Tensor, target: torch.Tensor, width=5, curvature=0.5, reduction="mean"):
+def wing_loss(output: torch.Tensor, target: torch.Tensor, width=5, curvature=0.5, reduction="mean"):
     """
     https://arxiv.org/pdf/1711.06753.pdf
-    :param prediction:
+    :param output:
     :param target:
     :param width:
     :param curvature:
     :param reduction:
     :return:
     """
-    diff_abs = (target - prediction).abs()
+    diff_abs = (target - output).abs()
     loss = diff_abs.clone()
 
     idx_smaller = diff_abs < width
@@ -162,4 +171,50 @@ def wing_loss(prediction: torch.Tensor, target: torch.Tensor, width=5, curvature
     if reduction == "mean":
         loss = loss.mean()
 
+    return loss
+
+
+def label_smoothed_nll_loss(
+    lprobs: torch.Tensor, target: torch.Tensor, epsilon: float, ignore_index=None, reduction="mean", dim=-1
+) -> torch.Tensor:
+    """
+
+    Source: https://github.com/pytorch/fairseq/blob/master/fairseq/criterions/label_smoothed_cross_entropy.py
+
+    :param lprobs: Log-probabilities of predictions (e.g after log_softmax)
+    :param target:
+    :param epsilon:
+    :param ignore_index:
+    :param reduction:
+    :return:
+    """
+    if target.dim() == lprobs.dim() - 1:
+        target = target.unsqueeze(dim)
+
+    if ignore_index is not None:
+        pad_mask = target.eq(ignore_index)
+        target = target.masked_fill(pad_mask, 0)
+        nll_loss = -lprobs.gather(dim=dim, index=target)
+        smooth_loss = -lprobs.sum(dim=dim, keepdim=True)
+
+        # nll_loss.masked_fill_(pad_mask, 0.0)
+        # smooth_loss.masked_fill_(pad_mask, 0.0)
+        nll_loss = nll_loss.masked_fill(pad_mask, 0.0)
+        smooth_loss = smooth_loss.masked_fill(pad_mask, 0.0)
+    else:
+        nll_loss = -lprobs.gather(dim=dim, index=target)
+        smooth_loss = -lprobs.sum(dim=dim, keepdim=True)
+
+        nll_loss = nll_loss.squeeze(dim)
+        smooth_loss = smooth_loss.squeeze(dim)
+
+    if reduction == "sum":
+        nll_loss = nll_loss.sum()
+        smooth_loss = smooth_loss.sum()
+    if reduction == "mean":
+        nll_loss = nll_loss.mean()
+        smooth_loss = smooth_loss.mean()
+
+    eps_i = epsilon / lprobs.size(dim)
+    loss = (1.0 - epsilon) * nll_loss + eps_i * smooth_loss
     return loss

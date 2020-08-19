@@ -1,21 +1,15 @@
+from typing import Dict
+
 import torch
 from catalyst.dl import (
     CriterionCallback,
-    RunnerState,
-    OptimizerCallback,
-    CheckpointCallback,
-    SchedulerCallback,
-    SupervisedExperiment,
-    Callback,
+    IRunner,
 )
-from catalyst.dl.callbacks import VerboseLogger, ConsoleLogger, TensorboardLogger, RaiseExceptionCallback
 from torch import nn, Tensor
-from typing import Dict, OrderedDict
 
 __all__ = [
     "TrainOnlyCriterionCallback",
     "PassthroughCriterionCallback",
-    "ParallelLossSupervisedExperiment",
     "LossModule",
     "LossWrapper",
 ]
@@ -26,7 +20,7 @@ class TrainOnlyCriterionCallback(CriterionCallback):
     Computes loss only on training stage
     """
 
-    def _compute_loss_value(self, state: RunnerState, criterion):
+    def _compute_loss_value(self, state: IRunner, criterion):
         predictions = self._get_output(state.output, self.output_key)
         targets = self._get_input(state.input, self.input_key)
 
@@ -36,7 +30,7 @@ class TrainOnlyCriterionCallback(CriterionCallback):
         loss = criterion(predictions, targets)
         return loss
 
-    def _compute_loss_key_value(self, state: RunnerState, criterion):
+    def _compute_loss_key_value(self, state: IRunner, criterion):
         output = self._get_output(state.output, self.output_key)
         input = self._get_input(state.input, self.input_key)
 
@@ -47,44 +41,6 @@ class TrainOnlyCriterionCallback(CriterionCallback):
         return loss
 
 
-class ParallelLossSupervisedExperiment(SupervisedExperiment):
-    """
-    Custom experiment class. To use in conjunction with LossWrapper.
-    """
-
-    def get_callbacks(self, stage: str) -> OrderedDict[str, Callback]:
-        """
-        Override of ``BaseExperiment.get_callbacks`` method.
-        Will add several of callbacks by default in case they missed.
-
-        Args:
-            stage (str): name of stage. It should start with `infer` if you
-                don't need default callbacks, as they required only for
-                training stages.
-        Returns:
-            List[Callback]: list of callbacks for experiment
-        """
-        callbacks = self._callbacks
-        default_callbacks = []
-        if self._verbose:
-            default_callbacks.append(("verbose", VerboseLogger))
-        if not stage.startswith("infer"):
-            # default_callbacks.append(("_criterion", CriterionCallback)) # Commented
-            default_callbacks.append(("_optimizer", OptimizerCallback))
-            if self._scheduler is not None:
-                default_callbacks.append(("_scheduler", SchedulerCallback))
-            default_callbacks.append(("_saver", CheckpointCallback))
-            default_callbacks.append(("console", ConsoleLogger))
-            default_callbacks.append(("tensorboard", TensorboardLogger))
-        default_callbacks.append(("exception", RaiseExceptionCallback))
-
-        for callback_name, callback_fn in default_callbacks:
-            is_already_present = any(isinstance(x, callback_fn) for x in callbacks.values())
-            if not is_already_present:
-                callbacks[callback_name] = callback_fn()
-        return callbacks
-
-
 class PassthroughCriterionCallback(CriterionCallback):
     """
     Returns one of model's outputs as loss values
@@ -93,11 +49,11 @@ class PassthroughCriterionCallback(CriterionCallback):
     def __init__(self, output_key, multiplier=1.0):
         super().__init__(output_key=output_key, prefix=output_key, multiplier=multiplier)
 
-    def _compute_loss_value(self, state: RunnerState, criterion):
+    def _compute_loss_value(self, state: IRunner, criterion):
         loss = self._get_output(state.output, self.output_key)
         return loss.mean()
 
-    def _compute_loss_key_value(self, state: RunnerState, criterion):
+    def _compute_loss_key_value(self, state: IRunner, criterion):
         loss = self._get_output(state.output, self.output_key)
         return loss.mean()
 

@@ -3,13 +3,21 @@ from collections import OrderedDict
 from pathlib import Path
 from typing import Dict
 
-import safitty
 import torch
 from catalyst import utils
-from catalyst.dl import RunnerState
-from catalyst.dl.callbacks.checkpoint import BaseCheckpointCallback
+from catalyst.core.callbacks.checkpoint import BaseCheckpointCallback
+from catalyst.dl import IRunner, Callback, CallbackOrder
 
-__all__ = ["clean_checkpoint", "report_checkpoint", "BestMetricCheckpointCallback"]
+
+__all__ = [
+    "BestMetricCheckpointCallback",
+    "HyperParametersCallback",
+    "clean_checkpoint",
+    "report_checkpoint",
+    "sanitize_metric_name",
+]
+
+from pytorch_toolbelt.utils.catalyst import get_tensorboard_logger
 
 
 def clean_checkpoint(src_fname, dst_fname):
@@ -52,6 +60,15 @@ def report_checkpoint(checkpoint: Dict):
     )
 
 
+def sanitize_metric_name(metric_name: str) -> str:
+    """
+    Replace characters in string that are not path-friendly with underscore
+    """
+    for s in ["?", "/", "\\", ":", "<", ">", "|", "'", '"', "#"]:
+        metric_name = metric_name.replace(s, "_")
+    return metric_name
+
+
 class BestMetricCheckpointCallback(BaseCheckpointCallback):
     """
     Checkpoint callback to save model weights based on user-defined metric value.
@@ -63,7 +80,7 @@ class BestMetricCheckpointCallback(BaseCheckpointCallback):
         target_metric_minimize=False,
         save_n_best: int = 3,
         checkpoints_dir=None,
-        metric_filename: str = "_metrics.json",
+        metrics_filename: str = "_metrics.json",
     ):
         """
         Args:
@@ -71,13 +88,13 @@ class BestMetricCheckpointCallback(BaseCheckpointCallback):
             target_metric_minimize (bool): define whether metric is minimized.
             save_n_best (int): number of best checkpoint to keep
             checkpoints_dir (str): path to directory where checkpoints will be saved
-            metric_filename (str): filename to save metrics
+            metrics_filename (str): filename to save metrics
                 in checkpoint folder. Must ends on ``.json`` or ``.yml``
         """
         if checkpoints_dir is None:
-            checkpoints_dir = "checkpoints_" + target_metric
+            checkpoints_dir = "checkpoints_" + sanitize_metric_name(target_metric)
 
-        super().__init__(metric_filename)
+        super().__init__(metrics_filename=metrics_filename)
         self.main_metric = target_metric
         self.minimize_metric = target_metric_minimize
         self.save_n_best = save_n_best
@@ -118,14 +135,6 @@ class BestMetricCheckpointCallback(BaseCheckpointCallback):
         self, logdir: str, checkpoint: Dict, is_best: bool, main_metric: str = "loss", minimize_metric: bool = True
     ):
         suffix = self.get_checkpoint_suffix(checkpoint)
-        utils.save_checkpoint(
-            logdir=Path(logdir) / Path(self.checkpoints_dir),
-            checkpoint=checkpoint,
-            suffix=f"{suffix}_full",
-            is_best=is_best,
-            is_last=True,
-            special_suffix="_full",
-        )
 
         exclude = ["criterion", "optimizer", "scheduler"]
         checkpoint = {key: value for key, value in checkpoint.items() if all(z not in key for z in exclude)}
@@ -146,15 +155,15 @@ class BestMetricCheckpointCallback(BaseCheckpointCallback):
         metrics = self.get_metric(valid_metrics)
         self.save_metric(logdir, metrics)
 
-    def on_stage_start(self, state: RunnerState):
+    def on_stage_start(self, state: IRunner):
         self.best_main_metric_value: float = float("+inf") if self.minimize_metric else float("-inf")
 
-    def on_epoch_end(self, state: RunnerState):
-        if state.stage.startswith("infer"):
+    def on_epoch_end(self, state: IRunner):
+        if state.stage_name.startswith("infer"):
             return
 
-        valid_metrics = dict(state.metrics.valid_values)
-        epoch_metrics = dict(state.metrics.epoch_values)
+        valid_metrics = dict(state.valid_metrics)
+        epoch_metrics = dict(state.epoch_metrics)
 
         checkpoint = utils.pack_checkpoint(
             model=state.model,
@@ -163,8 +172,8 @@ class BestMetricCheckpointCallback(BaseCheckpointCallback):
             scheduler=state.scheduler,
             epoch_metrics=epoch_metrics,
             valid_metrics=valid_metrics,
-            stage=state.stage,
-            epoch=state.epoch_log,
+            stage=state.stage_name,
+            epoch=state.global_epoch,
             checkpoint_data=state.checkpoint_data,
         )
 
@@ -185,7 +194,7 @@ class BestMetricCheckpointCallback(BaseCheckpointCallback):
             minimize_metric=self.minimize_metric,
         )
 
-    def on_stage_end(self, state: RunnerState):
+    def on_stage_end(self, state: IRunner):
         print("Top best models:")
         top_best_metrics_str = "\n".join(
             [
@@ -196,16 +205,16 @@ class BestMetricCheckpointCallback(BaseCheckpointCallback):
         print(top_best_metrics_str)
 
     def save_metric(self, logdir: str, metrics: Dict) -> None:
-        safitty.save(metrics, f"{logdir}/{self.checkpoints_dir}/{self.metric_filename}")
+        utils.save_config(metrics, f"{logdir}/{self.checkpoints_dir}/{self.metrics_filename}")
 
-    def on_exception(self, state: RunnerState):
+    def on_exception(self, state: IRunner):
         exception = state.exception
         if not utils.is_exception(exception):
             return
 
         try:
-            valid_metrics = state.metrics.valid_values
-            epoch_metrics = state.metrics.epoch_values
+            valid_metrics = state.valid_metrics
+            epoch_metrics = state.epoch_metrics
             checkpoint = utils.pack_checkpoint(
                 model=state.model,
                 criterion=state.criterion,
@@ -213,8 +222,8 @@ class BestMetricCheckpointCallback(BaseCheckpointCallback):
                 scheduler=state.scheduler,
                 epoch_metrics=epoch_metrics,
                 valid_metrics=valid_metrics,
-                stage=state.stage,
-                epoch=state.epoch_log,
+                stage=state.stage_name,
+                epoch=state.epoch,
                 checkpoint_data=state.checkpoint_data,
             )
             suffix = self.get_checkpoint_suffix(checkpoint)
@@ -231,3 +240,27 @@ class BestMetricCheckpointCallback(BaseCheckpointCallback):
             self.save_metric(state.logdir, metrics)
         except Exception:
             pass
+
+
+class HyperParametersCallback(Callback):
+    """
+    Callback that logs hyper-parameters for training session and target metric value.
+    Useful for evaluation of several runs in Tensorboard.
+    """
+
+    def __init__(self, hparam_dict: Dict):
+        if "stage" in hparam_dict:
+            raise KeyError("Key 'stage' is reserved")
+
+        super().__init__(CallbackOrder.Metric)
+        self.hparam_dict = hparam_dict
+
+    def on_stage_end(self, state: IRunner):
+        logger = get_tensorboard_logger(state)
+
+        hparam_dict = self.hparam_dict.copy()
+        hparam_dict["stage"] = state.stage_name
+
+        logger.add_hparams(
+            hparam_dict=self.hparam_dict, metric_dict={"best_" + state.main_metric: state.best_valid_metrics},
+        )

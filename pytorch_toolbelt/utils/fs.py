@@ -4,21 +4,51 @@
 
 import glob
 import os
+from typing import Union, List
 
 import cv2
 import numpy as np
 
+__all__ = [
+    "auto_file",
+    "change_extension",
+    "find_images_in_dir",
+    "find_in_dir",
+    "find_in_dir_glob",
+    "has_ext",
+    "has_image_ext",
+    "id_from_fname",
+    "read_image_as_is",
+    "read_rgb_image",
+]
+
+COMMON_IMAGE_EXTENSIONS = [".bmp", ".png", ".jpeg", ".jpg", ".tiff", ".tif"]
+
+
+def has_ext(fname: str, extensions: Union[str, List[str]]) -> bool:
+    if not isinstance(extensions, (str, list)):
+        raise ValueError("Argument extensions must be either string or list of strings")
+    if isinstance(extensions, str):
+        extensions = [str]
+    extensions = set(map(str.lower, extensions))
+
+    name, ext = os.path.splitext(fname)
+    return ext.lower() in extensions
+
 
 def has_image_ext(fname: str) -> bool:
-    name, ext = os.path.splitext(fname)
-    return ext.lower() in {".bmp", ".png", ".jpeg", ".jpg", ".tiff", ".tif"}
+    return has_ext(fname, COMMON_IMAGE_EXTENSIONS)
 
 
-def find_in_dir(dirname: str):
+def find_in_dir(dirname: str) -> List[str]:
     return [os.path.join(dirname, fname) for fname in sorted(os.listdir(dirname))]
 
 
-def find_images_in_dir(dirname: str):
+def find_in_dir_with_ext(dirname: str, extensions: Union[str, List[str]]) -> List[str]:
+    return [os.path.join(dirname, fname) for fname in sorted(os.listdir(dirname)) if has_ext(fname, extensions)]
+
+
+def find_images_in_dir(dirname: str) -> List[str]:
     return [fname for fname in find_in_dir(dirname) if has_image_ext(fname)]
 
 
@@ -27,11 +57,11 @@ def find_in_dir_glob(dirname: str, recursive=False):
     return list(sorted(files))
 
 
-def id_from_fname(fname: str):
+def id_from_fname(fname: str) -> str:
     return os.path.splitext(os.path.basename(fname))[0]
 
 
-def change_extension(fname: str, new_ext: str):
+def change_extension(fname: str, new_ext: str) -> str:
     return os.path.splitext(fname)[0] + new_ext
 
 
@@ -63,17 +93,16 @@ def auto_file(filename: str, where: str = ".") -> str:
 
 def read_rgb_image(fname: str) -> np.ndarray:
     """
-    Read RGB image from filesystem.
-    This function uses PIL to load image since PIL respects EXIF image orientation flag.
+    Read RGB image from filesystem in RGB color order.
+    Note: By default, OpenCV loads images in BGR memory order format.
     :param fname: Image file path
     :return: A numpy array with a loaded image in RGB format
     """
-    from PIL import Image
+    image = cv2.imread(fname, cv2.IMREAD_UNCHANGED)
+    if image is None:
+        raise IOError(f'Cannot read image "{fname}"')
 
-    im = Image.open(fname)
-    if im.mode != "RGB":
-        im = im.convert("RGB")
-    image = np.asarray(im)
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB, dst=image)
     return image
 
 

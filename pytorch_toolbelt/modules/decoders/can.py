@@ -93,7 +93,6 @@ class CANDecoder(nn.Module):
 
     def __init__(self, features: List[int], out_channels=256):
         super().__init__()
-        assert len(features) == 4
 
         self.encoder_rcm = nn.ModuleList(RCM(in_channels, out_channels) for in_channels in features)
         self.cfm = nn.Sequential(CFM(out_channels, out_channels), RCM(out_channels * 5, out_channels))
