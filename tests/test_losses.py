@@ -24,6 +24,16 @@ def test_reduced_focal_loss():
     assert loss_good < loss_bad
 
 
+def test_softmax_focal_loss_with_logits():
+    input_good = torch.tensor([[0, 10, 0], [10, 0, 0], [0, 0, 10]]).float()
+    input_bad = torch.tensor([[0, -10, 0], [0, 10, 0], [0, 0, 10]]).float()
+    target = torch.tensor([1, 0, 2]).long()
+
+    loss_good = F.softmax_focal_loss_with_logits(input_good, target)
+    loss_bad = F.softmax_focal_loss_with_logits(input_bad, target)
+    assert loss_good < loss_bad
+
+
 @pytest.mark.parametrize(
     ["y_true", "y_pred", "expected", "eps"],
     [

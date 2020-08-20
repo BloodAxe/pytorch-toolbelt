@@ -3,19 +3,20 @@ from typing import Optional
 
 import torch
 import torch.nn.functional as F
+from ..utils import pytorch_toolbelt_deprecated
 
-__all__ = ["focal_loss_with_logits", "sigmoid_focal_loss", "soft_jaccard_score", "soft_dice_score", "wing_loss"]
+__all__ = ["focal_loss_with_logits", "softmax_focal_loss_with_logits", "sigmoid_focal_loss", "soft_jaccard_score", "soft_dice_score", "wing_loss"]
 
 
 def focal_loss_with_logits(
-    output: torch.Tensor,
-    target: torch.Tensor,
-    gamma: float = 2.0,
-    alpha: Optional[float] = 0.25,
-    reduction: str = "mean",
-    normalized: bool = False,
-    reduced_threshold: Optional[float] = None,
-    eps: float = 1e-6,
+        output: torch.Tensor,
+        target: torch.Tensor,
+        gamma: float = 2.0,
+        alpha: Optional[float] = 0.25,
+        reduction: str = "mean",
+        normalized: bool = False,
+        reduced_threshold: Optional[float] = None,
+        eps: float = 1e-6,
 ) -> torch.Tensor:
     """Compute binary focal loss between target and output logits.
 
@@ -71,11 +72,69 @@ def focal_loss_with_logits(
     return loss
 
 
-# TODO: Mark as deprecated and emit warning
-sigmoid_focal_loss = focal_loss_with_logits
+def softmax_focal_loss_with_logits(
+        output: torch.Tensor,
+        target: torch.Tensor,
+        gamma: float = 2.0,
+        reduction="mean",
+        normalized=False,
+        reduced_threshold: Optional[float] = None,
+        eps: float = 1e-6,
+) -> torch.Tensor:
+    """Softmax version of focal loss between target and output logits.
+
+    See :class:`~pytorch_toolbelt.losses.FocalLoss` for details.
+
+    Args:
+        output: Tensor of shape [B, C, *] (Similar to nn.CrossEntropyLoss)
+        target: Tensor of shape [B, *] (Similar to nn.CrossEntropyLoss)
+        reduction (string, optional): Specifies the reduction to apply to the output:
+            'none' | 'mean' | 'sum' | 'batchwise_mean'. 'none': no reduction will be applied,
+            'mean': the sum of the output will be divided by the number of
+            elements in the output, 'sum': the output will be summed. Note: :attr:`size_average`
+            and :attr:`reduce` are in the process of being deprecated, and in the meantime,
+            specifying either of those two args will override :attr:`reduction`.
+            'batchwise_mean' computes mean loss per sample in batch. Default: 'mean'
+        normalized (bool): Compute normalized focal loss (https://arxiv.org/pdf/1909.07829.pdf).
+        reduced_threshold (float, optional): Compute reduced focal loss (https://arxiv.org/abs/1903.01347).
+    """
+
+    log_softmax = F.log_softmax(output, dim=1)
+
+    loss = F.nll_loss(log_softmax, target, reduction="none")
+    pt = torch.exp(-loss)
+
+    # compute the loss
+    if reduced_threshold is None:
+        focal_term = (1.0 - pt).pow(gamma)
+    else:
+        focal_term = ((1.0 - pt) / reduced_threshold).pow(gamma)
+        focal_term[pt < reduced_threshold] = 1
+
+    loss = focal_term * loss
+
+    if normalized:
+        norm_factor = focal_term.sum().clamp_min(eps)
+        loss = loss / norm_factor
+
+    if reduction == "mean":
+        loss = loss.mean()
+    if reduction == "sum":
+        loss = loss.sum()
+    if reduction == "batchwise_mean":
+        loss = loss.sum(0)
+
+    return loss
 
 
 # TODO: Mark as deprecated and emit warning
+@pytorch_toolbelt_deprecated("Function sigmoid_focal_loss is deprecated. Please use focal_loss_with_logits instead.")
+def sigmoid_focal_loss(*input, **kwargs):
+    return focal_loss_with_logits(*input, **kwargs)
+
+
+# TODO: Mark as deprecated and emit warning
+@pytorch_toolbelt_deprecated("Function reduced_focal_loss is deprecated. Please use focal_loss_with_logits instead.")
 def reduced_focal_loss(output: torch.Tensor, target: torch.Tensor, threshold=0.5, gamma=2.0, reduction="mean"):
     return focal_loss_with_logits(
         output, target, alpha=None, gamma=gamma, reduction=reduction, reduced_threshold=threshold
@@ -83,7 +142,7 @@ def reduced_focal_loss(output: torch.Tensor, target: torch.Tensor, threshold=0.5
 
 
 def soft_jaccard_score(
-    output: torch.Tensor, target: torch.Tensor, smooth: float = 0.0, eps: float = 1e-7, dims=None
+        output: torch.Tensor, target: torch.Tensor, smooth: float = 0.0, eps: float = 1e-7, dims=None
 ) -> torch.Tensor:
     """
 
@@ -116,7 +175,7 @@ def soft_jaccard_score(
 
 
 def soft_dice_score(
-    output: torch.Tensor, target: torch.Tensor, smooth: float = 0.0, eps: float = 1e-7, dims=None
+        output: torch.Tensor, target: torch.Tensor, smooth: float = 0.0, eps: float = 1e-7, dims=None
 ) -> torch.Tensor:
     """
 
@@ -175,7 +234,7 @@ def wing_loss(output: torch.Tensor, target: torch.Tensor, width=5, curvature=0.5
 
 
 def label_smoothed_nll_loss(
-    lprobs: torch.Tensor, target: torch.Tensor, epsilon: float, ignore_index=None, reduction="mean", dim=-1
+        lprobs: torch.Tensor, target: torch.Tensor, epsilon: float, ignore_index=None, reduction="mean", dim=-1
 ) -> torch.Tensor:
     """
 
