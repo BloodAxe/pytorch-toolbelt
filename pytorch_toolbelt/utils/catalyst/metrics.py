@@ -186,7 +186,6 @@ class F1ScoreCallback(Callback):
         outputs = to_numpy(state.output[self.output_key])
         targets = to_numpy(state.input[self.input_key])
 
-        num_classes = outputs.shape[1]
         outputs = np.argmax(outputs, axis=1)
 
         if self.ignore_index is not None:
@@ -194,14 +193,8 @@ class F1ScoreCallback(Callback):
             outputs = outputs[mask]
             targets = targets[mask]
 
-        outputs = [np.eye(num_classes)[y] for y in outputs]
-        targets = [np.eye(num_classes)[y] for y in targets]
-
         self.outputs.extend(outputs)
         self.targets.extend(targets)
-
-        # metric = self.metric_fn(self.targets, self.outputs)
-        # runner.metrics.add_batch_value(name=self.prefix, value=metric)
 
     def on_loader_start(self, runner: IRunner):
         self.outputs = []
