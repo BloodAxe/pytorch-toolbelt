@@ -9,6 +9,8 @@ from sklearn.metrics import f1_score
 from torchnet.meter import ConfusionMeter
 
 from .visualization import get_tensorboard_logger
+from .. import pytorch_toolbelt_deprecated
+from ..distributed import all_gather
 from ..torch_utils import to_numpy
 from ..visualization import render_figure_to_tensor, plot_confusion_matrix
 
@@ -19,6 +21,7 @@ __all__ = [
     "MULTICLASS_MODE",
     "MULTILABEL_MODE",
     "MacroF1Callback",
+    "F1ScoreCallback",
     "PixelAccuracyCallback",
     "binary_dice_iou_score",
     "multiclass_dice_iou_score",
@@ -150,13 +153,18 @@ class ConfusionMatrixCallback(Callback):
         logger.add_image(f"{self.prefix}/epoch", fig, global_step=runner.global_epoch)
 
 
-class MacroF1Callback(Callback):
+class F1ScoreCallback(Callback):
     """
-    Compute F1-macro metric
+    Compute F1 metric
     """
 
     def __init__(
-        self, input_key: str = "targets", output_key: str = "logits", prefix: str = "macro_f1", ignore_index=None
+        self,
+        input_key: str = "targets",
+        output_key: str = "logits",
+        prefix: str = "f1",
+        average="macro",
+        ignore_index=None,
     ):
         """
         :param input_key: input key to use for precision calculation;
@@ -165,7 +173,7 @@ class MacroF1Callback(Callback):
             specifies our `y_pred`.
         """
         super().__init__(CallbackOrder.Metric)
-        self.metric_fn = lambda outputs, targets: f1_score(targets, outputs, average="macro")
+        self.metric_fn = lambda outputs, targets: f1_score(targets, outputs, average=average)
         self.prefix = prefix
         self.output_key = output_key
         self.input_key = input_key
@@ -201,11 +209,31 @@ class MacroF1Callback(Callback):
 
     def on_loader_end(self, runner: IRunner):
         metric_name = self.prefix
+
         targets = np.array(self.targets)
         outputs = np.array(self.outputs)
 
+        # Aggregate metrics if in distributed mode
+        targets = np.concatenate(all_gather(targets), axis=0)
+        outputs = np.concatenate(all_gather(outputs), axis=0)
+
         metric = self.metric_fn(outputs, targets)
         runner.loader_metrics[metric_name] = metric
+
+
+@pytorch_toolbelt_deprecated(
+    "MacroF1Callback class is deprecated and will be removed in 0.5.0 release. " "Please use F1ScoreCallback instead."
+)
+class MacroF1Callback(F1ScoreCallback):
+    def __init__(
+        self,
+        input_key: str = "targets",
+        output_key: str = "logits",
+        prefix: str = "f1",
+        average="macro",
+        ignore_index=None,
+    ):
+        super().__init__(input_key, output_key, prefix, average, ignore_index)
 
 
 def binary_dice_iou_score(
