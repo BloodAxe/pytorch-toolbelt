@@ -53,10 +53,20 @@ def report_checkpoint(checkpoint: Dict):
         "_timers/_fps",
     ]
     print(
-        "Metrics (Train):", [(k, v) for k, v, in checkpoint["epoch_metrics"]["train"].items() if k not in skip_fields]
+        "Metrics (Train):",
+        [
+            (k.replace("train_", ""), v)
+            for k, v, in checkpoint["epoch_metrics"].items()
+            if k not in skip_fields and str.startswith(k, "train_")
+        ],
     )
     print(
-        "Metrics (Valid):", [(k, v) for k, v, in checkpoint["epoch_metrics"]["valid"].items() if k not in skip_fields]
+        "Metrics (Valid):",
+        [
+            (k.replace("valid_", ""), v)
+            for k, v, in checkpoint["epoch_metrics"].items()
+            if k not in skip_fields and str.startswith(k, "valid_")
+        ],
     )
 
 
@@ -262,5 +272,5 @@ class HyperParametersCallback(Callback):
         hparam_dict["stage"] = state.stage_name
 
         logger.add_hparams(
-            hparam_dict=self.hparam_dict, metric_dict={"best_" + state.main_metric: state.best_valid_metrics},
+            hparam_dict=self.hparam_dict, metric_dict=state.best_valid_metrics,
         )
