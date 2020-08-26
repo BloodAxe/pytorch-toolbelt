@@ -98,7 +98,6 @@ def softmax_focal_loss_with_logits(
         normalized (bool): Compute normalized focal loss (https://arxiv.org/pdf/1909.07829.pdf).
         reduced_threshold (float, optional): Compute reduced focal loss (https://arxiv.org/abs/1903.01347).
     """
-
     log_softmax = F.log_softmax(output, dim=1)
 
     loss = F.nll_loss(log_softmax, target, reduction="none")
