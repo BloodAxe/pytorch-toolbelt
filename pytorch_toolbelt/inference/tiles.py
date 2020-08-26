@@ -125,11 +125,10 @@ class ImageSlicer:
         bbox_crops = []
 
         for y in range(
-                0, self.image_height + self.margin_top + self.margin_bottom - self.tile_size[0] + 1, self.tile_step[0]
+            0, self.image_height + self.margin_top + self.margin_bottom - self.tile_size[0] + 1, self.tile_step[0]
         ):
             for x in range(
-                    0, self.image_width + self.margin_left + self.margin_right - self.tile_size[1] + 1,
-                    self.tile_step[1]
+                0, self.image_width + self.margin_left + self.margin_right - self.tile_size[1] + 1, self.tile_step[1]
             ):
                 crops.append((x, y, self.tile_size[1], self.tile_size[0]))
                 bbox_crops.append((x - self.margin_left, y - self.margin_top, self.tile_size[1], self.tile_size[0]))
@@ -158,7 +157,7 @@ class ImageSlicer:
 
         tiles = []
         for x, y, tile_width, tile_height in self.crops:
-            tile = image[y: y + tile_height, x: x + tile_width].copy()
+            tile = image[y : y + tile_height, x : x + tile_width].copy()
             assert tile.shape[0] == self.tile_size[0]
             assert tile.shape[1] == self.tile_size[1]
 
@@ -187,7 +186,7 @@ class ImageSlicer:
 
         x, y, tile_width, tile_height = self.crops[slice_index]
 
-        tile = image[y: y + tile_height, x: x + tile_width].copy()
+        tile = image[y : y + tile_height, x : x + tile_width].copy()
         assert tile.shape[0] == self.tile_size[0]
         assert tile.shape[1] == self.tile_size[1]
         return tile
@@ -218,8 +217,8 @@ class ImageSlicer:
 
         for tile, (x, y, tile_width, tile_height) in zip(tiles, self.crops):
             # print(x, y, tile_width, tile_height, image.shape)
-            image[y: y + tile_height, x: x + tile_width] += tile * w
-            norm_mask[y: y + tile_height, x: x + tile_width] += w
+            image[y : y + tile_height, x : x + tile_width] += tile * w
+            norm_mask[y : y + tile_height, x : x + tile_width] += w
 
         # print(norm_mask.min(), norm_mask.max())
         norm_mask = np.clip(norm_mask, a_min=np.finfo(norm_mask.dtype).eps, a_max=None)
@@ -231,9 +230,9 @@ class ImageSlicer:
         assert image.shape[0] == self.target_shape[0]
         assert image.shape[1] == self.target_shape[1]
         crop = image[
-               self.margin_top: self.image_height + self.margin_top,
-               self.margin_left: self.image_width + self.margin_left,
-               ]
+            self.margin_top : self.image_height + self.margin_top,
+            self.margin_left : self.image_width + self.margin_left,
+        ]
         assert crop.shape[0] == self.image_height
         assert crop.shape[1] == self.image_width
         return crop
@@ -277,8 +276,8 @@ class TileMerger:
 
         batch = batch.to(device=self.image.device)
         for tile, (x, y, tile_width, tile_height) in zip(batch, crop_coords):
-            self.image[:, y: y + tile_height, x: x + tile_width] += tile * self.weight
-            self.norm_mask[:, y: y + tile_height, x: x + tile_width] += self.weight
+            self.image[:, y : y + tile_height, x : x + tile_width] += tile * self.weight
+            self.norm_mask[:, y : y + tile_height, x : x + tile_width] += self.weight
 
     def merge(self) -> torch.Tensor:
         return self.image / self.norm_mask

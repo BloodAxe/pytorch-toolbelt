@@ -81,8 +81,8 @@ def softmax_focal_loss_with_logits(
         reduced_threshold: Optional[float] = None,
         eps: float = 1e-6,
 ) -> torch.Tensor:
-    """Softmax version of focal loss between target and output logits.
-
+    """
+    Softmax version of focal loss between target and output logits.
     See :class:`~pytorch_toolbelt.losses.FocalLoss` for details.
 
     Args:
