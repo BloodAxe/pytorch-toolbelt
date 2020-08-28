@@ -36,17 +36,11 @@ class SoftBCEWithLogitsLoss(nn.Module):
         )
 
         if self.ignore_index is not None:
-            not_ignored_mask = target != self.ignore_index
-            size = not_ignored_mask.sum()
-            if size == 0:
-                # If there are zero elements, loss is zero
-                return 0
-            loss *= not_ignored_mask.to(loss.dtype)
-        else:
-            size = loss.numel()
+            not_ignored_mask:Tensor = target != self.ignore_index
+            loss *= not_ignored_mask.type_as(loss)
 
         if self.reduction == "mean":
-            loss = loss.sum() / size
+            loss = loss.mean()
 
         if self.reduction == "sum":
             loss = loss.sum()
