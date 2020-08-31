@@ -1,3 +1,5 @@
+from typing import Optional, List
+
 import torch
 from torch import nn, Tensor
 from math import hypot
@@ -118,8 +120,8 @@ class DeconvolutionUpsample2d(nn.Module):
         self.out_channels = in_channels // n
         self.conv = nn.ConvTranspose2d(in_channels, in_channels // n, kernel_size=3, padding=1, stride=2)
 
-    def forward(self, x: Tensor) -> Tensor:  # skipcq: PYL-W0221
-        return self.conv(x)
+    def forward(self, x: Tensor, output_size: Optional[List[int]] = None) -> Tensor:  # skipcq: PYL-W0221
+        return self.conv(x, output_size=output_size)
 
 
 class ResidualDeconvolutionUpsample2d(nn.Module):
