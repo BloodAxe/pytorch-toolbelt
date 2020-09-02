@@ -15,7 +15,6 @@ __all__ = [
 
 
 def bilinear_upsample_initializer(x):
-
     cc = x.size(2) // 2
     cr = x.size(3) // 2
 
@@ -76,7 +75,7 @@ class DepthToSpaceUpsample2d(nn.Module):
     https://arxiv.org/ftp/arxiv/papers/1707/1707.02937.pdf
     """
 
-    def __init__(self, in_channels: int, out_channels:int, scale_factor: int = 2):
+    def __init__(self, in_channels: int, out_channels: int, scale_factor: int = 2):
         super().__init__()
         n = 2 ** scale_factor
         self.conv = nn.Conv2d(in_channels, out_channels * n, kernel_size=3, padding=1, bias=False)
