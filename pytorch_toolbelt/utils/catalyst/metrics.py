@@ -10,7 +10,7 @@ from torchnet.meter import ConfusionMeter
 
 from .visualization import get_tensorboard_logger
 from .. import pytorch_toolbelt_deprecated
-from ..distributed import all_gather
+from ..distributed import all_gather, is_main_process
 from ..torch_utils import to_numpy
 from ..visualization import render_figure_to_tensor, plot_confusion_matrix
 
@@ -150,8 +150,9 @@ class ConfusionMatrixCallback(Callback):
         )
         fig = render_figure_to_tensor(fig)
 
-        logger = get_tensorboard_logger(runner)
-        logger.add_image(f"{self.prefix}/epoch", fig, global_step=runner.global_epoch)
+        if is_main_process():
+            logger = get_tensorboard_logger(runner)
+            logger.add_image(f"{self.prefix}/epoch", fig, global_step=runner.global_epoch)
 
 
 class F1ScoreCallback(Callback):
@@ -499,7 +500,8 @@ class OutputDistributionCallback(Callback):
         true_labels = np.concatenate(all_gather(np.array(self.true_labels)))
         pred_probas = np.concatenate(all_gather(np.array(self.pred_labels)))
 
-        logger = get_tensorboard_logger(state)
+        if is_main_process():
+            logger = get_tensorboard_logger(state)
 
-        for class_label in range(self.num_classes):
-            logger.add_histogram(f"{self.prefix}/{class_label}", pred_probas[true_labels == class_label], state.epoch)
+            for class_label in range(self.num_classes):
+                logger.add_histogram(f"{self.prefix}/{class_label}", pred_probas[true_labels == class_label], state.epoch)
