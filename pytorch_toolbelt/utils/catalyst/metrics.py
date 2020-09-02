@@ -1,6 +1,6 @@
 import warnings
 from functools import partial
-from typing import List, Optional
+from typing import List, Optional, Callable
 
 import numpy as np
 import torch
@@ -17,11 +17,12 @@ from ..visualization import render_figure_to_tensor, plot_confusion_matrix
 __all__ = [
     "BINARY_MODE",
     "ConfusionMatrixCallback",
+    "F1ScoreCallback",
     "IoUMetricsCallback",
     "MULTICLASS_MODE",
     "MULTILABEL_MODE",
     "MacroF1Callback",
-    "F1ScoreCallback",
+    "OutputDistributionCallback",
     "PixelAccuracyCallback",
     "binary_dice_iou_score",
     "multiclass_dice_iou_score",
@@ -58,7 +59,7 @@ class PixelAccuracyCallback(MetricCallback):
     """
 
     def __init__(
-        self, input_key: str = "targets", output_key: str = "logits", prefix: str = "accuracy", ignore_index=None
+            self, input_key: str = "targets", output_key: str = "logits", prefix: str = "accuracy", ignore_index=None
     ):
         """
         :param input_key: input key to use for iou calculation;
@@ -82,14 +83,14 @@ class ConfusionMatrixCallback(Callback):
     """
 
     def __init__(
-        self,
-        input_key: str = "targets",
-        output_key: str = "logits",
-        prefix: str = "confusion_matrix",
-        class_names: List[str] = None,
-        num_classes: int = None,
-        ignore_index=None,
-        activation_fn=partial(torch.argmax, dim=1),
+            self,
+            input_key: str = "targets",
+            output_key: str = "logits",
+            prefix: str = "confusion_matrix",
+            class_names: List[str] = None,
+            num_classes: int = None,
+            ignore_index=None,
+            activation_fn=partial(torch.argmax, dim=1),
     ):
         """
         :param input_key: input key to use for precision calculation;
@@ -159,12 +160,12 @@ class F1ScoreCallback(Callback):
     """
 
     def __init__(
-        self,
-        input_key: str = "targets",
-        output_key: str = "logits",
-        prefix: str = "f1",
-        average="macro",
-        ignore_index=None,
+            self,
+            input_key: str = "targets",
+            output_key: str = "logits",
+            prefix: str = "f1",
+            average="macro",
+            ignore_index=None,
     ):
         """
         :param input_key: input key to use for precision calculation;
@@ -219,24 +220,24 @@ class F1ScoreCallback(Callback):
 )
 class MacroF1Callback(F1ScoreCallback):
     def __init__(
-        self,
-        input_key: str = "targets",
-        output_key: str = "logits",
-        prefix: str = "f1",
-        average="macro",
-        ignore_index=None,
+            self,
+            input_key: str = "targets",
+            output_key: str = "logits",
+            prefix: str = "f1",
+            average="macro",
+            ignore_index=None,
     ):
         super().__init__(input_key, output_key, prefix, average, ignore_index)
 
 
 def binary_dice_iou_score(
-    y_pred: torch.Tensor,
-    y_true: torch.Tensor,
-    mode="dice",
-    threshold: Optional[float] = None,
-    nan_score_on_empty=False,
-    eps: float = 1e-7,
-    ignore_index=None,
+        y_pred: torch.Tensor,
+        y_true: torch.Tensor,
+        mode="dice",
+        threshold: Optional[float] = None,
+        nan_score_on_empty=False,
+        eps: float = 1e-7,
+        ignore_index=None,
 ) -> float:
     """
     Compute IoU score between two image tensors
@@ -281,13 +282,13 @@ def binary_dice_iou_score(
 
 
 def multiclass_dice_iou_score(
-    y_pred: torch.Tensor,
-    y_true: torch.Tensor,
-    mode="dice",
-    threshold=None,
-    eps=1e-7,
-    nan_score_on_empty=False,
-    classes_of_interest=None,
+        y_pred: torch.Tensor,
+        y_true: torch.Tensor,
+        mode="dice",
+        threshold=None,
+        eps=1e-7,
+        nan_score_on_empty=False,
+        classes_of_interest=None,
 ):
     ious = []
     num_classes = y_pred.size(0)
@@ -311,14 +312,14 @@ def multiclass_dice_iou_score(
 
 
 def multilabel_dice_iou_score(
-    y_true: torch.Tensor,
-    y_pred: torch.Tensor,
-    mode="dice",
-    threshold=None,
-    eps=1e-7,
-    nan_score_on_empty=False,
-    classes_of_interest=None,
-    ignore_index=None,
+        y_true: torch.Tensor,
+        y_pred: torch.Tensor,
+        mode="dice",
+        threshold=None,
+        eps=1e-7,
+        nan_score_on_empty=False,
+        classes_of_interest=None,
+        ignore_index=None,
 ):
     ious = []
     num_classes = y_pred.size(0)
@@ -348,16 +349,16 @@ class IoUMetricsCallback(Callback):
     """
 
     def __init__(
-        self,
-        mode: str,
-        metric="dice",
-        class_names=None,
-        classes_of_interest=None,
-        input_key: str = "targets",
-        output_key: str = "logits",
-        nan_score_on_empty=True,
-        prefix: str = None,
-        ignore_index=None,
+            self,
+            mode: str,
+            metric="dice",
+            class_names=None,
+            classes_of_interest=None,
+            input_key: str = "targets",
+            output_key: str = "logits",
+            nan_score_on_empty=True,
+            prefix: str = None,
+            ignore_index=None,
     ):
         """
         :param mode: One of: 'binary', 'multiclass', 'multilabel'.
@@ -456,3 +457,49 @@ class IoUMetricsCallback(Callback):
             scores_per_class = np.nanmean(scores, axis=0)
             for class_name, score_per_class in zip(class_names, scores_per_class):
                 runner.loader_metrics[self.prefix + "_" + class_name] = float(score_per_class)
+
+
+class OutputDistributionCallback(Callback):
+    """
+    Plot histogram of predictions for each class. This callback supports binary & multi-classs predictions
+    """
+    def __init__(self, input_key: str, output_key: str, output_activation: Callable, num_classes: int,
+                 prefix="distribution"):
+        """
+
+        Args:
+            input_key:
+            output_key:
+            output_activation: A function that should convert logits to class labels
+            For binary predictions this could be `lambda x: int(x > 0.5)` or `lambda x: torch.argmax(x, dim=1)`
+            for multi-class predictions.
+            num_classes: Number of classes. Must be 2 for binary.
+            prefix:
+        """
+        super().__init__(CallbackOrder.Metric)
+        self.prefix = prefix
+        self.input_key = input_key
+        self.output_key = output_key
+        self.true_labels = []
+        self.pred_labels = []
+        self.num_classes = num_classes
+        self.output_activation = output_activation
+
+    def on_loader_start(self, state: IRunner):
+        self.true_labels = []
+        self.pred_labels = []
+
+    @torch.no_grad()
+    def on_batch_end(self, state: IRunner):
+        output = state.output[self.output_key].detach()
+        self.true_labels.extend(to_numpy(state.input[self.input_key]).flatten())
+        self.pred_labels.extend(to_numpy(self.output_activation(output)).flatten())
+
+    def on_loader_end(self, state: IRunner):
+        true_labels = np.concatenate(all_gather(np.array(self.true_labels)))
+        pred_probas = np.concatenate(all_gather(np.array(self.pred_labels)))
+
+        logger = get_tensorboard_logger(state)
+
+        for class_label in range(self.num_classes):
+            logger.add_histogram(f"{self.prefix}/{class_label}", pred_probas[true_labels == class_label], state.epoch)
