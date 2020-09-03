@@ -17,7 +17,7 @@ class BinaryFocalLoss(_Loss):
         :param gamma: Power factor for dampening weight (focal strenght).
         :param ignore_index: If not None, targets may contain values to be ignored.
         Target values equal to ignore_index will be ignored from loss computation.
-        :param reduced:
+        :param reduced: Switch to reduced focal loss. Note, when using this mode you should use `reduction="sum"`.
         :param threshold:
         """
         super().__init__()

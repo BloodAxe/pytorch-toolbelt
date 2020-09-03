@@ -6,6 +6,7 @@ transformation written in PyTorch and respect gradients flow.
 from functools import partial
 from typing import Tuple, List
 
+import torch
 from torch import Tensor, nn
 from torch.nn.functional import interpolate
 
@@ -14,6 +15,8 @@ from . import functional as F
 __all__ = [
     "d4_image2label",
     "d4_image2mask",
+    "d4_augment",
+    "d4_deaugment",
     "fivecrop_image2label",
     "tencrop_image2label",
     "fliplr_image2mask",
@@ -71,7 +74,7 @@ def fivecrop_image2label(model: nn.Module, image: Tensor, crop_size: Tuple) -> T
     center_crop_y = (image_height - crop_height) // 2
     center_crop_x = (image_width - crop_width) // 2
 
-    crop_cc = image[..., center_crop_y : center_crop_y + crop_height, center_crop_x : center_crop_x + crop_width]
+    crop_cc = image[..., center_crop_y: center_crop_y + crop_height, center_crop_x: center_crop_x + crop_width]
     assert crop_cc.size(2) == crop_height
     assert crop_cc.size(3) == crop_width
 
@@ -115,21 +118,21 @@ def tencrop_image2label(model: nn.Module, image: Tensor, crop_size: Tuple) -> Te
     center_crop_y = (image_height - crop_height) // 2
     center_crop_x = (image_width - crop_width) // 2
 
-    crop_cc = image[..., center_crop_y : center_crop_y + crop_height, center_crop_x : center_crop_x + crop_width]
+    crop_cc = image[..., center_crop_y: center_crop_y + crop_height, center_crop_x: center_crop_x + crop_width]
     assert crop_cc.size(2) == crop_height
     assert crop_cc.size(3) == crop_width
 
     output = (
-        model(crop_tl)
-        + model(F.torch_fliplr(crop_tl))
-        + model(crop_tr)
-        + model(F.torch_fliplr(crop_tr))
-        + model(crop_bl)
-        + model(F.torch_fliplr(crop_bl))
-        + model(crop_br)
-        + model(F.torch_fliplr(crop_br))
-        + model(crop_cc)
-        + model(F.torch_fliplr(crop_cc))
+            model(crop_tl)
+            + model(F.torch_fliplr(crop_tl))
+            + model(crop_tr)
+            + model(F.torch_fliplr(crop_tr))
+            + model(crop_bl)
+            + model(F.torch_fliplr(crop_bl))
+            + model(crop_br)
+            + model(F.torch_fliplr(crop_br))
+            + model(crop_cc)
+            + model(F.torch_fliplr(crop_cc))
     )
 
     one_over_10 = float(1.0 / 10.0)
@@ -188,7 +191,7 @@ def d4_image2mask(model: nn.Module, image: Tensor) -> Tensor:
     output = model(image)
 
     for aug, deaug in zip(
-        [F.torch_rot90, F.torch_rot180, F.torch_rot270], [F.torch_rot270, F.torch_rot180, F.torch_rot90]
+            [F.torch_rot90, F.torch_rot180, F.torch_rot270], [F.torch_rot270, F.torch_rot180, F.torch_rot90]
     ):
         x = deaug(model(aug(image)))
         output += x
@@ -196,8 +199,8 @@ def d4_image2mask(model: nn.Module, image: Tensor) -> Tensor:
     image = F.torch_transpose(image)
 
     for aug, deaug in zip(
-        [F.torch_none, F.torch_rot90, F.torch_rot180, F.torch_rot270],
-        [F.torch_none, F.torch_rot270, F.torch_rot180, F.torch_rot90],
+            [F.torch_none, F.torch_rot90, F.torch_rot180, F.torch_rot270],
+            [F.torch_none, F.torch_rot270, F.torch_rot180, F.torch_rot90],
     ):
         x = deaug(model(aug(image)))
         output += F.torch_transpose(x)
@@ -205,6 +208,39 @@ def d4_image2mask(model: nn.Module, image: Tensor) -> Tensor:
     one_over_8 = float(1.0 / 8.0)
     output *= one_over_8
     return output
+
+
+@torch.jit.script
+def d4_augment(image: Tensor) -> Tensor:
+    image_t = F.torch_transpose(image)
+    return torch.cat([
+        image,
+        F.torch_rot90(image),
+        F.torch_rot180(image),
+        F.torch_rot270(image),
+        image_t,
+        F.torch_rot90(image_t),
+        F.torch_rot180(image_t),
+        F.torch_rot270(image_t),
+    ], dim=0)
+
+
+@torch.jit.script
+def d4_deaugment(image: Tensor, average: bool = True) -> Tensor:
+    bs: int = image.shape[0] // 8
+    image: List[Tensor] = [image[bs * 0:bs * 1],
+                           F.torch_rot270(image[bs * 1:bs * 2]),
+                           F.torch_rot180(image[bs * 2:bs * 3]),
+                           F.torch_rot90(image[bs * 3:bs * 4]),
+                           F.torch_transpose(image[bs * 4:bs * 5]),
+                           F.torch_transpose(F.torch_rot270(image[bs * 5:bs * 6])),
+                           F.torch_transpose(F.torch_rot180(image[bs * 6:bs * 7])),
+                           F.torch_transpose(F.torch_rot90(image[bs * 7:bs * 8]))]
+
+    image: Tensor = image[0] + image[1] + image[2] + image[3] + image[4] + image[5] + image[6] + image[7]
+    if average:
+        image.div_(8)
+    return image
 
 
 class TTAWrapper(nn.Module):
