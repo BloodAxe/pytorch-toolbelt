@@ -1,3 +1,4 @@
+import inspect
 from collections import OrderedDict
 from typing import List, Callable, Tuple
 
@@ -95,6 +96,9 @@ class HGStemBlock(nn.Module):
 
 
 class HGBlock(nn.Module):
+    """
+    A single Hourglass model block.
+    """
     def __init__(
         self,
         depth: int,
@@ -108,7 +112,10 @@ class HGBlock(nn.Module):
         super(HGBlock, self).__init__()
         nf = features + increase
 
-        self.down = pooling_block(kernel_size=2, padding=0, stride=2)
+        if inspect.isclass(pooling_block) and issubclass(pooling_block, (nn.MaxPool2d, nn.AvgPool2d)):
+            self.down = pooling_block(kernel_size=2, padding=0, stride=2)
+        else:
+            self.down = pooling_block(input_features)
 
         if repeats == 1:
             self.up1 = HGResidualBlock(input_features, features, activation=activation)
@@ -131,7 +138,11 @@ class HGBlock(nn.Module):
         self.depth = depth
         # Recursive hourglass
         if self.depth > 1:
-            self.low2 = HGBlock(depth - 1, nf, nf, increase=increase, activation=activation)
+            self.low2 = HGBlock(depth - 1, nf, nf,
+                                increase=increase,
+                                pooling_block=pooling_block,
+                                activation=activation,
+                                repeats=repeats)
         else:
             self.low2 = HGResidualBlock(nf, nf, activation=activation)
         self.low3 = HGResidualBlock(nf, features, activation=activation)
@@ -227,7 +238,7 @@ class StackedHGEncoder(EncoderModule):
             [nn.Conv2d(features, features, kernel_size=1) for _ in range(stack_level - 1)]
         )
 
-    def __repr__(self):
+    def __str__(self):
         return f"hg_s{self.stack_level}_d{self.depth_level}_f{self.num_features}"
 
     def forward(self, x: Tensor) -> List[Tensor]:  # skipcq: PYL-W0221

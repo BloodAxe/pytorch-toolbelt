@@ -210,7 +210,6 @@ def d4_image2mask(model: nn.Module, image: Tensor) -> Tensor:
     return output
 
 
-@torch.jit.script
 def d4_augment(image: Tensor) -> Tensor:
     image_t = F.torch_transpose(image)
     return torch.cat([
@@ -225,22 +224,21 @@ def d4_augment(image: Tensor) -> Tensor:
     ], dim=0)
 
 
-@torch.jit.script
 def d4_deaugment(image: Tensor, average: bool = True) -> Tensor:
     bs: int = image.shape[0] // 8
-    image: List[Tensor] = [image[bs * 0:bs * 1],
+    image: Tensor = torch.stack([image[bs * 0:bs * 1],
                            F.torch_rot270(image[bs * 1:bs * 2]),
                            F.torch_rot180(image[bs * 2:bs * 3]),
                            F.torch_rot90(image[bs * 3:bs * 4]),
                            F.torch_transpose(image[bs * 4:bs * 5]),
                            F.torch_transpose(F.torch_rot270(image[bs * 5:bs * 6])),
                            F.torch_transpose(F.torch_rot180(image[bs * 6:bs * 7])),
-                           F.torch_transpose(F.torch_rot90(image[bs * 7:bs * 8]))]
+                           F.torch_transpose(F.torch_rot90(image[bs * 7:bs * 8]))])
 
-    image: Tensor = image[0] + image[1] + image[2] + image[3] + image[4] + image[5] + image[6] + image[7]
     if average:
-        image.div_(8)
-    return image
+        return image.mean(dim=0)
+    else:
+        return image.sum(dim=0)
 
 
 class TTAWrapper(nn.Module):
