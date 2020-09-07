@@ -211,6 +211,23 @@ def d4_image2mask(model: nn.Module, image: Tensor) -> Tensor:
 
 
 def d4_augment(image: Tensor) -> Tensor:
+    """
+    Augment input tensor using D4 symmetry group
+    Args:
+        image: Tensor of [B,C,H,W] shape
+
+    Returns:
+        Tensor of [B * 8, C, H, W] shape with:
+            - Original tensor
+            - Original tensor rotated by 90 degrees
+            - Original tensor rotated by 180 degrees
+            - Original tensor rotated by 180 degrees
+            - Transposed tensor
+            - Transposed tensor rotated by 90 degrees
+            - Transposed tensor rotated by 180 degrees
+            - Transposed tensor rotated by 180 degrees
+
+    """
     image_t = F.torch_transpose(image)
     return torch.cat([
         image,
@@ -225,6 +242,15 @@ def d4_augment(image: Tensor) -> Tensor:
 
 
 def d4_deaugment(image: Tensor, average: bool = True) -> Tensor:
+    """
+    Deaugment input tensor (output of the model) assuming the input was D4-augmented image (See d4_augment).
+    Args:
+        image: Tensor of [B * 8, C, H, W] shape
+        average: If True performs averaging of 8 outputs, otherwise - summation.
+
+    Returns:
+        Tensor of [B, C, H, W] shape.
+    """
     bs: int = image.shape[0] // 8
     image: Tensor = torch.stack([image[bs * 0:bs * 1],
                            F.torch_rot270(image[bs * 1:bs * 2]),
