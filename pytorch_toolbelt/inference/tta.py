@@ -252,14 +252,58 @@ def d4_deaugment(image: Tensor, average: bool = True) -> Tensor:
         Tensor of [B, C, H, W] shape.
     """
     bs: int = image.shape[0] // 8
-    image: Tensor = torch.stack([image[bs * 0:bs * 1],
-                           F.torch_rot270(image[bs * 1:bs * 2]),
-                           F.torch_rot180(image[bs * 2:bs * 3]),
-                           F.torch_rot90(image[bs * 3:bs * 4]),
-                           F.torch_transpose(image[bs * 4:bs * 5]),
-                           F.torch_transpose(F.torch_rot270(image[bs * 5:bs * 6])),
-                           F.torch_transpose(F.torch_rot180(image[bs * 6:bs * 7])),
-                           F.torch_transpose(F.torch_rot90(image[bs * 7:bs * 8]))])
+    image: Tensor = torch.stack([
+        image[bs * 0:bs * 1],
+        F.torch_rot270(image[bs * 1:bs * 2]),
+        F.torch_rot180(image[bs * 2:bs * 3]),
+        F.torch_rot90(image[bs * 3:bs * 4]),
+        F.torch_transpose(image[bs * 4:bs * 5]),
+        F.torch_transpose(F.torch_rot270(image[bs * 5:bs * 6])),
+        F.torch_transpose(F.torch_rot180(image[bs * 6:bs * 7])),
+        F.torch_transpose(F.torch_rot90(image[bs * 7:bs * 8]))])
+
+    if average:
+        return image.mean(dim=0)
+    else:
+        return image.sum(dim=0)
+
+
+def flips_augment(image: Tensor) -> Tensor:
+    """
+    Augment input tensor by adding vertically and horisontaly flipped images to it
+    Args:
+        image: Tensor of [B,C,H,W] shape
+
+    Returns:
+        Tensor of [B * 3, C, H, W] shape with:
+            - Original tensor
+            - Horizontally-flipped tensor
+            - Vertically-flipped
+
+    """
+    return torch.cat([
+        image,
+        F.torch_fliplr(image),
+        F.torch_flipud(image),
+    ], dim=0)
+
+
+def flips_deaugment(image: Tensor, average: bool = True) -> Tensor:
+    """
+    Deaugment input tensor (output of the model) assuming the input was flip-augmented image (See flips_augment).
+    Args:
+        image: Tensor of [B * 3, C, H, W] shape
+        average: If True performs averaging of 8 outputs, otherwise - summation.
+
+    Returns:
+        Tensor of [B, C, H, W] shape.
+    """
+    bs: int = image.shape[0] // 3
+    image: Tensor = torch.stack([
+        image[bs * 0:bs * 1],
+        F.torch_fliplr(image[bs * 1:bs * 2]),
+        F.torch_flipud(image[bs * 2:bs * 3])
+    ])
 
     if average:
         return image.mean(dim=0)
