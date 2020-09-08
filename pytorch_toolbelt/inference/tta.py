@@ -17,6 +17,8 @@ __all__ = [
     "d4_image2mask",
     "d4_augment",
     "d4_deaugment",
+    "flips_augment",
+    "flips_deaugment",
     "fivecrop_image2label",
     "tencrop_image2label",
     "fliplr_image2mask",
@@ -251,16 +253,16 @@ def d4_deaugment(image: Tensor, average: bool = True) -> Tensor:
     Returns:
         Tensor of [B, C, H, W] shape.
     """
-    bs: int = image.shape[0] // 8
+    batch_size: int = image.shape[0] // 8
     image: Tensor = torch.stack([
-        image[bs * 0:bs * 1],
-        F.torch_rot270(image[bs * 1:bs * 2]),
-        F.torch_rot180(image[bs * 2:bs * 3]),
-        F.torch_rot90(image[bs * 3:bs * 4]),
-        F.torch_transpose(image[bs * 4:bs * 5]),
-        F.torch_transpose(F.torch_rot270(image[bs * 5:bs * 6])),
-        F.torch_transpose(F.torch_rot180(image[bs * 6:bs * 7])),
-        F.torch_transpose(F.torch_rot90(image[bs * 7:bs * 8]))])
+        image[batch_size * 0:batch_size * 1],
+        F.torch_rot270(image[batch_size * 1:batch_size * 2]),
+        F.torch_rot180(image[batch_size * 2:batch_size * 3]),
+        F.torch_rot90(image[batch_size * 3:batch_size * 4]),
+        F.torch_transpose(image[batch_size * 4:batch_size * 5]),
+        F.torch_transpose(F.torch_rot270(image[batch_size * 5:batch_size * 6])),
+        F.torch_transpose(F.torch_rot180(image[batch_size * 6:batch_size * 7])),
+        F.torch_transpose(F.torch_rot90(image[batch_size * 7:batch_size * 8]))])
 
     if average:
         return image.mean(dim=0)
@@ -298,11 +300,11 @@ def flips_deaugment(image: Tensor, average: bool = True) -> Tensor:
     Returns:
         Tensor of [B, C, H, W] shape.
     """
-    bs: int = image.shape[0] // 3
+    batch_size: int = image.shape[0] // 3
     image: Tensor = torch.stack([
-        image[bs * 0:bs * 1],
-        F.torch_fliplr(image[bs * 1:bs * 2]),
-        F.torch_flipud(image[bs * 2:bs * 3])
+        image[batch_size * 0:batch_size * 1],
+        F.torch_fliplr(image[batch_size * 1:batch_size * 2]),
+        F.torch_flipud(image[batch_size * 2:batch_size * 3])
     ])
 
     if average:
