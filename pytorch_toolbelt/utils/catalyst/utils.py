@@ -2,7 +2,7 @@ import os
 from collections import OrderedDict
 from pathlib import Path
 from typing import Dict
-
+import math
 import torch
 from catalyst import utils
 from catalyst.core.callbacks.checkpoint import BaseCheckpointCallback
@@ -189,9 +189,9 @@ class BestMetricCheckpointCallback(BaseCheckpointCallback):
 
         main_metric_value = valid_metrics[self.main_metric]
         if self.minimize_metric:
-            is_best = main_metric_value < self.best_main_metric_value
+            is_best = math.isfinite(main_metric_value) and main_metric_value < self.best_main_metric_value
         else:
-            is_best = main_metric_value > self.best_main_metric_value
+            is_best = math.isfinite(main_metric_value) and main_metric_value > self.best_main_metric_value
 
         if is_best:
             self.best_main_metric_value = main_metric_value
