@@ -42,7 +42,7 @@ class UnetSegmentationModel(nn.Module):
         if last_upsample_block is not None:
             self.mask = nn.Sequential(
                 OrderedDict(
-                    [("drop", nn.Dropout2d(dropout)), ("conv", last_upsample_block(unet_channels[0], num_classes)),]
+                    [("drop", nn.Dropout2d(dropout)), ("conv", last_upsample_block(unet_channels[0], num_classes))]
                 )
             )
         else:
