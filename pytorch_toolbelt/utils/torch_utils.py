@@ -92,7 +92,7 @@ def to_tensor(x, dtype=None) -> torch.Tensor:
     raise ValueError("Unsupported input type" + str(type(x)))
 
 
-def image_to_tensor(image: np.ndarray, dummy_channels_dim=True, memory_format=None) -> torch.Tensor:
+def image_to_tensor(image: np.ndarray, dummy_channels_dim=True) -> torch.Tensor:
     """
         Convert numpy image (RGB, BGR) to tensor
 
@@ -100,9 +100,6 @@ def image_to_tensor(image: np.ndarray, dummy_channels_dim=True, memory_format=No
             image: A numpy array of [H,W,C] shape
             dummy_channels_dim: If True, and image has [H,W] shape adds dummy channel, so that
                 output tensor has shape [1, H, W]
-            memory_format: Allow to explicitly specify memory format of the tensor.
-                Allowed values are `torch.channels_last`, `torch.contiguous_format`
-                https://pytorch.org/tutorials/intermediate/memory_format_tutorial.html
 
         Returns:
             Torch tensor of [C,H,W] or [H,W] shape (dummy_channels_dim=False).
@@ -116,19 +113,17 @@ def image_to_tensor(image: np.ndarray, dummy_channels_dim=True, memory_format=No
         image = np.moveaxis(image, -1, 0)
     image = np.ascontiguousarray(image)
     image = torch.from_numpy(image)
-    if memory_format is not None:
-        image = image.to(memory_format=torch.channels_last)
     return image
 
 
 @pytorch_toolbelt_deprecated("This function is deprecated, please use image_to_tensor instead")
-def tensor_from_rgb_image(image: np.ndarray, memory_format=None) -> torch.Tensor:
-    return image_to_tensor(image, memory_format=memory_format)
+def tensor_from_rgb_image(image: np.ndarray) -> torch.Tensor:
+    return image_to_tensor(image)
 
 
 @pytorch_toolbelt_deprecated("This function is deprecated, please use image_to_tensor instead")
-def tensor_from_mask_image(mask: np.ndarray, memory_format=None) -> torch.Tensor:
-    return image_to_tensor(mask, memory_format=memory_format)
+def tensor_from_mask_image(mask: np.ndarray) -> torch.Tensor:
+    return image_to_tensor(mask)
 
 
 def rgb_image_from_tensor(image: torch.Tensor, mean, std, max_pixel_value=255.0, dtype=np.uint8) -> np.ndarray:
