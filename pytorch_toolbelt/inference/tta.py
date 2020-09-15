@@ -76,7 +76,7 @@ def fivecrop_image2label(model: nn.Module, image: Tensor, crop_size: Tuple) -> T
     center_crop_y = (image_height - crop_height) // 2
     center_crop_x = (image_width - crop_width) // 2
 
-    crop_cc = image[..., center_crop_y: center_crop_y + crop_height, center_crop_x: center_crop_x + crop_width]
+    crop_cc = image[..., center_crop_y : center_crop_y + crop_height, center_crop_x : center_crop_x + crop_width]
     assert crop_cc.size(2) == crop_height
     assert crop_cc.size(3) == crop_width
 
@@ -120,21 +120,21 @@ def tencrop_image2label(model: nn.Module, image: Tensor, crop_size: Tuple) -> Te
     center_crop_y = (image_height - crop_height) // 2
     center_crop_x = (image_width - crop_width) // 2
 
-    crop_cc = image[..., center_crop_y: center_crop_y + crop_height, center_crop_x: center_crop_x + crop_width]
+    crop_cc = image[..., center_crop_y : center_crop_y + crop_height, center_crop_x : center_crop_x + crop_width]
     assert crop_cc.size(2) == crop_height
     assert crop_cc.size(3) == crop_width
 
     output = (
-            model(crop_tl)
-            + model(F.torch_fliplr(crop_tl))
-            + model(crop_tr)
-            + model(F.torch_fliplr(crop_tr))
-            + model(crop_bl)
-            + model(F.torch_fliplr(crop_bl))
-            + model(crop_br)
-            + model(F.torch_fliplr(crop_br))
-            + model(crop_cc)
-            + model(F.torch_fliplr(crop_cc))
+        model(crop_tl)
+        + model(F.torch_fliplr(crop_tl))
+        + model(crop_tr)
+        + model(F.torch_fliplr(crop_tr))
+        + model(crop_bl)
+        + model(F.torch_fliplr(crop_bl))
+        + model(crop_br)
+        + model(F.torch_fliplr(crop_br))
+        + model(crop_cc)
+        + model(F.torch_fliplr(crop_cc))
     )
 
     one_over_10 = float(1.0 / 10.0)
@@ -193,7 +193,7 @@ def d4_image2mask(model: nn.Module, image: Tensor) -> Tensor:
     output = model(image)
 
     for aug, deaug in zip(
-            [F.torch_rot90, F.torch_rot180, F.torch_rot270], [F.torch_rot270, F.torch_rot180, F.torch_rot90]
+        [F.torch_rot90, F.torch_rot180, F.torch_rot270], [F.torch_rot270, F.torch_rot180, F.torch_rot90]
     ):
         x = deaug(model(aug(image)))
         output += x
@@ -201,8 +201,8 @@ def d4_image2mask(model: nn.Module, image: Tensor) -> Tensor:
     image = F.torch_transpose(image)
 
     for aug, deaug in zip(
-            [F.torch_none, F.torch_rot90, F.torch_rot180, F.torch_rot270],
-            [F.torch_none, F.torch_rot270, F.torch_rot180, F.torch_rot90],
+        [F.torch_none, F.torch_rot90, F.torch_rot180, F.torch_rot270],
+        [F.torch_none, F.torch_rot270, F.torch_rot180, F.torch_rot90],
     ):
         x = deaug(model(aug(image)))
         output += F.torch_transpose(x)
@@ -231,16 +231,19 @@ def d4_augment(image: Tensor) -> Tensor:
 
     """
     image_t = F.torch_transpose(image)
-    return torch.cat([
-        image,
-        F.torch_rot90(image),
-        F.torch_rot180(image),
-        F.torch_rot270(image),
-        image_t,
-        F.torch_rot90(image_t),
-        F.torch_rot180(image_t),
-        F.torch_rot270(image_t),
-    ], dim=0)
+    return torch.cat(
+        [
+            image,
+            F.torch_rot90(image),
+            F.torch_rot180(image),
+            F.torch_rot270(image),
+            image_t,
+            F.torch_rot90(image_t),
+            F.torch_rot180(image_t),
+            F.torch_rot270(image_t),
+        ],
+        dim=0,
+    )
 
 
 def d4_deaugment(image: Tensor, average: bool = True) -> Tensor:
@@ -254,15 +257,18 @@ def d4_deaugment(image: Tensor, average: bool = True) -> Tensor:
         Tensor of [B, C, H, W] shape.
     """
     batch_size: int = image.shape[0] // 8
-    image: Tensor = torch.stack([
-        image[batch_size * 0:batch_size * 1],
-        F.torch_rot270(image[batch_size * 1:batch_size * 2]),
-        F.torch_rot180(image[batch_size * 2:batch_size * 3]),
-        F.torch_rot90(image[batch_size * 3:batch_size * 4]),
-        F.torch_transpose(image[batch_size * 4:batch_size * 5]),
-        F.torch_transpose(F.torch_rot270(image[batch_size * 5:batch_size * 6])),
-        F.torch_transpose(F.torch_rot180(image[batch_size * 6:batch_size * 7])),
-        F.torch_transpose(F.torch_rot90(image[batch_size * 7:batch_size * 8]))])
+    image: Tensor = torch.stack(
+        [
+            image[batch_size * 0 : batch_size * 1],
+            F.torch_rot270(image[batch_size * 1 : batch_size * 2]),
+            F.torch_rot180(image[batch_size * 2 : batch_size * 3]),
+            F.torch_rot90(image[batch_size * 3 : batch_size * 4]),
+            F.torch_transpose(image[batch_size * 4 : batch_size * 5]),
+            F.torch_transpose(F.torch_rot270(image[batch_size * 5 : batch_size * 6])),
+            F.torch_transpose(F.torch_rot180(image[batch_size * 6 : batch_size * 7])),
+            F.torch_transpose(F.torch_rot90(image[batch_size * 7 : batch_size * 8])),
+        ]
+    )
 
     if average:
         return image.mean(dim=0)
@@ -283,11 +289,7 @@ def flips_augment(image: Tensor) -> Tensor:
             - Vertically-flipped
 
     """
-    return torch.cat([
-        image,
-        F.torch_fliplr(image),
-        F.torch_flipud(image),
-    ], dim=0)
+    return torch.cat([image, F.torch_fliplr(image), F.torch_flipud(image),], dim=0)
 
 
 def flips_deaugment(image: Tensor, average: bool = True) -> Tensor:
@@ -301,11 +303,13 @@ def flips_deaugment(image: Tensor, average: bool = True) -> Tensor:
         Tensor of [B, C, H, W] shape.
     """
     batch_size: int = image.shape[0] // 3
-    image: Tensor = torch.stack([
-        image[batch_size * 0:batch_size * 1],
-        F.torch_fliplr(image[batch_size * 1:batch_size * 2]),
-        F.torch_flipud(image[batch_size * 2:batch_size * 3])
-    ])
+    image: Tensor = torch.stack(
+        [
+            image[batch_size * 0 : batch_size * 1],
+            F.torch_fliplr(image[batch_size * 1 : batch_size * 2]),
+            F.torch_flipud(image[batch_size * 2 : batch_size * 3]),
+        ]
+    )
 
     if average:
         return image.mean(dim=0)

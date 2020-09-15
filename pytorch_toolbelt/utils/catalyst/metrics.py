@@ -59,7 +59,7 @@ class PixelAccuracyCallback(MetricCallback):
     """
 
     def __init__(
-            self, input_key: str = "targets", output_key: str = "logits", prefix: str = "accuracy", ignore_index=None
+        self, input_key: str = "targets", output_key: str = "logits", prefix: str = "accuracy", ignore_index=None
     ):
         """
         :param input_key: input key to use for iou calculation;
@@ -83,14 +83,14 @@ class ConfusionMatrixCallback(Callback):
     """
 
     def __init__(
-            self,
-            input_key: str = "targets",
-            output_key: str = "logits",
-            prefix: str = "confusion_matrix",
-            class_names: List[str] = None,
-            num_classes: int = None,
-            ignore_index=None,
-            activation_fn=partial(torch.argmax, dim=1),
+        self,
+        input_key: str = "targets",
+        output_key: str = "logits",
+        prefix: str = "confusion_matrix",
+        class_names: List[str] = None,
+        num_classes: int = None,
+        ignore_index=None,
+        activation_fn=partial(torch.argmax, dim=1),
     ):
         """
         :param input_key: input key to use for precision calculation;
@@ -161,12 +161,12 @@ class F1ScoreCallback(Callback):
     """
 
     def __init__(
-            self,
-            input_key: str = "targets",
-            output_key: str = "logits",
-            prefix: str = "f1",
-            average="macro",
-            ignore_index=None,
+        self,
+        input_key: str = "targets",
+        output_key: str = "logits",
+        prefix: str = "f1",
+        average="macro",
+        ignore_index=None,
     ):
         """
         :param input_key: input key to use for precision calculation;
@@ -221,24 +221,24 @@ class F1ScoreCallback(Callback):
 )
 class MacroF1Callback(F1ScoreCallback):
     def __init__(
-            self,
-            input_key: str = "targets",
-            output_key: str = "logits",
-            prefix: str = "f1",
-            average="macro",
-            ignore_index=None,
+        self,
+        input_key: str = "targets",
+        output_key: str = "logits",
+        prefix: str = "f1",
+        average="macro",
+        ignore_index=None,
     ):
         super().__init__(input_key, output_key, prefix, average, ignore_index)
 
 
 def binary_dice_iou_score(
-        y_pred: torch.Tensor,
-        y_true: torch.Tensor,
-        mode="dice",
-        threshold: Optional[float] = None,
-        nan_score_on_empty=False,
-        eps: float = 1e-7,
-        ignore_index=None,
+    y_pred: torch.Tensor,
+    y_true: torch.Tensor,
+    mode="dice",
+    threshold: Optional[float] = None,
+    nan_score_on_empty=False,
+    eps: float = 1e-7,
+    ignore_index=None,
 ) -> float:
     """
     Compute IoU score between two image tensors
@@ -283,13 +283,13 @@ def binary_dice_iou_score(
 
 
 def multiclass_dice_iou_score(
-        y_pred: torch.Tensor,
-        y_true: torch.Tensor,
-        mode="dice",
-        threshold=None,
-        eps=1e-7,
-        nan_score_on_empty=False,
-        classes_of_interest=None,
+    y_pred: torch.Tensor,
+    y_true: torch.Tensor,
+    mode="dice",
+    threshold=None,
+    eps=1e-7,
+    nan_score_on_empty=False,
+    classes_of_interest=None,
 ):
     ious = []
     num_classes = y_pred.size(0)
@@ -313,14 +313,14 @@ def multiclass_dice_iou_score(
 
 
 def multilabel_dice_iou_score(
-        y_true: torch.Tensor,
-        y_pred: torch.Tensor,
-        mode="dice",
-        threshold=None,
-        eps=1e-7,
-        nan_score_on_empty=False,
-        classes_of_interest=None,
-        ignore_index=None,
+    y_true: torch.Tensor,
+    y_pred: torch.Tensor,
+    mode="dice",
+    threshold=None,
+    eps=1e-7,
+    nan_score_on_empty=False,
+    classes_of_interest=None,
+    ignore_index=None,
 ):
     ious = []
     num_classes = y_pred.size(0)
@@ -350,16 +350,16 @@ class IoUMetricsCallback(Callback):
     """
 
     def __init__(
-            self,
-            mode: str,
-            metric="dice",
-            class_names=None,
-            classes_of_interest=None,
-            input_key: str = "targets",
-            output_key: str = "logits",
-            nan_score_on_empty=True,
-            prefix: str = None,
-            ignore_index=None,
+        self,
+        mode: str,
+        metric="dice",
+        class_names=None,
+        classes_of_interest=None,
+        input_key: str = "targets",
+        output_key: str = "logits",
+        nan_score_on_empty=True,
+        prefix: str = None,
+        ignore_index=None,
     ):
         """
         :param mode: One of: 'binary', 'multiclass', 'multilabel'.
@@ -464,8 +464,10 @@ class OutputDistributionCallback(Callback):
     """
     Plot histogram of predictions for each class. This callback supports binary & multi-classs predictions
     """
-    def __init__(self, input_key: str, output_key: str, output_activation: Callable, num_classes: int,
-                 prefix="distribution"):
+
+    def __init__(
+        self, input_key: str, output_key: str, output_activation: Callable, num_classes: int, prefix="distribution"
+    ):
         """
 
         Args:
@@ -504,4 +506,6 @@ class OutputDistributionCallback(Callback):
             logger = get_tensorboard_logger(state)
 
             for class_label in range(self.num_classes):
-                logger.add_histogram(f"{self.prefix}/{class_label}", pred_probas[true_labels == class_label], state.epoch)
+                logger.add_histogram(
+                    f"{self.prefix}/{class_label}", pred_probas[true_labels == class_label], state.epoch
+                )

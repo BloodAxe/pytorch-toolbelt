@@ -141,11 +141,12 @@ class BestMetricCheckpointCallback(BaseCheckpointCallback):
                 else:
                     key = float("+inf") if self.minimize_metric else float("-inf")
                     return key
+
             return get_key
 
-        self.top_best_metrics = sorted(self.top_best_metrics,
-                                       key=get_proper_sort_key(minimize_metric),
-                                       reverse=not minimize_metric)
+        self.top_best_metrics = sorted(
+            self.top_best_metrics, key=get_proper_sort_key(minimize_metric), reverse=not minimize_metric
+        )
         if len(self.top_best_metrics) > self.save_n_best:
             last_item = self.top_best_metrics.pop(-1)
             last_filepath = Path(last_item[0])

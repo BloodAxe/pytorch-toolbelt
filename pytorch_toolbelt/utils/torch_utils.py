@@ -10,16 +10,17 @@ from torch import nn
 from .support import pytorch_toolbelt_deprecated
 
 __all__ = [
+    "count_parameters",
+    "image_to_tensor",
+    "logit",
+    "mask_from_tensor",
+    "maybe_cuda",
     "rgb_image_from_tensor",
     "tensor_from_mask_image",
     "tensor_from_rgb_image",
-    "count_parameters",
-    "transfer_weights",
-    "maybe_cuda",
-    "mask_from_tensor",
-    "logit",
     "to_numpy",
     "to_tensor",
+    "transfer_weights",
 ]
 
 
