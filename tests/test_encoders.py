@@ -97,14 +97,14 @@ def test_efficientnet(encoder: E.EncoderModule, encoder_params):
 def test_unet_encoder():
     net = E.UnetEncoder().eval()
     print(net.__class__.__name__, count_parameters(net))
-    print(net.output_strides)
+    print(net.strides)
     print(net.channels)
     x = torch.rand((4, 3, 256, 256))
     x = maybe_cuda(x)
     net = maybe_cuda(net)
     output = net(x)
-    assert len(output) == len(net.output_filters)
-    for feature_map, expected_stride, expected_channels in zip(output, net.output_strides, net.output_filters):
+    assert len(output) == len(net.channels)
+    for feature_map, expected_stride, expected_channels in zip(output, net.strides, net.channels):
         print(feature_map.size(), feature_map.mean(), feature_map.std())
         assert feature_map.size(1) == expected_channels
         assert feature_map.size(2) * expected_stride == 256
@@ -153,14 +153,14 @@ def test_densenet():
 def test_hrnet_encoder(encoder: E.EncoderModule, encoder_params):
     net = encoder(**encoder_params).eval()
     print(net.__class__.__name__, count_parameters(net))
-    print(net.output_strides)
-    print(net.out_channels)
+    print(net.strides)
+    print(net.channels)
     x = torch.rand((4, 3, 256, 256))
     x = maybe_cuda(x)
     net = maybe_cuda(net)
     output = net(x)
-    assert len(output) == len(net.output_filters)
-    for feature_map, expected_stride, expected_channels in zip(output, net.output_strides, net.output_filters):
+    assert len(output) == len(net.channels)
+    for feature_map, expected_stride, expected_channels in zip(output, net.strides, net.channels):
         assert feature_map.size(1) == expected_channels
         assert feature_map.size(2) * expected_stride == 256
         assert feature_map.size(3) * expected_stride == 256
@@ -186,14 +186,55 @@ def test_hrnet_encoder(encoder: E.EncoderModule, encoder_params):
 def test_xresnet_encoder(encoder, encoder_params):
     net = encoder(**encoder_params).eval()
     print(net.__class__.__name__, count_parameters(net))
-    print(net.output_strides)
+    print(net.strides)
     print(net.out_channels)
     x = torch.rand((4, 3, 256, 256))
     x = maybe_cuda(x)
     net = maybe_cuda(net)
     output = net(x)
-    assert len(output) == len(net.output_filters)
-    for feature_map, expected_stride, expected_channels in zip(output, net.output_strides, net.output_filters):
+    assert len(output) == len(net.channels)
+    for feature_map, expected_stride, expected_channels in zip(output, net.strides, net.channels):
+        assert feature_map.size(1) == expected_channels
+        assert feature_map.size(2) * expected_stride == 256
+        assert feature_map.size(3) * expected_stride == 256
+
+
+from pytorch_toolbelt.modules.encoders import timm
+
+
+@pytest.mark.parametrize(
+    ["encoder", "encoder_params"],
+    [
+        [timm.B0Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.B1Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.B2Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.B3Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.B4Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.B5Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.B6Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.B7Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.MixNetXLEncoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.SKResNet18Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.SKResNeXt50Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.SWSLResNeXt101Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.HRNetW18Encoder, {"pretrained": False}],
+        [timm.HRNetW32Encoder, {"pretrained": False}],
+        [timm.HRNetW48Encoder, {"pretrained": False}],
+    ],
+)
+@torch.no_grad()
+@skip_if_no_cuda
+def test_timm_encoders(encoder, encoder_params):
+    net = encoder(**encoder_params).eval()
+    print(net.__class__.__name__, count_parameters(net))
+    print(net.strides)
+    print(net.channels)
+    x = torch.rand((4, 3, 256, 256))
+    x = maybe_cuda(x)
+    net = maybe_cuda(net)
+    output = net(x)
+    assert len(output) == len(net.channels)
+    for feature_map, expected_stride, expected_channels in zip(output, net.strides, net.channels):
         assert feature_map.size(1) == expected_channels
         assert feature_map.size(2) * expected_stride == 256
         assert feature_map.size(3) * expected_stride == 256
@@ -234,21 +275,21 @@ def test_hourglass_encoder(encoder, encoder_params):
 def test_supervised_hourglass_encoder(encoder, encoder_params):
     net = encoder(**encoder_params).eval()
     print(net.__class__.__name__, count_parameters(net))
-    print(net.output_strides)
-    print(net.out_channels)
+    print(net.strides)
+    print(net.channels)
     x = torch.rand((4, 3, 256, 256))
     x = maybe_cuda(x)
     net = maybe_cuda(net)
     output, supervision = net(x)
-    assert len(output) == len(net.output_filters)
-    assert len(supervision) == len(net.output_filters) - 2
+    assert len(output) == len(net.channels)
+    assert len(supervision) == len(net.channels) - 2
 
-    for feature_map, expected_stride, expected_channels in zip(output, net.output_strides, net.output_filters):
+    for feature_map, expected_stride, expected_channels in zip(output, net.strides, net.channels):
         assert feature_map.size(1) == expected_channels
         assert feature_map.size(2) * expected_stride == 256
         assert feature_map.size(3) * expected_stride == 256
 
-    # for feature_map, expected_stride, expected_channels in zip(supervision, net.output_strides, net.output_filters):
+    # for feature_map, expected_stride, expected_channels in zip(supervision, net.strides, net.channels):
     #     assert feature_map.size(1) == expected_channels
     #     assert feature_map.size(2) * expected_stride == 256
     #     assert feature_map.size(3) * expected_stride == 256
