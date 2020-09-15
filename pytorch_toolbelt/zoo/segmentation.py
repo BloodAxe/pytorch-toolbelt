@@ -42,10 +42,7 @@ class UnetSegmentationModel(nn.Module):
         if last_upsample_block is not None:
             self.mask = nn.Sequential(
                 OrderedDict(
-                    [
-                        ("drop", nn.Dropout2d(dropout)),
-                        ("conv", last_upsample_block(unet_channels[0], num_classes)),
-                    ]
+                    [("drop", nn.Dropout2d(dropout)), ("conv", last_upsample_block(unet_channels[0], num_classes)),]
                 )
             )
         else:
@@ -69,16 +66,10 @@ class UnetSegmentationModel(nn.Module):
         return mask
 
 
-
 def resnet34_unet32(input_channels=3, num_classes=1, dropout=0.2, pretrained=True):
     encoder = E.Resnet34Encoder(pretrained=pretrained, layers=[0, 1, 2, 3, 4])
     if input_channels != 3:
         encoder.change_input_channels(input_channels)
-
     return UnetSegmentationModel(
-        encoder,
-        num_classes=num_classes,
-        unet_channels=[32, 64, 128, 256],
-        activation=ACT_SWISH,
-        dropout=dropout,
+        encoder, num_classes=num_classes, unet_channels=[32, 64, 128, 256], activation=ACT_SWISH, dropout=dropout,
     )
