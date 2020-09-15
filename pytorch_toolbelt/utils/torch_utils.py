@@ -59,8 +59,12 @@ def count_parameters(model: nn.Module, keys: Optional[Sequence[str]] = None) -> 
 def to_numpy(x) -> np.ndarray:
     """
     Convert whatever to numpy array
-    :param x: List, tuple, PyTorch tensor or numpy array
-    :return: Numpy array
+
+    Args:
+        :param x: List, tuple, PyTorch tensor or numpy array
+
+    Returns:
+        :return: Numpy array
     """
     if isinstance(x, np.ndarray):
         return x
@@ -94,15 +98,15 @@ def to_tensor(x, dtype=None) -> torch.Tensor:
 
 def image_to_tensor(image: np.ndarray, dummy_channels_dim=True) -> torch.Tensor:
     """
-        Convert numpy image (RGB, BGR) to tensor
+    Convert numpy image (RGB, BGR, Grayscale, SAR, Mask image, etc.) to tensor
 
-        Args:
-            image: A numpy array of [H,W,C] shape
-            dummy_channels_dim: If True, and image has [H,W] shape adds dummy channel, so that
-                output tensor has shape [1, H, W]
+    Args:
+        image: A numpy array of [H,W,C] shape
+        dummy_channels_dim: If True, and image has [H,W] shape adds dummy channel, so that
+            output tensor has shape [1, H, W]
 
-        Returns:
-            Torch tensor of [C,H,W] or [H,W] shape (dummy_channels_dim=False).
+    Returns:
+        Torch tensor of [C,H,W] or [H,W] shape (dummy_channels_dim=False).
     """
     if len(image.shape) not in {2, 3}:
         raise ValueError(f"Image must have shape [H,W] or [H,W,C]. Got image with shape {image.shape}")

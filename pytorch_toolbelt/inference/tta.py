@@ -278,7 +278,8 @@ def d4_deaugment(image: Tensor, average: bool = True) -> Tensor:
 
 def flips_augment(image: Tensor) -> Tensor:
     """
-    Augment input tensor by adding vertically and horisontaly flipped images to it
+    Augment input tensor by adding vertically and horizontally flipped images to it.
+
     Args:
         image: Tensor of [B,C,H,W] shape
 
@@ -289,7 +290,7 @@ def flips_augment(image: Tensor) -> Tensor:
             - Vertically-flipped
 
     """
-    return torch.cat([image, F.torch_fliplr(image), F.torch_flipud(image),], dim=0)
+    return torch.cat([image, F.torch_fliplr(image), F.torch_flipud(image)], dim=0)
 
 
 def flips_deaugment(image: Tensor, average: bool = True) -> Tensor:

@@ -443,14 +443,3 @@ class HRNetW48Encoder(EncoderModule):
     def change_input_channels(self, input_channels: int, mode="auto"):
         self.encoder.conv1 = make_n_channel_input(self.encoder.conv1, input_channels, mode)
         return self
-
-
-if __name__ == "__main__":
-    encoder = B0Encoder(layers=[0, 1, 2, 3, 4])
-    print(count_parameters(encoder))
-    print(encoder.channels, encoder.strides)
-
-    x = torch.randn((2, 3, 512, 512))
-    y = encoder(x)
-    for out in y:
-        print(out.size())
