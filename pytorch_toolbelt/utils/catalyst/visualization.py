@@ -1,22 +1,24 @@
 import warnings
-from typing import Callable, Optional, List, Union
+from typing import Callable, Optional, List, Union, Dict, Iterable
 
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn.functional as F
-from catalyst.dl import Callback, CallbackOrder, IRunner
+from catalyst.dl import Callback, CallbackOrder, IRunner, CallbackNode
 from catalyst.dl.callbacks import TensorboardLogger
 from catalyst.contrib.tools.tensorboard import SummaryWriter
+from pytorch_toolbelt.utils import render_figure_to_tensor
+from pytorch_toolbelt.utils.distributed import all_gather
 
-from ..torch_utils import rgb_image_from_tensor, to_numpy
-from ..torch_utils import tensor_from_rgb_image
+from ..torch_utils import rgb_image_from_tensor, to_numpy, image_to_tensor
 
 __all__ = [
     "get_tensorboard_logger",
     "ShowPolarBatchesCallback",
     "ShowEmbeddingsCallback",
+    "UMAPCallback",
     "draw_binary_segmentation_predictions",
     "draw_semantic_segmentation_predictions",
 ]
@@ -123,7 +125,7 @@ class ShowPolarBatchesCallback(Callback):
     def _log_samples(self, samples, name, logger, step):
         if "tensorboard" in self.targets:
             for i, image in enumerate(samples):
-                logger.add_image(f"{self.target_metric}/{name}/{i}", tensor_from_rgb_image(image), step)
+                logger.add_image(f"{self.target_metric}/{name}/{i}", image_to_tensor(image), step)
 
         if "matplotlib" in self.targets:
             for i, image in enumerate(samples):
@@ -182,6 +184,118 @@ class ShowEmbeddingsCallback(Callback):
         self.images.append(image)
         self.embeddings.append(embedding)
         self.targets.extend(targets)
+
+
+class UMAPCallback(Callback):
+    """Visualize embeddings of the classifier using UMAP"""
+
+    def __init__(
+        self,
+        input_key: str,
+        features_key: str,
+        output_key: str,
+        output_activation: Callable,
+        prefix: str = "umap",
+        fit_params: Dict = None,
+        plot_params: Dict = None,
+        loaders: Iterable[str] = ("valid"),
+    ):
+        """
+
+        Args:
+            input_key:
+            features_key:
+            output_key:
+            output_activation:
+            prefix:
+            fit_params:
+            plot_params:
+            loaders:
+        """
+        super().__init__(CallbackOrder.Metric, CallbackNode.All)
+        self.features_key = features_key
+        self.prefix = prefix
+        self.output_key = output_key
+        self.input_key = input_key
+        self.output_activation = output_activation
+        self.loaders = loaders
+
+        self._plot_params = plot_params or {}
+        self._fit_params = fit_params or {}
+
+        self._reset_stats()
+
+    def _reset_stats(self):
+        self.features = []
+        self.outputs = []
+        self.targets = []
+
+    def _add_to_stats(self, features, outputs, targets):
+        features = to_numpy(features)
+        outputs = to_numpy(outputs)
+        targets = to_numpy(targets)
+
+        self.features.extend(features)
+        self.outputs.extend(outputs)
+        self.targets.extend(targets)
+
+    def _compute_embedings(self):
+        features = np.array(self.features)
+        features = np.concatenate(all_gather(features))
+
+        targets = np.array(self.targets)
+        targets = np.concatenate(all_gather(targets))
+
+        outputs = np.array(self.outputs)
+        outputs = np.concatenate(all_gather(outputs))
+
+        import umap
+
+        return umap.UMAP(**self._fit_params).fit(features), targets, outputs
+
+    def _plot_embedings(self, logger, epoch, embeddings, targets, outputs):
+        from umap import plot
+
+        fig_gt = plot.points(embeddings, labels=targets, **self._plot_params).figure
+        fig_gt = render_figure_to_tensor(fig_gt)
+        logger.add_image(f"{self.prefix}/gt/epoch", fig_gt, global_step=epoch)
+
+        fig_pred = plot.points(embeddings, labels=outputs, **self._plot_params).figure
+        fig_pred = render_figure_to_tensor(fig_pred)
+        logger.add_image(f"{self.prefix}/pred/epoch", fig_pred, global_step=epoch)
+
+    def on_loader_start(self, runner: IRunner):
+        """Loader start hook.
+        Args:
+            runner (IRunner): current runner
+        """
+        if runner.is_valid_loader:
+            self._reset_stats()
+
+    def on_batch_end(self, runner: IRunner):
+        """Batch end hook.
+        Args:
+            runner (IRunner): current runner
+        """
+        if runner.is_valid_loader:
+            self._add_to_stats(
+                runner.output[self.features_key].detach(),
+                self.output_activation(runner.output[self.output_key].detach()).flatten(),
+                runner.input[self.input_key].detach().flatten(),
+            )
+
+    def on_loader_end(self, runner: IRunner):
+        """Loader end hook.
+        Args:
+            runner (IRunner): current runner
+        """
+        if runner.is_valid_loader:
+            embeddings, targets, outputs = self._compute_embedings()
+
+            tb_logger = get_tensorboard_logger(runner)
+            self._plot_embedings(
+                logger=tb_logger, epoch=runner.global_epoch, embeddings=embeddings, targets=targets, outputs=outputs
+            )
 
 
 def draw_binary_segmentation_predictions(

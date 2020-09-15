@@ -99,6 +99,7 @@ class HGBlock(nn.Module):
     """
     A single Hourglass model block.
     """
+
     def __init__(
         self,
         depth: int,
@@ -138,11 +139,15 @@ class HGBlock(nn.Module):
         self.depth = depth
         # Recursive hourglass
         if self.depth > 1:
-            self.low2 = HGBlock(depth - 1, nf, nf,
-                                increase=increase,
-                                pooling_block=pooling_block,
-                                activation=activation,
-                                repeats=repeats)
+            self.low2 = HGBlock(
+                depth - 1,
+                nf,
+                nf,
+                increase=increase,
+                pooling_block=pooling_block,
+                activation=activation,
+                repeats=repeats,
+            )
         else:
             self.low2 = HGResidualBlock(nf, nf, activation=activation)
         self.low3 = HGResidualBlock(nf, features, activation=activation)
