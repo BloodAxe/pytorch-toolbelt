@@ -3,11 +3,15 @@ from collections import defaultdict
 import cv2
 import torch
 import numpy as np
-from pytorch_toolbelt.inference import tta
-from pytorch_toolbelt.utils.torch_utils import to_numpy
+import pytest
+
 from torch import nn
 
+from pytorch_toolbelt.inference import tta
+from pytorch_toolbelt.utils.torch_utils import to_numpy
 from pytorch_toolbelt.zoo import resnet34_unet32
+
+skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA is not available")
 
 
 class NoOp(nn.Module):
@@ -43,6 +47,7 @@ def test_d4_image2mask_v2():
 
 
 @torch.no_grad()
+@skip_if_no_cuda()
 def test_d4_speed():
     df = defaultdict(list)
     n = 100
@@ -109,8 +114,8 @@ def test_d4_speed():
     import pandas as pd
 
     df = pd.DataFrame.from_dict(df)
-    pd.set_option('display.max_columns', None)
-    pd.set_option('display.max_rows', None)
+    pd.set_option("display.max_columns", None)
+    pd.set_option("display.max_rows", None)
     print(df)
     df.to_csv("tta_eval.csv", index=False)
 
