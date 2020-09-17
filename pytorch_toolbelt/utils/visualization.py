@@ -8,48 +8,62 @@ from .torch_utils import tensor_from_rgb_image
 
 
 def plot_confusion_matrix(
-    cm: np.ndarray, class_names, figsize=(16, 16), normalize=False, title="Confusion matrix", fname=None, noshow=False
+    cm: np.ndarray,
+    class_names,
+    figsize=(16, 16),
+    normalize=False,
+    title="Confusion matrix",
+    cmap=None,
+    fname=None,
+    noshow=False,
+    backend="Agg",
 ):
     """Render the confusion matrix and return matplotlib's figure with it.
     Normalization can be applied by setting `normalize=True`.
     """
     import matplotlib
 
-    matplotlib.use("Agg")
+    matplotlib.use(backend)
     import matplotlib.pyplot as plt
 
-    cmap = plt.cm.Oranges
+    accuracy = np.trace(cm) / float(np.sum(cm))
+    misclass = 1 - accuracy
+
+    if cmap is None:
+        cmap = plt.cm.Oranges
+
+    f = plt.figure(figsize=figsize)
+    plt.imshow(cm, interpolation="nearest", cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
 
     if normalize:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             cm = cm.astype(np.float32) / cm.sum(axis=1)[:, np.newaxis]
 
-    f = plt.figure(figsize=figsize)
-    plt.title(title)
-    plt.imshow(cm, interpolation="nearest", cmap=cmap)
-
     tick_marks = np.arange(len(class_names))
     plt.xticks(tick_marks, class_names, rotation=45, ha="right")
-    # f.tick_params(direction='inout')
-    # f.set_xticklabels(varLabels, rotation=45, ha='right')
-    # f.set_yticklabels(varLabels, rotation=45, va='top')
-
     plt.yticks(tick_marks, class_names)
 
-    fmt = ".2f" if normalize else "d"
-    thresh = cm.max() / 2.0
+    fmt = ".3f" if normalize else "d"
+    thresh = (cm.max() - cm.min()) / 2.0
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
-        plt.text(
-            j, i, format(cm[i, j], fmt), horizontalalignment="center", color="white" if cm[i, j] > thresh else "black"
-        )
+        if np.isfinite(cm[i, j]):
+            plt.text(
+                j,
+                i,
+                format(cm[i, j], fmt),
+                horizontalalignment="center",
+                color="white" if cm[i, j] > thresh else "black",
+            )
 
-    plt.tight_layout()
     plt.ylabel("True label")
-    plt.xlabel("Predicted label")
+    plt.xlabel("Predicted label\nAccuracy={:0.4f}; Misclass={:0.4f}".format(accuracy, misclass))
+    plt.tight_layout()
 
     if fname is not None:
-        plt.savefig(fname=fname)
+        plt.savefig(fname=fname, dpi=200)
 
     if not noshow:
         plt.show()
