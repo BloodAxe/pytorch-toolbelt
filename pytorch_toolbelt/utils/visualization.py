@@ -11,6 +11,7 @@ def plot_confusion_matrix(
     cm: np.ndarray,
     class_names,
     figsize=(16, 16),
+    fontsize=12,
     normalize=False,
     title="Confusion matrix",
     cmap=None,
@@ -55,6 +56,7 @@ def plot_confusion_matrix(
                 i,
                 format(cm[i, j], fmt),
                 horizontalalignment="center",
+                fontsize=fontsize,
                 color="white" if cm[i, j] > thresh else "black",
             )
 
