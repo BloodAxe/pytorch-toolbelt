@@ -2,7 +2,7 @@
 
 """
 import collections
-from typing import Optional, Sequence, Union, Dict
+from typing import Optional, Sequence, Union, Dict, List, Any
 
 import numpy as np
 import torch
@@ -56,7 +56,7 @@ def count_parameters(model: nn.Module, keys: Optional[Sequence[str]] = None) -> 
     return parameters
 
 
-def to_numpy(x) -> np.ndarray:
+def to_numpy(x: Union[torch.Tensor, np.ndarray, Any]) -> np.ndarray:
     """
     Convert whatever to numpy array
 
@@ -66,10 +66,10 @@ def to_numpy(x) -> np.ndarray:
     Returns:
         :return: Numpy array
     """
-    if isinstance(x, np.ndarray):
+    if torch.is_tensor(x):
+        return x.data.cpu().numpy()
+    elif isinstance(x, np.ndarray):
         return x
-    elif isinstance(x, torch.Tensor):
-        return x.detach().cpu().numpy()
     elif isinstance(x, (list, tuple, int, float)):
         return np.array(x)
     else:
