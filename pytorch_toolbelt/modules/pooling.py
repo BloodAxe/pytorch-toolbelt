@@ -2,24 +2,25 @@
 
 """
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from torch import Tensor, nn
 
 __all__ = [
-    "GlobalAvgPool2d",
-    "GlobalMaxPool2d",
-    "GlobalWeightedAvgPool2d",
     "GWAP",
-    "RMSPool",
-    "MILCustomPoolingModule",
+    "GlobalAvgPool2d",
+    "GlobalKMaxPool2d",
+    "GlobalMaxPool2d",
     "GlobalRankPooling",
+    "GlobalWeightedAvgPool2d",
+    "MILCustomPoolingModule",
+    "RMSPool",
 ]
 
 
 class GlobalAvgPool2d(nn.Module):
     def __init__(self, flatten=False):
         """Global average pooling over the input's spatial dimensions"""
-        super(GlobalAvgPool2d, self).__init__()
+        super().__init__()
         self.flatten = flatten
 
     def forward(self, x):  # skipcq: PYL-W0221
@@ -32,7 +33,7 @@ class GlobalAvgPool2d(nn.Module):
 class GlobalMaxPool2d(nn.Module):
     def __init__(self, flatten=False):
         """Global average pooling over the input's spatial dimensions"""
-        super(GlobalMaxPool2d, self).__init__()
+        super().__init__()
         self.flatten = flatten
 
     def forward(self, x):  # skipcq: PYL-W0221
@@ -40,6 +41,33 @@ class GlobalMaxPool2d(nn.Module):
         if self.flatten:
             x = x.view(x.size(0), x.size(1))
         return x
+
+
+class GlobalKMaxPool2d(nn.Module):
+    """
+    K-max global pooling block
+
+    https://arxiv.org/abs/1911.07344
+    """
+
+    def __init__(self, channels: int, k=4, trainable=True, flatten=False):
+        """Global average pooling over the input's spatial dimensions"""
+        super().__init__()
+        self.k = k
+        self.flatten = flatten
+        weights = torch.ones((1, channels, k))
+        if trainable:
+            self.register_parameter("weights", torch.nn.Parameter(weights))
+        else:
+            self.register_buffer("weights", weights)
+
+    def forward(self, x: Tensor):  # skipcq: PYL-W0221
+        input = x.view(x.size(0), x.size(1), -1)
+        kmax = input.topk(k=self.k, dim=2)[0]
+        kmax = (kmax * self.weights).mean(dim=2)
+        if not self.flatten:
+            kmax = kmax.view(kmax.size(0), kmax.size(1), 1, 1)
+        return kmax
 
 
 class GlobalWeightedAvgPool2d(nn.Module):
