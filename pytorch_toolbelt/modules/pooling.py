@@ -1,8 +1,11 @@
 """Implementation of different pooling modules
 
 """
+from typing import Union, Dict
+
 import torch
 import torch.nn.functional as F
+from torch.nn.modules.module import _IncompatibleKeys
 from torch import Tensor, nn
 
 __all__ = [
@@ -50,12 +53,13 @@ class GlobalKMaxPool2d(nn.Module):
     https://arxiv.org/abs/1911.07344
     """
 
-    def __init__(self, channels: int, k=4, trainable=True, flatten=False):
+    def __init__(self, k=4, trainable=True, flatten=False):
         """Global average pooling over the input's spatial dimensions"""
         super().__init__()
         self.k = k
         self.flatten = flatten
-        weights = torch.ones((1, channels, k))
+        self.trainable = trainable
+        weights = torch.ones((1, 1, k))
         if trainable:
             self.register_parameter("weights", torch.nn.Parameter(weights))
         else:
@@ -68,6 +72,12 @@ class GlobalKMaxPool2d(nn.Module):
         if not self.flatten:
             kmax = kmax.view(kmax.size(0), kmax.size(1), 1, 1)
         return kmax
+
+    def load_state_dict(self, state_dict: Union[Dict[str, Tensor], Dict[str, Tensor]], strict: bool = True):
+        if not self.trainable:
+            return _IncompatibleKeys([], [])
+
+        super().load_state_dict(state_dict, strict)
 
 
 class GlobalWeightedAvgPool2d(nn.Module):
