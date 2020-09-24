@@ -49,19 +49,19 @@ def softmax_over_dim_3(x: Tensor) -> Tensor:
 
 
 def argmax_over_dim_0(x: Tensor) -> Tensor:
-    return torch.softmax(x, dim=0)
+    return torch.argmax(x, dim=0)
 
 
 def argmax_over_dim_1(x: Tensor) -> Tensor:
-    return torch.softmax(x, dim=1)
+    return torch.argmax(x, dim=1)
 
 
 def argmax_over_dim_2(x: Tensor) -> Tensor:
-    return torch.softmax(x, dim=2)
+    return torch.argmax(x, dim=2)
 
 
 def argmax_over_dim_3(x: Tensor) -> Tensor:
-    return torch.softmax(x, dim=3)
+    return torch.argmax(x, dim=3)
 
 
 def logit(x: torch.Tensor, eps=1e-5) -> torch.Tensor:

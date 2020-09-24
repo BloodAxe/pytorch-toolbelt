@@ -218,6 +218,7 @@ class UMAPCallback(Callback):
         """
         try:
             import umap
+            import umap.plot
         except ImportError as e:
             print(
                 "It seems `umap-learn` package is missing."
