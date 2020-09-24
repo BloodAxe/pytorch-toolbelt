@@ -212,6 +212,15 @@ class UMAPCallback(Callback):
             plot_params:
             loaders:
         """
+        try:
+            import umap
+        except ImportError as e:
+            print(e)
+            print(
+                "It seems `umap-learn` package is missing."
+                "Please install umap (https://github.com/lmcinnes/umap) and restart the script."
+            )
+
         super().__init__(CallbackOrder.Metric, CallbackNode.All)
         self.features_key = features_key
         self.prefix = prefix
