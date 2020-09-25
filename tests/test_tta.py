@@ -40,8 +40,8 @@ def test_d4_image2mask():
 
 def test_d4_image2mask_v2():
     x = torch.rand((4, 3, 224, 224))
-    x_a = tta.d4_augment(x)
-    y = tta.d4_deaugment(x_a)
+    x_a = tta.d4_image_augment(x)
+    y = tta.d4_image_deaugment(x_a)
 
     np.testing.assert_allclose(to_numpy(y), to_numpy(x), atol=1e-6, rtol=1e-6)
 
@@ -52,13 +52,13 @@ def test_d4_speed():
     df = defaultdict(list)
     n = 100
 
-    d4_augment_jit = torch.jit.script(tta.d4_augment)
-    d4_deaugment_jit = torch.jit.script(tta.d4_deaugment)
+    d4_augment_jit = torch.jit.script(tta.d4_image_augment)
+    d4_deaugment_jit = torch.jit.script(tta.d4_image_deaugment)
 
     model = resnet34_unet32().cuda().eval()
     x = torch.rand((4, 3, 224, 224)).float().cuda()
     y1 = tta.d4_image2mask(model, x)
-    y2 = tta.d4_deaugment(model(tta.d4_augment(x)))
+    y2 = tta.d4_image_deaugment(model(tta.d4_image_augment(x)))
     np.testing.assert_allclose(to_numpy(y1), to_numpy(y2), atol=1e-6, rtol=1e-6)
 
     for deterministic in [False, True]:
@@ -84,9 +84,9 @@ def test_d4_speed():
                 for i in range(n):
                     x = torch.rand((4, 3, 224, 224)).to(dtype).cuda(non_blocking=False)
                     start = cv2.getTickCount()
-                    x_a = tta.d4_augment(x)
+                    x_a = tta.d4_image_augment(x)
                     x_a = model(x_a)
-                    y = tta.d4_deaugment(x_a)
+                    y = tta.d4_image_deaugment(x_a)
                     v = y.sum().item()
                     finish = cv2.getTickCount()
                     speed_v2 += finish - start

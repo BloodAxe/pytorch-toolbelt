@@ -13,18 +13,22 @@ from torch.nn.functional import interpolate
 from . import functional as F
 
 __all__ = [
+    "MultiscaleTTAWrapper",
+    "TTAWrapper",
+    "d4_centernet_offset_deaugment",
+    "d4_centernet_size_deaugment",
     "d4_image2label",
     "d4_image2mask",
-    "d4_augment",
-    "d4_deaugment",
+    "d2_image_augment",
+    "d2_image_deaugment",
+    "d4_image_augment",
+    "d4_image_deaugment",
+    "fivecrop_image2label",
+    "fliplr_image2label",
+    "fliplr_image2mask",
     "flips_augment",
     "flips_deaugment",
-    "fivecrop_image2label",
     "tencrop_image2label",
-    "fliplr_image2mask",
-    "fliplr_image2label",
-    "TTAWrapper",
-    "MultiscaleTTAWrapper",
 ]
 
 
@@ -212,7 +216,48 @@ def d4_image2mask(model: nn.Module, image: Tensor) -> Tensor:
     return output
 
 
-def d4_augment(image: Tensor) -> Tensor:
+def d2_image_augment(image: Tensor) -> Tensor:
+    """
+    Augment input tensor using D2 symmetry group
+    Args:
+        image: Tensor of [B,C,H,W] shape
+
+    Returns:
+        Tensor of [B * 8, C, H, W] shape with:
+            - Original tensor
+            - Original tensor rotated by 180 degrees
+            - Horisonalty-flipped tensor
+            - Vertically-flipped tensor
+
+    """
+    return torch.cat([image, F.torch_rot180(image), F.torch_fliplr(image), F.torch_flipud(image),], dim=0,)
+
+
+def d2_image_deaugment(image: Tensor, average: bool = True) -> Tensor:
+    """
+    Deaugment input tensor (output of the model) assuming the input was D2-augmented image (See d2_augment).
+    Args:
+        image: Tensor of [B * 4, C, H, W] shape
+        average: If True performs averaging of 8 outputs, otherwise - summation.
+
+    Returns:
+        Tensor of [B, C, H, W] shape.
+    """
+    assert image.size(0) % 4 == 0
+
+    b1, b2, b3, b4 = torch.chunk(image, 4)
+
+    image: Tensor = torch.stack(
+        [b1, F.torch_rot180(b2), F.torch_fliplr(b3), F.torch_flipud(b4),]
+    )
+
+    if average:
+        return image.mean(dim=0)
+    else:
+        return image.sum(dim=0)
+
+
+def d4_image_augment(image: Tensor) -> Tensor:
     """
     Augment input tensor using D4 symmetry group
     Args:
@@ -234,19 +279,19 @@ def d4_augment(image: Tensor) -> Tensor:
     return torch.cat(
         [
             image,
-            F.torch_rot90(image),
+            F.torch_rot90_cw(image),
             F.torch_rot180(image),
-            F.torch_rot270(image),
+            F.torch_rot90_ccw(image),
             image_t,
-            F.torch_rot90(image_t),
+            F.torch_rot90_cw(image_t),
             F.torch_rot180(image_t),
-            F.torch_rot270(image_t),
+            F.torch_rot90_ccw(image_t),
         ],
         dim=0,
     )
 
 
-def d4_deaugment(image: Tensor, average: bool = True) -> Tensor:
+def d4_image_deaugment(image: Tensor, average: bool = True) -> Tensor:
     """
     Deaugment input tensor (output of the model) assuming the input was D4-augmented image (See d4_augment).
     Args:
@@ -256,17 +301,20 @@ def d4_deaugment(image: Tensor, average: bool = True) -> Tensor:
     Returns:
         Tensor of [B, C, H, W] shape.
     """
-    batch_size: int = image.shape[0] // 8
+    assert image.size(0) % 8 == 0
+
+    b1, b2, b3, b4, b5, b6, b7, b8 = torch.chunk(image, 8)
+
     image: Tensor = torch.stack(
         [
-            image[batch_size * 0 : batch_size * 1],
-            F.torch_rot270(image[batch_size * 1 : batch_size * 2]),
-            F.torch_rot180(image[batch_size * 2 : batch_size * 3]),
-            F.torch_rot90(image[batch_size * 3 : batch_size * 4]),
-            F.torch_transpose(image[batch_size * 4 : batch_size * 5]),
-            F.torch_transpose(F.torch_rot270(image[batch_size * 5 : batch_size * 6])),
-            F.torch_transpose(F.torch_rot180(image[batch_size * 6 : batch_size * 7])),
-            F.torch_transpose(F.torch_rot90(image[batch_size * 7 : batch_size * 8])),
+            b1,
+            F.torch_rot90_ccw(b2),
+            F.torch_rot180(b3),
+            F.torch_rot90_cw(b4),
+            F.torch_transpose(b5),
+            F.torch_rot90_ccw_transpose(b6),
+            F.torch_rot180_transpose(b7),
+            F.torch_rot90_cw_transpose(b8),
         ]
     )
 
@@ -274,6 +322,94 @@ def d4_deaugment(image: Tensor, average: bool = True) -> Tensor:
         return image.mean(dim=0)
     else:
         return image.sum(dim=0)
+
+
+def d4_centernet_size_deaugment(image: Tensor, average: bool = True) -> Tensor:
+    """
+    Deaugment input tensor width & height regression (for centernet) assuming the input was D4-augmented image (See d4_augment).
+    Args:
+        image: Tensor of [B * 8, 2, H, W] shape
+        average: If True performs averaging of 8 outputs, otherwise - summation.
+
+    Returns:
+        Tensor of [B, C, H, W] shape.
+    """
+    assert image.size(1) == 2
+    assert image.size(0) % 8 == 0
+
+    b1, b2, b3, b4, b5, b6, b7, b8 = torch.chunk(image, 8)
+
+    image: Tensor = torch.stack(
+        [
+            b1,
+            cnet_swap_width_height(F.torch_rot90_ccw(b2)),
+            F.torch_rot180(b3),
+            cnet_swap_width_height(F.torch_rot90_cw(b4)),
+            cnet_swap_width_height(F.torch_transpose(b5)),
+            F.torch_rot90_ccw_transpose(b6),
+            cnet_swap_width_height(F.torch_rot180_transpose(b7)),
+            F.torch_rot90_cw_transpose(b8),
+        ]
+    )
+
+    if average:
+        return image.mean(dim=0)
+    else:
+        return image.sum(dim=0)
+
+
+def d4_centernet_offset_deaugment(image: Tensor, average: bool = True) -> Tensor:
+    """
+    Deaugment input tensor width & height offset (for centernet) assuming the input was D4-augmented image (See d4_augment).
+    Args:
+        image: Tensor of [B * 8, 2, H, W] shape
+        average: If True performs averaging of 8 outputs, otherwise - summation.
+
+    Returns:
+        Tensor of [B, C, H, W] shape.
+    """
+    assert image.size(1) == 2
+    assert image.size(0) % 8 == 0
+
+    b1, b2, b3, b4, b5, b6, b7, b8 = torch.chunk(image, 8)
+
+    image: Tensor = torch.stack(
+        [
+            b1,
+            cnet_flipud_offset(cnet_swap_width_height(F.torch_rot90_ccw(b2))),
+            cnet_flip_offset(F.torch_rot180(b3)),
+            cnet_fliplr_offset(F.torch_rot90_cw(b4)),
+            cnet_swap_width_height(F.torch_transpose(b5)),
+            cnet_flipud_offset(F.torch_rot90_ccw_transpose(b6)),
+            cnet_flip_offset(cnet_swap_width_height(F.torch_rot180_transpose(b7))),
+            cnet_fliplr_offset(F.torch_rot90_cw_transpose(b8)),
+        ]
+    )
+
+    if average:
+        return image.mean(dim=0)
+    else:
+        return image.sum(dim=0)
+
+
+def cnet_swap_width_height(x: Tensor) -> Tensor:
+    """
+    For size and offset tensor of shape [B,2,H,W] change order of 0 and 1 channels in dimension 1
+    """
+    assert x.size(1) == 2
+    return torch.cat([x[:, 1:2, ...], x[:, 0:1, ...]], dim=1)
+
+
+def cnet_fliplr_offset(x: Tensor) -> Tensor:
+    return torch.cat([1 - x[:, 0:1, ...], x[:, 1:2, ...]], dim=1)
+
+
+def cnet_flipud_offset(x: Tensor) -> Tensor:
+    return torch.cat([x[:, 0:1, ...], 1 - x[:, 1:2, ...]], dim=1)
+
+
+def cnet_flip_offset(x: Tensor) -> Tensor:
+    return torch.cat([1 - x[:, 0:1, ...], 1 - x[:, 1:2, ...]], dim=1)
 
 
 def flips_augment(image: Tensor) -> Tensor:

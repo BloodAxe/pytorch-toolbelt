@@ -4,9 +4,17 @@ from typing import Union, Tuple
 import torch
 from torch import Tensor
 
+from ..utils.support import pytorch_toolbelt_deprecated
+
 __all__ = [
     "torch_none",
     "torch_rot90",
+    "torch_rot90_cw",
+    "torch_rot90_ccw",
+    "torch_transpose_rot90_cw",
+    "torch_transpose_rot90_ccw",
+    "torch_rot90_ccw_transpose",
+    "torch_rot90_cw_transpose",
     "torch_rot180",
     "torch_rot270",
     "torch_fliplr",
@@ -29,13 +37,38 @@ def torch_none(x: Tensor) -> Tensor:
     return x
 
 
+def torch_rot90_ccw(x):
+    return x.rot90(k=1, dims=(2, 3))
+
+
+def torch_rot90_cw(x):
+    return x.rot90(k=-1, dims=(2, 3))
+
+
+def torch_rot90_ccw_transpose(x):
+    return x.rot90(k=1, dims=(2, 3)).transpose(2, 3)
+
+
+def torch_rot90_cw_transpose(x):
+    return x.rot90(k=-1, dims=(2, 3)).transpose(2, 3)
+
+
+def torch_transpose_rot90_ccw(x: Tensor):
+    return x.transpose(2, 3).rot90(k=1, dims=(2, 3))
+
+
+def torch_transpose_rot90_cw(x):
+    return x.transpose(2, 3).rot90(k=-1, dims=(2, 3))
+
+
+@pytorch_toolbelt_deprecated("Function torch_rot90 has been marked as deprecated. Please use torch_rot90_ccw instead")
 def torch_rot90(x: Tensor):
     """
     Rotate 4D image tensor by 90 degrees
     :param x:
     :return:
     """
-    return torch.rot90(x, k=1, dims=(2, 3))
+    return torch_rot90_ccw(x)
 
 
 def torch_rot180(x: Tensor):
@@ -47,13 +80,22 @@ def torch_rot180(x: Tensor):
     return torch.rot90(x, k=2, dims=(2, 3))
 
 
+def torch_rot180_transpose(x):
+    return x.rot90(k=2, dims=(2, 3)).transpose(2, 3)
+
+
+def torch_transpose_rot180(x):
+    return x.transpose(2, 3).rot90(k=2, dims=(2, 3))
+
+
+@pytorch_toolbelt_deprecated("Function torch_rot270 has been marked as deprecated. Please use torch_rot90_cw instead")
 def torch_rot270(x: Tensor):
     """
     Rotate 4D image tensor by 270 degrees
     :param x:
     :return:
     """
-    return torch.rot90(x, k=3, dims=(2, 3))
+    return torch_rot90_cw(x)
 
 
 def torch_flipud(x: Tensor):
