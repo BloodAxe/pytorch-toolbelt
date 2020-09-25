@@ -4,7 +4,7 @@ import itertools
 import warnings
 import numpy as np
 
-from .torch_utils import tensor_from_rgb_image
+from .torch_utils import image_to_tensor
 
 
 def plot_confusion_matrix(
@@ -87,5 +87,5 @@ def render_figure_to_tensor(figure):
     plt.close(figure)
     del figure
 
-    image = tensor_from_rgb_image(image)
+    image = image_to_tensor(image)
     return image

@@ -6,7 +6,7 @@ from typing import Optional, Sequence, Union, Dict, List, Any
 
 import numpy as np
 import torch
-from torch import nn
+from torch import nn, Tensor
 from .support import pytorch_toolbelt_deprecated
 
 __all__ = [
@@ -21,7 +21,47 @@ __all__ = [
     "to_numpy",
     "to_tensor",
     "transfer_weights",
+    "softmax_over_dim_0",
+    "softmax_over_dim_1",
+    "softmax_over_dim_2",
+    "softmax_over_dim_3",
+    "argmax_over_dim_0",
+    "argmax_over_dim_1",
+    "argmax_over_dim_2",
+    "argmax_over_dim_3",
 ]
+
+
+def softmax_over_dim_0(x: Tensor) -> Tensor:
+    return torch.softmax(x, dim=0)
+
+
+def softmax_over_dim_1(x: Tensor) -> Tensor:
+    return torch.softmax(x, dim=1)
+
+
+def softmax_over_dim_2(x: Tensor) -> Tensor:
+    return torch.softmax(x, dim=2)
+
+
+def softmax_over_dim_3(x: Tensor) -> Tensor:
+    return torch.softmax(x, dim=3)
+
+
+def argmax_over_dim_0(x: Tensor) -> Tensor:
+    return torch.argmax(x, dim=0)
+
+
+def argmax_over_dim_1(x: Tensor) -> Tensor:
+    return torch.argmax(x, dim=1)
+
+
+def argmax_over_dim_2(x: Tensor) -> Tensor:
+    return torch.argmax(x, dim=2)
+
+
+def argmax_over_dim_3(x: Tensor) -> Tensor:
+    return torch.argmax(x, dim=3)
 
 
 def logit(x: torch.Tensor, eps=1e-5) -> torch.Tensor:

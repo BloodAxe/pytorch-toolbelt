@@ -187,7 +187,11 @@ class ShowEmbeddingsCallback(Callback):
 
 
 class UMAPCallback(Callback):
-    """Visualize embeddings of the classifier using UMAP"""
+    """Visualize embeddings of the classifier using UMAP
+
+    This callback relies on umap-learn package which must be installed beforehand:
+    https://github.com/lmcinnes/umap
+    """
 
     def __init__(
         self,
@@ -212,6 +216,16 @@ class UMAPCallback(Callback):
             plot_params:
             loaders:
         """
+        try:
+            import umap
+            import umap.plot
+        except ImportError as e:
+            print(
+                "It seems `umap-learn` package is missing."
+                "Please install umap (https://github.com/lmcinnes/umap) and restart the script."
+            )
+            raise e
+
         super().__init__(CallbackOrder.Metric, CallbackNode.All)
         self.features_key = features_key
         self.prefix = prefix
