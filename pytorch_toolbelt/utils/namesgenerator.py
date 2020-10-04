@@ -7,6 +7,8 @@
 
 import random
 
+__all__ = ["get_random_name"]
+
 left = [
     "admiring",
     "adoring",
