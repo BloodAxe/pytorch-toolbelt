@@ -6,6 +6,8 @@ import numpy as np
 
 from .torch_utils import image_to_tensor
 
+__all__ = ["plot_confusion_matrix", "render_figure_to_tensor"]
+
 
 def plot_confusion_matrix(
     cm: np.ndarray,
