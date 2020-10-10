@@ -145,6 +145,10 @@ def image_to_tensor(image: np.ndarray, dummy_channels_dim=True) -> torch.Tensor:
         dummy_channels_dim: If True, and image has [H,W] shape adds dummy channel, so that
             output tensor has shape [1, H, W]
 
+    See also:
+        rgb_image_from_tensor - To convert tensor image back to RGB with denormalization
+        mask_from_tensor
+
     Returns:
         Torch tensor of [C,H,W] or [H,W] shape (dummy_channels_dim=False).
     """
@@ -173,6 +177,13 @@ def tensor_from_mask_image(mask: np.ndarray) -> torch.Tensor:
 def rgb_image_from_tensor(
     image: torch.Tensor, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225), max_pixel_value=255.0, dtype=np.uint8
 ) -> np.ndarray:
+    """
+    Convert numpy image (RGB, BGR, Grayscale, SAR, Mask image, etc.) to tensor
+
+    Args:
+        image: A torch tensor of [C,H,W] shape
+    """
+
     image = np.moveaxis(to_numpy(image), 0, -1)
     mean = to_numpy(mean)
     std = to_numpy(std)
