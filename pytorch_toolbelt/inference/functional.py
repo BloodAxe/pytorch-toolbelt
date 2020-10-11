@@ -145,6 +145,9 @@ def pad_image_tensor(image_tensor: Tensor, pad_size: Union[int, Tuple[int, int]]
     :param pad_size: Pad size
     :return: Tuple of output tensor and pad params. Second argument can be used to reverse pad operation of model output
     """
+    if len(image_tensor.size()) != 4:
+        raise ValueError("Tensor must have rank 4 ([B,C,H,W])")
+
     rows, cols = image_tensor.size(2), image_tensor.size(3)
     if isinstance(pad_size, Sized) and isinstance(pad_size, Iterable) and len(pad_size) == 2:
         pad_height, pad_width = [int(val) for val in pad_size]
@@ -182,6 +185,9 @@ def pad_image_tensor(image_tensor: Tensor, pad_size: Union[int, Tuple[int, int]]
 
 
 def unpad_image_tensor(image_tensor: Tensor, pad) -> Tensor:
+    if len(image_tensor.size()) != 4:
+        raise ValueError("Tensor must have rank 4 ([B,C,H,W])")
+
     pad_left, pad_right, pad_top, pad_btm = pad
     rows, cols = image_tensor.size(2), image_tensor.size(3)
     return image_tensor[..., pad_top : rows - pad_btm, pad_left : cols - pad_right]
