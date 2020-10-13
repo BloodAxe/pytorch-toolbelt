@@ -4,7 +4,7 @@ Despite this is called test-time augmentation, these method can be used at train
 transformation written in PyTorch and respect gradients flow.
 """
 from functools import partial
-from typing import Tuple, List, Optional
+from typing import Tuple, List, Optional, Union, Callable
 
 import torch
 from torch import Tensor, nn
@@ -233,7 +233,7 @@ def d2_image_augment(image: Tensor) -> Tensor:
     return torch.cat([image, F.torch_rot180(image), F.torch_fliplr(image), F.torch_flipud(image),], dim=0,)
 
 
-def d2_image_deaugment(image: Tensor, reduction: Optional[str] = "mean") -> Tensor:
+def d2_image_deaugment(image: Tensor, reduction: Union[str, Callable] = "mean") -> Tensor:
     """
     Deaugment input tensor (output of the model) assuming the input was D2-augmented image (See d2_augment).
     Args:
@@ -256,6 +256,8 @@ def d2_image_deaugment(image: Tensor, reduction: Optional[str] = "mean") -> Tens
         image = image.mean(dim=0)
     if reduction == "sum":
         image = image.sum(dim=0)
+    if callable(reduction):
+        image = reduction(image, dim=0)
     return image
 
 
@@ -298,7 +300,7 @@ def d4_image_augment(image: Tensor) -> Tensor:
     )
 
 
-def d4_image_deaugment(image: Tensor, reduction: Optional[str] = "mean") -> Tensor:
+def d4_image_deaugment(image: Tensor, reduction: Union[str, Callable] = "mean") -> Tensor:
     """
     Deaugment input tensor (output of the model) assuming the input was D4-augmented image (See d4_augment).
     Args:
@@ -331,6 +333,8 @@ def d4_image_deaugment(image: Tensor, reduction: Optional[str] = "mean") -> Tens
         image = image.mean(dim=0)
     if reduction == "sum":
         image = image.sum(dim=0)
+    if callable(reduction):
+        image = reduction(image, dim=0)
     return image
 
 
