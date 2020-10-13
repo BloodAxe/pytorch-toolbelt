@@ -58,8 +58,8 @@ def test_residualdeconvolutionupsampleblock():
 
 def test_kmax_pool():
     x = torch.randn((8, 512, 16, 16))
-    module1 = GlobalKMaxPool2d(512, flatten=True)
-    module2 = GlobalKMaxPool2d(512, flatten=False)
+    module1 = GlobalKMaxPool2d(k=4, flatten=True)
+    module2 = GlobalKMaxPool2d(k=4, flatten=False)
 
     y1 = module1(x)
     y2 = module2(x)
