@@ -2,11 +2,20 @@ from __future__ import absolute_import
 
 import itertools
 import warnings
+from typing import List
+
+import cv2
 import numpy as np
 
 from .torch_utils import image_to_tensor
 
-__all__ = ["plot_confusion_matrix", "render_figure_to_tensor"]
+__all__ = [
+    "plot_confusion_matrix",
+    "render_figure_to_tensor",
+    "hstack_autopad",
+    "vstack_autopad",
+    "vstack_header",
+]
 
 
 def plot_confusion_matrix(
@@ -91,3 +100,84 @@ def render_figure_to_tensor(figure):
 
     image = image_to_tensor(image)
     return image
+
+
+def hstack_autopad(images: List[np.ndarray]) -> np.ndarray:
+    """
+    Stack images horizontally with automatic padding
+
+    Args:
+        images: List of images to stack
+
+    Returns:
+        image
+    """
+    max_height = 0
+    for img in images:
+        max_height = max(max_height, img.shape[0])
+
+    padded_images = []
+    for img in images:
+        height = img.shape[0]
+        pad_top = 0
+        pad_bottom = max_height - height
+        pad_left = 0
+        pad_right = 0
+        img = cv2.copyMakeBorder(img, pad_top, pad_bottom, pad_left, pad_right, cv2.BORDER_CONSTANT, value=0)
+        (rows, cols) = img.shape[0:2]
+        padded_images.append(img)
+
+    return np.hstack(padded_images)
+
+
+def vstack_autopad(images: List[np.ndarray]) -> np.ndarray:
+    """
+    Stack images vertically with automatic padding
+
+    Args:
+        images: List of images to stack
+
+    Returns:
+        image
+    """
+    max_width = 0
+    for img in images:
+        max_width = max(max_width, img.shape[1])
+
+    padded_images = []
+    for img in images:
+        width = img.shape[1]
+        pad_top = 0
+        pad_bottom = 0
+        pad_left = 0
+        pad_right = max_width - width
+        img = cv2.copyMakeBorder(img, pad_top, pad_bottom, pad_left, pad_right, cv2.BORDER_CONSTANT, value=0)
+        padded_images.append(img)
+
+    return np.vstack(padded_images)
+
+
+def vstack_header(
+    image: np.ndarray,
+    title: str,
+    bg_color=(35, 41, 40),
+    text_color=(242, 248, 248),
+    text_thickness: int = 2,
+    text_scale=1.5,
+) -> np.ndarray:
+    (rows, cols) = image.shape[:2]
+
+    title_image = np.zeros((30, cols, 3), dtype=np.uint8)
+    title_image[:] = bg_color
+    cv2.putText(
+        title_image,
+        title,
+        (10, 24),
+        fontFace=cv2.FONT_HERSHEY_PLAIN,
+        fontScale=text_scale,
+        color=text_color,
+        thickness=text_thickness,
+        lineType=cv2.LINE_AA,
+    )
+
+    return vstack_autopad([title_image, image])
