@@ -23,6 +23,8 @@ __all__ = [
     "d4_image2mask",
     "d4_image_augment",
     "d4_image_deaugment",
+    "ms_image_augment",
+    "ms_image_deaugment",
     "fivecrop_image2label",
     "fliplr_image2label",
     "fliplr_image2mask",
@@ -273,7 +275,15 @@ def d2_image_augment(image: Tensor) -> Tensor:
             - Vertically-flipped tensor
 
     """
-    return torch.cat([image, F.torch_rot180(image), F.torch_fliplr(image), F.torch_flipud(image),], dim=0,)
+    return torch.cat(
+        [
+            image,
+            F.torch_rot180(image),
+            F.torch_fliplr(image),
+            F.torch_flipud(image),
+        ],
+        dim=0,
+    )
 
 
 def d2_image_deaugment(image: Tensor, reduction: Union[str, Callable] = "mean") -> Tensor:
@@ -292,7 +302,12 @@ def d2_image_deaugment(image: Tensor, reduction: Union[str, Callable] = "mean") 
     b1, b2, b3, b4 = torch.chunk(image, 4)
 
     image: Tensor = torch.stack(
-        [b1, F.torch_rot180(b2), F.torch_fliplr(b3), F.torch_flipud(b4),]
+        [
+            b1,
+            F.torch_rot180(b2),
+            F.torch_fliplr(b3),
+            F.torch_flipud(b4),
+        ]
     )
 
     if reduction == "mean":
@@ -511,6 +526,8 @@ def flips_deaugment(image: Tensor, reduction: Optional[str] = "mean") -> Tensor:
         image = image.mean(dim=0)
     if reduction == "sum":
         image = image.sum(dim=0)
+    if callable(reduction):
+        image = reduction(image, dim=0)
     return image
 
 
@@ -523,6 +540,51 @@ class TTAWrapper(nn.Module):
 
     def forward(self, *input):
         return self.tta(self.model, *input)
+
+
+def ms_image_augment(
+    image: Tensor, size_offsets: List[Tuple[int, int]], mode="bilinear", align_corners=True
+) -> List[Tensor]:
+    """
+    Multi-scale image augmentation. This function create list of resized tensors from the input one.
+    """
+    batch_size, channels, rows, cols = image.size()
+    augmented_inputs = []
+    for offset in size_offsets:
+        scale_size = rows + offset, cols + offset
+        scaled_input = torch.nn.functional.interpolate(image, size=scale_size, mode=mode, align_corners=align_corners)
+        augmented_inputs.append(scaled_input)
+    return augmented_inputs
+
+
+def ms_image_deaugment(
+    images: List[Tensor],
+    size_offsets: List[Tuple[int, int]],
+    reduction: Union[str, Callable] = "mean",
+    mode: str = "bilinear",
+    align_corners: bool = True,
+) -> Tensor:
+    if len(images) != len(size_offsets):
+        raise ValueError("Number of images must be equal to number of size offsets")
+
+    deaugmented_outputs = []
+    for image, offset in zip(images, size_offsets):
+        batch_size, channels, rows, cols = image.size()
+        original_size = rows - offset, cols - offset
+        scaled_image = torch.nn.functional.interpolate(
+            image, size=original_size, mode=mode, align_corners=align_corners
+        )
+        deaugmented_outputs.append(scaled_image)
+
+    deaugmented_outputs = torch.stack(deaugmented_outputs)
+    if reduction == "mean":
+        deaugmented_outputs = deaugmented_outputs.mean(dim=0)
+    if reduction == "sum":
+        deaugmented_outputs = deaugmented_outputs.sum(dim=0)
+    if callable(reduction):
+        deaugmented_outputs = reduction(deaugmented_outputs, dim=0)
+
+    return deaugmented_outputs
 
 
 @pytorch_toolbelt_deprecated("This class is deprecated. Please use MultiscaleTTA instead")
@@ -571,42 +633,6 @@ class MultiscaleTTAWrapper(nn.Module):
             output /= 1.0 + len(self.size_offsets)
 
         return output
-
-
-#
-# class MultiscaleTTA(nn.Module):
-#     def __init__(self, model, average=True, size_offsets=[+64, -64], align_corners=True):
-#         super().__init__()
-#         self.model = model
-#         self.size_offsets = size_offsets
-#         self.average = average
-#         self.align_corners = align_corners
-#
-#     def forward(self, x):
-#         outputs = self.model(x)
-#         orig_size = x.shape[2:]
-#         fm_size = outputs[OUTPUT_MASK_KEY].shape[2:]
-#
-#         for offset in self.size_offsets:
-#             scale_size = orig_size[0] + offset, orig_size[1] + offset
-#             scaled_output = self.model(
-#                 F.interpolate(x, size=scale_size, mode="bilinear", align_corners=self.align_corners)
-#             )
-#
-#             outputs[OUTPUT_MASK_KEY] += F.interpolate(
-#                 scaled_output[OUTPUT_MASK_KEY], size=fm_size, mode="bilinear", align_corners=self.align_corners
-#             )
-#
-#             outputs[CENTERNET_OUTPUT_HEATMAP] += F.interpolate(
-#                 scaled_output[CENTERNET_OUTPUT_HEATMAP],
-#                 size=fm_size,
-#                 mode="bilinear",
-#                 align_corners=self.align_corners,
-#             )
-#         if self.average:
-#             outputs[OUTPUT_MASK_KEY] /= 1 + len(self.size_offsets)
-#
-#         return outputs
 
 
 class GeneralizedTTA(nn.Module):
@@ -662,9 +688,7 @@ class GeneralizedTTA(nn.Module):
             if not isinstance(outputs, dict):
                 raise ValueError("Output of the model must be a dict")
 
-            deaugmented_output = dict(
-                (key, self.deaugment_fn[key](value)) for (key, value) in outputs.items()
-            )
+            deaugmented_output = dict((key, self.deaugment_fn[key](value)) for (key, value) in outputs.items())
         elif isinstance(self.deaugment_fn, (list, tuple)):
             if not isinstance(outputs, (dict, tuple)):
                 raise ValueError("Output of the model must be a dict")
