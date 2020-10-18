@@ -15,10 +15,9 @@ from . import functional as F
 __all__ = [
     "MultiscaleTTAWrapper",
     "TTAWrapper",
+    "GeneralizedTTA",
     "d2_image_augment",
     "d2_image_deaugment",
-    "d4_centernet_offset_deaugment",
-    "d4_centernet_size_deaugment",
     "d4_image2label",
     "d4_image2mask",
     "d4_image_augment",
@@ -34,6 +33,8 @@ __all__ = [
     "flips_deaugment",
     "tencrop_image2label",
 ]
+
+MaybeStrOrCallable = Optional[Union[str, Callable]]
 
 
 def fliplr_image2label(model: nn.Module, image: Tensor) -> Tensor:
@@ -235,7 +236,7 @@ def fliplr_image_augment(image: Tensor) -> Tensor:
     return torch.cat([image, F.torch_fliplr(image)], dim=0)
 
 
-def fliplr_image_deaugment(image: Tensor, reduction: Union[str, Callable] = "mean") -> Tensor:
+def fliplr_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") -> Tensor:
     """
     Deaugment input tensor (output of the model) assuming the input was fliplr-augmented image (See fliplr_image_augment).
     Args:
@@ -286,7 +287,7 @@ def d2_image_augment(image: Tensor) -> Tensor:
     )
 
 
-def d2_image_deaugment(image: Tensor, reduction: Union[str, Callable] = "mean") -> Tensor:
+def d2_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") -> Tensor:
     """
     Deaugment input tensor (output of the model) assuming the input was D2-augmented image (See d2_augment).
     Args:
@@ -358,7 +359,7 @@ def d4_image_augment(image: Tensor) -> Tensor:
     )
 
 
-def d4_image_deaugment(image: Tensor, reduction: Union[str, Callable] = "mean") -> Tensor:
+def d4_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") -> Tensor:
     """
     Deaugment input tensor (output of the model) assuming the input was D4-augmented image (See d4_augment).
     Args:
@@ -396,96 +397,6 @@ def d4_image_deaugment(image: Tensor, reduction: Union[str, Callable] = "mean") 
     return image
 
 
-def d4_centernet_size_deaugment(image: Tensor, reduction: Optional[str] = "mean") -> Tensor:
-    """
-    Deaugment input tensor width & height regression (for centernet) assuming the input was D4-augmented image (See d4_augment).
-    Args:
-        image: Tensor of [B * 8, 2, H, W] shape
-        average: If True performs averaging of 8 outputs, otherwise - summation.
-
-    Returns:
-        Tensor of [B, C, H, W] shape.
-    """
-    assert image.size(1) == 2
-    assert image.size(0) % 8 == 0
-
-    b1, b2, b3, b4, b5, b6, b7, b8 = torch.chunk(image, 8)
-
-    image: Tensor = torch.stack(
-        [
-            b1,
-            F.torch_rot90_ccw(b2),
-            F.torch_rot180(b3),
-            F.torch_rot90_cw(b4),
-            F.torch_transpose(b5),
-            F.torch_rot90_ccw_transpose(b6),
-            F.torch_rot180_transpose(b7),
-            F.torch_rot90_cw_transpose(b8),
-        ]
-    )
-
-    if reduction == "mean":
-        image = image.mean(dim=0)
-    if reduction == "sum":
-        image = image.sum(dim=0)
-    return image
-
-
-def d4_centernet_offset_deaugment(image: Tensor, reduction: Optional[str] = "mean") -> Tensor:
-    """
-    Deaugment input tensor width & height offset (for centernet) assuming the input was D4-augmented image (See d4_augment).
-    Args:
-        image: Tensor of [B * 8, 2, H, W] shape
-        average: If True performs averaging of 8 outputs, otherwise - summation.
-
-    Returns:
-        Tensor of [B, C, H, W] shape.
-    """
-    assert image.size(1) == 2
-    assert image.size(0) % 8 == 0
-
-    b1, b2, b3, b4, b5, b6, b7, b8 = torch.chunk(image, 8)
-
-    image: Tensor = torch.stack(
-        [
-            b1,
-            F.torch_rot90_ccw(b2),
-            F.torch_rot180(b3),
-            F.torch_rot90_cw(b4),
-            F.torch_transpose(b5),
-            F.torch_rot90_ccw_transpose(b6),
-            F.torch_rot180_transpose(b7),
-            F.torch_rot90_cw_transpose(b8),
-        ]
-    )
-
-    if reduction == "mean":
-        image = image.mean(dim=0)
-    if reduction == "sum":
-        image = image.sum(dim=0)
-    return image
-
-
-def cnet_swap_width_height(x: Tensor) -> Tensor:
-    """
-    For size and offset tensor of shape [B,2,H,W] change order of 0 and 1 channels in dimension 1
-    """
-    assert x.size(1) == 2
-    return torch.cat([x[:, 1:2, ...], x[:, 0:1, ...]], dim=1)
-
-
-def cnet_fliplr_offset(x: Tensor) -> Tensor:
-    return torch.cat([1 - x[:, 0:1, ...], x[:, 1:2, ...]], dim=1)
-
-
-def cnet_flipud_offset(x: Tensor) -> Tensor:
-    return torch.cat([x[:, 0:1, ...], 1 - x[:, 1:2, ...]], dim=1)
-
-
-def cnet_flip_offset(x: Tensor) -> Tensor:
-    return 1 - x
-
-
 def flips_augment(image: Tensor) -> Tensor:
     """
     Augment input tensor by adding vertically and horizontally flipped images to it.
@@ -503,12 +414,15 @@ def flips_augment(image: Tensor) -> Tensor:
     return torch.cat([image, F.torch_fliplr(image), F.torch_flipud(image)], dim=0)
 
 
-def flips_deaugment(image: Tensor, reduction: Optional[str] = "mean") -> Tensor:
+def flips_deaugment(
+    image: Tensor,
+    reduction: MaybeStrOrCallable = "mean",
+) -> Tensor:
     """
     Deaugment input tensor (output of the model) assuming the input was flip-augmented image (See flips_augment).
     Args:
         image: Tensor of [B * 3, C, H, W] shape
-        average: If True performs averaging of 8 outputs, otherwise - summation.
+        reduction: If True performs averaging of 8 outputs, otherwise - summation.
 
     Returns:
         Tensor of [B, C, H, W] shape.
@@ -543,7 +457,7 @@ class TTAWrapper(nn.Module):
 
 
 def ms_image_augment(
-    image: Tensor, size_offsets: List[Tuple[int, int]], mode="bilinear", align_corners=True
+    image: Tensor, size_offsets: List[Union[int, Tuple[int, int]]], mode="bilinear", align_corners=True
 ) -> List[Tensor]:
     """
     Multi-scale image augmentation. This function create list of resized tensors from the input one.
@@ -551,6 +465,7 @@ def ms_image_augment(
     batch_size, channels, rows, cols = image.size()
     augmented_inputs = []
     for offset in size_offsets:
+        # TODO: Add support of tuple (row_offset, col_offset)
         scale_size = rows + offset, cols + offset
         scaled_input = torch.nn.functional.interpolate(image, size=scale_size, mode=mode, align_corners=align_corners)
         augmented_inputs.append(scaled_input)
@@ -559,8 +474,8 @@ def ms_image_augment(
 
 def ms_image_deaugment(
     images: List[Tensor],
-    size_offsets: List[Tuple[int, int]],
-    reduction: Union[str, Callable] = "mean",
+    size_offsets: List[Union[int, Tuple[int, int]]],
+    reduction: MaybeStrOrCallable = "mean",
     mode: str = "bilinear",
     align_corners: bool = True,
 ) -> Tensor:
@@ -570,6 +485,7 @@ def ms_image_deaugment(
     deaugmented_outputs = []
     for image, offset in zip(images, size_offsets):
         batch_size, channels, rows, cols = image.size()
+        # TODO: Add support of tuple (row_offset, col_offset)
         original_size = rows - offset, cols - offset
         scaled_image = torch.nn.functional.interpolate(
             image, size=original_size, mode=mode, align_corners=align_corners
