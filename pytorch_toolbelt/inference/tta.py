@@ -4,28 +4,30 @@ Despite this is called test-time augmentation, these method can be used at train
 transformation written in PyTorch and respect gradients flow.
 """
 from functools import partial
-from typing import Tuple, List, Optional, Union, Callable
+from typing import Tuple, List, Optional, Union, Callable, Dict
 
 import torch
 from torch import Tensor, nn
 from torch.nn.functional import interpolate
-
+from ..utils.support import pytorch_toolbelt_deprecated
 from . import functional as F
 
 __all__ = [
     "MultiscaleTTAWrapper",
     "TTAWrapper",
+    "d2_image_augment",
+    "d2_image_deaugment",
     "d4_centernet_offset_deaugment",
     "d4_centernet_size_deaugment",
     "d4_image2label",
     "d4_image2mask",
-    "d2_image_augment",
-    "d2_image_deaugment",
     "d4_image_augment",
     "d4_image_deaugment",
     "fivecrop_image2label",
     "fliplr_image2label",
     "fliplr_image2mask",
+    "fliplr_image_augment",
+    "fliplr_image_deaugment",
     "flips_augment",
     "flips_deaugment",
     "tencrop_image2label",
@@ -214,6 +216,47 @@ def d4_image2mask(model: nn.Module, image: Tensor) -> Tensor:
     one_over_8 = float(1.0 / 8.0)
     output *= one_over_8
     return output
+
+
+def fliplr_image_augment(image: Tensor) -> Tensor:
+    """
+    Augment input tensor using flip from left to right
+    Args:
+        image: Tensor of [B,C,H,W] shape
+
+    Returns:
+        Tensor of [B * 2, C, H, W] shape with:
+            - Original tensor rotated by 180 degrees
+            - Horisonalty-flipped tensor
+
+    """
+    return torch.cat([image, F.torch_fliplr(image)], dim=0)
+
+
+def fliplr_image_deaugment(image: Tensor, reduction: Union[str, Callable] = "mean") -> Tensor:
+    """
+    Deaugment input tensor (output of the model) assuming the input was fliplr-augmented image (See fliplr_image_augment).
+    Args:
+        image: Tensor of [B * 2, C, H, W] shape
+        reduction: Reduction model for aggregating outputs. Default is taking mean.
+
+    Returns:
+        Tensor of [B, C, H, W] shape if reduction is not None or "none", otherwise returns de-augmented tensor of
+        [2, B, C, H, W] shape
+    """
+    assert image.size(0) % 2 == 0
+
+    b1, b2 = torch.chunk(image, 2)
+
+    image: Tensor = torch.stack([b1, F.torch_fliplr(b2)])
+
+    if reduction == "mean":
+        image = image.mean(dim=0)
+    if reduction == "sum":
+        image = image.sum(dim=0)
+    if callable(reduction):
+        image = reduction(image, dim=0)
+    return image
 
 
 def d2_image_augment(image: Tensor) -> Tensor:
@@ -471,6 +514,7 @@ def flips_deaugment(image: Tensor, reduction: Optional[str] = "mean") -> Tensor:
     return image
 
 
+@pytorch_toolbelt_deprecated("This class is deprecated. Please use GeneralizedTTA instead")
 class TTAWrapper(nn.Module):
     def __init__(self, model: nn.Module, tta_function, **kwargs):
         super().__init__()
@@ -481,6 +525,7 @@ class TTAWrapper(nn.Module):
         return self.tta(self.model, *input)
 
 
+@pytorch_toolbelt_deprecated("This class is deprecated. Please use MultiscaleTTA instead")
 class MultiscaleTTAWrapper(nn.Module):
     """
     Multiscale TTA wrapper module
@@ -526,3 +571,106 @@ class MultiscaleTTAWrapper(nn.Module):
             output /= 1.0 + len(self.size_offsets)
 
         return output
+
+
+#
+# class MultiscaleTTA(nn.Module):
+#     def __init__(self, model, average=True, size_offsets=[+64, -64], align_corners=True):
+#         super().__init__()
+#         self.model = model
+#         self.size_offsets = size_offsets
+#         self.average = average
+#         self.align_corners = align_corners
+#
+#     def forward(self, x):
+#         outputs = self.model(x)
+#         orig_size = x.shape[2:]
+#         fm_size = outputs[OUTPUT_MASK_KEY].shape[2:]
+#
+#         for offset in self.size_offsets:
+#             scale_size = orig_size[0] + offset, orig_size[1] + offset
+#             scaled_output = self.model(
+#                 F.interpolate(x, size=scale_size, mode="bilinear", align_corners=self.align_corners)
+#             )
+#
+#             outputs[OUTPUT_MASK_KEY] += F.interpolate(
+#                 scaled_output[OUTPUT_MASK_KEY], size=fm_size, mode="bilinear", align_corners=self.align_corners
+#             )
+#
+#             outputs[CENTERNET_OUTPUT_HEATMAP] += F.interpolate(
+#                 scaled_output[CENTERNET_OUTPUT_HEATMAP],
+#                 size=fm_size,
+#                 mode="bilinear",
+#                 align_corners=self.align_corners,
+#             )
+#         if self.average:
+#             outputs[OUTPUT_MASK_KEY] /= 1 + len(self.size_offsets)
+#
+#         return outputs
+
+
+class GeneralizedTTA(nn.Module):
+    """
+    Example:
+        tta_model = GeneralizedTTA(model,
+            augment_fn=tta.d2_image_augment,
+            deaugment_fn={
+                OUTPUT_MASK_KEY: tta.d2_image_deaugment,
+                OUTPUT_EDGE_KEY: tta.d2_image_deaugment,
+            },
+
+
+    Notes:
+        Input tensors must be square for D2/D4 or similar types of augmentation
+    """
+
+    def __init__(
+        self,
+        model: nn.Module,
+        augment_fn: Union[Callable, Dict[str, Callable], List[Callable]],
+        deaugment_fn: Union[Callable, Dict[str, Callable], List[Callable]],
+    ):
+        super().__init__()
+        self.model = model
+        self.augment_fn = augment_fn
+        self.deaugment_fn = deaugment_fn
+
+    def forward(self, *input, **kwargs):
+        # Augment & forward
+        if isinstance(self.augment_fn, dict):
+            if len(input) != 0:
+                raise ValueError("Input for GeneralizedTTA must be exactly one tensor")
+            augmented_inputs = dict(
+                (key, augment(value)) for (key, value), augment in zip(kwargs.items(), self.augment_fn)
+            )
+            outputs = self.model(**augmented_inputs)
+        elif isinstance(self.augment_fn, (list, tuple)):
+            if len(kwargs) != 0:
+                raise ValueError("Input for GeneralizedTTA must be exactly one tensor")
+            augmented_inputs = [augment(x) for x, augment in zip(input, self.augment_fn)]
+            outputs = self.model(*augmented_inputs)
+        else:
+            if len(input) != 1:
+                raise ValueError("Input for GeneralizedTTA must be exactly one tensor")
+            if len(kwargs) != 0:
+                raise ValueError("Input for GeneralizedTTA must be exactly one tensor")
+            augmented_input = self.augment_fn(input[0])
+            outputs = self.model(augmented_input)
+
+        # Deaugment outputs
+        if isinstance(self.deaugment_fn, dict):
+            if not isinstance(outputs, dict):
+                raise ValueError("Output of the model must be a dict")
+
+            deaugmented_output = dict(
+                (key, self.deaugment_fn[key](value)) for (key, value) in outputs.items()
+            )
+        elif isinstance(self.deaugment_fn, (list, tuple)):
+            if not isinstance(outputs, (dict, tuple)):
+                raise ValueError("Output of the model must be a dict")
+
+            deaugmented_output = [deaugment(value) for value, deaugment in zip(outputs, self.deaugment_fn)]
+        else:
+            deaugmented_output = self.deaugment_fn(outputs)
+
+        return deaugmented_output
