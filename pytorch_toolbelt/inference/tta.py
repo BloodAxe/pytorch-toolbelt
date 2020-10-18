@@ -201,9 +201,7 @@ def d4_image2mask(model: nn.Module, image: Tensor) -> Tensor:
     """
     output = model(image)
 
-    for aug, deaug in zip(
-        [F.torch_rot90, F.torch_rot180, F.torch_rot270], [F.torch_rot270, F.torch_rot180, F.torch_rot90]
-    ):
+    for aug, deaug in zip([F.torch_rot90, F.torch_rot180, F.torch_rot270], [F.torch_rot270, F.torch_rot180, F.torch_rot90]):
         x = deaug(model(aug(image)))
         output += x
 
@@ -340,8 +338,7 @@ def d4_image_augment(image: Tensor) -> Tensor:
     """
     if image.size(2) != image.size(3):
         raise ValueError(
-            f"Input tensor must have number of rows equal to number of cols. "
-            f"Got input tensor of shape {image.size()}"
+            f"Input tensor must have number of rows equal to number of cols. " f"Got input tensor of shape {image.size()}"
         )
     image_t = F.torch_transpose(image)
     return torch.cat(
@@ -466,9 +463,12 @@ def ms_image_augment(
     augmented_inputs = []
     for offset in size_offsets:
         # TODO: Add support of tuple (row_offset, col_offset)
-        scale_size = rows + offset, cols + offset
-        scaled_input = torch.nn.functional.interpolate(image, size=scale_size, mode=mode, align_corners=align_corners)
-        augmented_inputs.append(scaled_input)
+        if offset == 0:
+            augmented_inputs.append(image)
+        else:
+            scale_size = rows + offset, cols + offset
+            scaled_input = torch.nn.functional.interpolate(image, size=scale_size, mode=mode, align_corners=align_corners)
+            augmented_inputs.append(scaled_input)
     return augmented_inputs
 
 
@@ -484,13 +484,14 @@ def ms_image_deaugment(
 
     deaugmented_outputs = []
     for image, offset in zip(images, size_offsets):
-        batch_size, channels, rows, cols = image.size()
-        # TODO: Add support of tuple (row_offset, col_offset)
-        original_size = rows - offset, cols - offset
-        scaled_image = torch.nn.functional.interpolate(
-            image, size=original_size, mode=mode, align_corners=align_corners
-        )
-        deaugmented_outputs.append(scaled_image)
+        if offset == 0:
+            deaugmented_outputs.append(image)
+        else:
+            batch_size, channels, rows, cols = image.size()
+            # TODO: Add support of tuple (row_offset, col_offset)
+            original_size = rows - offset, cols - offset
+            scaled_image = torch.nn.functional.interpolate(image, size=original_size, mode=mode, align_corners=align_corners)
+            deaugmented_outputs.append(scaled_image)
 
     deaugmented_outputs = torch.stack(deaugmented_outputs)
     if reduction == "mean":
@@ -582,9 +583,7 @@ class GeneralizedTTA(nn.Module):
         if isinstance(self.augment_fn, dict):
             if len(input) != 0:
                 raise ValueError("Input for GeneralizedTTA must be exactly one tensor")
-            augmented_inputs = dict(
-                (key, augment(value)) for (key, value), augment in zip(kwargs.items(), self.augment_fn)
-            )
+            augmented_inputs = dict((key, augment(value)) for (key, value), augment in zip(kwargs.items(), self.augment_fn))
             outputs = self.model(**augmented_inputs)
         elif isinstance(self.augment_fn, (list, tuple)):
             if len(kwargs) != 0:
