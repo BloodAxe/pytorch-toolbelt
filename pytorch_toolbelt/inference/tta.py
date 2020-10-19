@@ -201,7 +201,9 @@ def d4_image2mask(model: nn.Module, image: Tensor) -> Tensor:
     """
     output = model(image)
 
-    for aug, deaug in zip([F.torch_rot90, F.torch_rot180, F.torch_rot270], [F.torch_rot270, F.torch_rot180, F.torch_rot90]):
+    for aug, deaug in zip(
+        [F.torch_rot90, F.torch_rot180, F.torch_rot270], [F.torch_rot270, F.torch_rot180, F.torch_rot90]
+    ):
         x = deaug(model(aug(image)))
         output += x
 
@@ -274,15 +276,7 @@ def d2_image_augment(image: Tensor) -> Tensor:
             - Vertically-flipped tensor
 
     """
-    return torch.cat(
-        [
-            image,
-            F.torch_rot180(image),
-            F.torch_fliplr(image),
-            F.torch_flipud(image),
-        ],
-        dim=0,
-    )
+    return torch.cat([image, F.torch_rot180(image), F.torch_fliplr(image), F.torch_flipud(image),], dim=0,)
 
 
 def d2_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") -> Tensor:
@@ -301,12 +295,7 @@ def d2_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") ->
     b1, b2, b3, b4 = torch.chunk(image, 4)
 
     image: Tensor = torch.stack(
-        [
-            b1,
-            F.torch_rot180(b2),
-            F.torch_fliplr(b3),
-            F.torch_flipud(b4),
-        ]
+        [b1, F.torch_rot180(b2), F.torch_fliplr(b3), F.torch_flipud(b4),]
     )
 
     if reduction == "mean":
@@ -338,7 +327,8 @@ def d4_image_augment(image: Tensor) -> Tensor:
     """
     if image.size(2) != image.size(3):
         raise ValueError(
-            f"Input tensor must have number of rows equal to number of cols. " f"Got input tensor of shape {image.size()}"
+            f"Input tensor must have number of rows equal to number of cols. "
+            f"Got input tensor of shape {image.size()}"
         )
     image_t = F.torch_transpose(image)
     return torch.cat(
@@ -411,10 +401,7 @@ def flips_augment(image: Tensor) -> Tensor:
     return torch.cat([image, F.torch_fliplr(image), F.torch_flipud(image)], dim=0)
 
 
-def flips_deaugment(
-    image: Tensor,
-    reduction: MaybeStrOrCallable = "mean",
-) -> Tensor:
+def flips_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean",) -> Tensor:
     """
     Deaugment input tensor (output of the model) assuming the input was flip-augmented image (See flips_augment).
     Args:
@@ -467,7 +454,9 @@ def ms_image_augment(
             augmented_inputs.append(image)
         else:
             scale_size = rows + offset, cols + offset
-            scaled_input = torch.nn.functional.interpolate(image, size=scale_size, mode=mode, align_corners=align_corners)
+            scaled_input = torch.nn.functional.interpolate(
+                image, size=scale_size, mode=mode, align_corners=align_corners
+            )
             augmented_inputs.append(scaled_input)
     return augmented_inputs
 
@@ -490,7 +479,9 @@ def ms_image_deaugment(
             batch_size, channels, rows, cols = image.size()
             # TODO: Add support of tuple (row_offset, col_offset)
             original_size = rows - offset, cols - offset
-            scaled_image = torch.nn.functional.interpolate(image, size=original_size, mode=mode, align_corners=align_corners)
+            scaled_image = torch.nn.functional.interpolate(
+                image, size=original_size, mode=mode, align_corners=align_corners
+            )
             deaugmented_outputs.append(scaled_image)
 
     deaugmented_outputs = torch.stack(deaugmented_outputs)
@@ -569,7 +560,7 @@ class GeneralizedTTA(nn.Module):
 
     def __init__(
         self,
-        model: nn.Module,
+        model: Union[nn.Module, nn.DataParallel],
         augment_fn: Union[Callable, Dict[str, Callable], List[Callable]],
         deaugment_fn: Union[Callable, Dict[str, Callable], List[Callable]],
     ):
@@ -583,7 +574,9 @@ class GeneralizedTTA(nn.Module):
         if isinstance(self.augment_fn, dict):
             if len(input) != 0:
                 raise ValueError("Input for GeneralizedTTA must be exactly one tensor")
-            augmented_inputs = dict((key, augment(value)) for (key, value), augment in zip(kwargs.items(), self.augment_fn))
+            augmented_inputs = dict(
+                (key, augment(value)) for (key, value), augment in zip(kwargs.items(), self.augment_fn)
+            )
             outputs = self.model(**augmented_inputs)
         elif isinstance(self.augment_fn, (list, tuple)):
             if len(kwargs) != 0:
