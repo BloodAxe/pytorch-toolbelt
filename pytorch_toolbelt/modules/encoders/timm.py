@@ -26,6 +26,11 @@ __all__ = [
     "SKResNeXt50Encoder",
     "SWSLResNeXt101Encoder",
     "TResNetMEncoder",
+    "DPN68Encoder",
+    "DPN68BEncoder",
+    "DPN92Encoder",
+    "DPN107Encoder",
+    "DPN131Encoder",
 ]
 
 
@@ -434,6 +439,91 @@ class HRNetW48Encoder(EncoderModule):
 
         encoder = hrnet.hrnet_w48(pretrained=pretrained, features_only=True, out_indices=(1, 2, 3, 4))
         super().__init__([128, 256, 512, 1024], [4, 8, 16, 32], [0, 1, 2, 3])
+        self.encoder = encoder
+
+    def forward(self, x):
+        y = self.encoder.forward(x)
+        return y
+
+    def change_input_channels(self, input_channels: int, mode="auto"):
+        self.encoder.conv1 = make_n_channel_input(self.encoder.conv1, input_channels, mode)
+        return self
+
+
+class DPN68Encoder(EncoderModule):
+    def __init__(self, pretrained=True):
+        from timm.models import dpn
+
+        encoder = dpn.dpn68(pretrained=pretrained, features_only=True, out_indices=(1, 2, 3, 4))
+        super().__init__([144, 320, 704, 832], [4, 8, 16, 32], [0, 1, 2, 3])
+        self.encoder = encoder
+
+    def forward(self, x):
+        y = self.encoder.forward(x)
+        return y
+
+    def change_input_channels(self, input_channels: int, mode="auto"):
+        self.encoder.conv1 = make_n_channel_input(self.encoder.conv1, input_channels, mode)
+        return self
+
+
+class DPN68BEncoder(EncoderModule):
+    def __init__(self, pretrained=True):
+        from timm.models import dpn
+
+        encoder = dpn.dpn68b(pretrained=pretrained, features_only=True, out_indices=(1, 2, 3, 4))
+        super().__init__([144, 320, 704, 832], [4, 8, 16, 32], [0, 1, 2, 3])
+        self.encoder = encoder
+
+    def forward(self, x):
+        y = self.encoder.forward(x)
+        return y
+
+    def change_input_channels(self, input_channels: int, mode="auto"):
+        self.encoder.conv1 = make_n_channel_input(self.encoder.conv1, input_channels, mode)
+        return self
+
+
+class DPN92Encoder(EncoderModule):
+    def __init__(self, pretrained=True):
+        from timm.models import dpn
+
+        encoder = dpn.dpn92(pretrained=pretrained, features_only=True, out_indices=(1, 2, 3, 4))
+        super().__init__([336, 704, 1552, 2688], [4, 8, 16, 32], [0, 1, 2, 3])
+        self.encoder = encoder
+
+    def forward(self, x):
+        y = self.encoder.forward(x)
+        return y
+
+    def change_input_channels(self, input_channels: int, mode="auto"):
+        self.encoder.conv1 = make_n_channel_input(self.encoder.conv1, input_channels, mode)
+        return self
+
+
+class DPN107Encoder(EncoderModule):
+    def __init__(self, pretrained=True):
+        from timm.models import dpn
+
+        encoder = dpn.dpn107(pretrained=pretrained, features_only=True, out_indices=(1, 2, 3, 4))
+        super().__init__([376, 1152, 2432, 2688], [4, 8, 16, 32], [0, 1, 2, 3])
+        self.encoder = encoder
+
+    def forward(self, x):
+        y = self.encoder.forward(x)
+        return y
+
+    def change_input_channels(self, input_channels: int, mode="auto"):
+        self.encoder.conv1 = make_n_channel_input(self.encoder.conv1, input_channels, mode)
+        return self
+
+
+class DPN131Encoder(EncoderModule):
+    def __init__(self, pretrained=True):
+        from timm.models import dpn
+
+        encoder = dpn.dpn131(pretrained=pretrained, features_only=True, out_indices=(1, 2, 3, 4))
+        super().__init__([352, 832, 1984, 2688], [4, 8, 16, 32], [0, 1, 2, 3])
         self.encoder = encoder
 
     def forward(self, x):

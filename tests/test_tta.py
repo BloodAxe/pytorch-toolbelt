@@ -52,9 +52,6 @@ def test_d4_speed():
     df = defaultdict(list)
     n = 100
 
-    d4_augment_jit = torch.jit.script(tta.d4_image_augment)
-    d4_deaugment_jit = torch.jit.script(tta.d4_image_deaugment)
-
     model = resnet34_unet32().cuda().eval()
     x = torch.rand((4, 3, 224, 224)).float().cuda()
     y1 = tta.d4_image2mask(model, x)
@@ -92,24 +89,11 @@ def test_d4_speed():
                     speed_v2 += finish - start
                     np.testing.assert_allclose(v, v, atol=1e-6, rtol=1e-6)
 
-                speed_v4 = 0
-                for i in range(n):
-                    x = torch.rand((4, 3, 224, 224)).to(dtype).cuda(non_blocking=False)
-                    start = cv2.getTickCount()
-                    x_a = d4_augment_jit(x)
-                    x_a = model(x_a)
-                    y = d4_deaugment_jit(x_a)
-                    v = y.sum().item()
-                    finish = cv2.getTickCount()
-                    speed_v4 += finish - start
-                    np.testing.assert_allclose(v, v, atol=1e-6, rtol=1e-6)
-
                 df["mode"].append("fp16" if dtype == torch.float16 else "fp32")
                 df["deterministic"].append(deterministic)
                 df["benchmark"].append(benchmark)
                 df["d4_image2mask (ms)"].append(1000.0 * speed_v1 / (cv2.getTickFrequency() * n))
                 df["d4_augment (ms)"].append(1000.0 * speed_v2 / (cv2.getTickFrequency() * n))
-                df["d4_augment_jit (ms)"].append(1000.0 * speed_v4 / (cv2.getTickFrequency() * n))
 
     import pandas as pd
 

@@ -218,6 +218,11 @@ def test_xresnet_encoder(encoder, encoder_params):
         [timm.HRNetW18Encoder, {"pretrained": False}],
         [timm.HRNetW32Encoder, {"pretrained": False}],
         [timm.HRNetW48Encoder, {"pretrained": False}],
+        [timm.DPN68Encoder, {"pretrained": False}],
+        [timm.DPN68BEncoder, {"pretrained": False}],
+        [timm.DPN92Encoder, {"pretrained": False}],
+        [timm.DPN107Encoder, {"pretrained": False}],
+        [timm.DPN131Encoder, {"pretrained": False}],
     ],
 )
 @torch.no_grad()
