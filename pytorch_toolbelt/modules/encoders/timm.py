@@ -367,7 +367,9 @@ class SKResNeXt50Encoder(EncoderModule):
 
         encoder = skresnext50_32x4d(pretrained=pretrained)
         super().__init__([64, 256, 512, 1024, 2048], [2, 4, 8, 16, 32], layers)
-        self.stem = nn.Sequential(encoder.conv1, encoder.bn1, encoder.act1)
+        self.stem = nn.Sequential(
+            OrderedDict([("conv1", encoder.conv1), ("bn1", encoder.bn1), ("act1", encoder.act1)])
+        )
 
         self.layer1 = nn.Sequential(encoder.maxpool, encoder.layer1)
         self.layer2 = encoder.layer2
@@ -377,6 +379,10 @@ class SKResNeXt50Encoder(EncoderModule):
     @property
     def encoder_layers(self) -> List[nn.Module]:
         return [self.stem, self.layer1, self.layer2, self.layer3, self.layer4]
+
+    def change_input_channels(self, input_channels: int, mode="auto"):
+        self.stem.conv1 = make_n_channel_input(self.stem.conv1, input_channels, mode)
+        return self
 
 
 class SWSLResNeXt101Encoder(EncoderModule):
