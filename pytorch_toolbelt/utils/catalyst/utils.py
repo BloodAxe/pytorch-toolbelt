@@ -5,7 +5,7 @@ from typing import Dict
 import math
 import torch
 from catalyst import utils
-from catalyst.core.callbacks.checkpoint import BaseCheckpointCallback
+from catalyst.callbacks import BaseCheckpointCallback
 from catalyst.dl import IRunner, Callback, CallbackOrder
 
 
