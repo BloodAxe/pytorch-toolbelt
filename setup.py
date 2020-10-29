@@ -46,7 +46,7 @@ def load_readme():
 
 
 def get_test_requirements():
-    requirements = ["pytest", "catalyst>=20.8.2", "black==19.3b0"]
+    requirements = ["pytest", "catalyst>=20.10.1", "black==19.3b0"]
     if sys.version_info < (3, 3):
         requirements.append("mock")
     return requirements
