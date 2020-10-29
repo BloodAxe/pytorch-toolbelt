@@ -43,5 +43,6 @@ class StopIfNanCallback(Callback):
         for key in keys:
             if _any_is_nan(runner.batch_metrics[key]):
                 raise ArithmeticError(
-                    f"Stopping training due to NaN presence in {key} metric at epoch {runner.global_epoch}"
+                    f"Stopping training due to NaN presence in {key} metric at epoch {runner.global_epoch}."
+                    f"batch_metrics={{{runner.batch_metrics}}}"
                 )
