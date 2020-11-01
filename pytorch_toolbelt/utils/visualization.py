@@ -130,7 +130,7 @@ def hstack_autopad(images: List[np.ndarray]) -> np.ndarray:
     return np.hstack(padded_images)
 
 
-def vstack_autopad(images: List[np.ndarray]) -> np.ndarray:
+def vstack_autopad(images: List[np.ndarray], pad_value=0) -> np.ndarray:
     """
     Stack images vertically with automatic padding
 
@@ -151,7 +151,7 @@ def vstack_autopad(images: List[np.ndarray]) -> np.ndarray:
         pad_bottom = 0
         pad_left = 0
         pad_right = max_width - width
-        img = cv2.copyMakeBorder(img, pad_top, pad_bottom, pad_left, pad_right, cv2.BORDER_CONSTANT, value=0)
+        img = cv2.copyMakeBorder(img, pad_top, pad_bottom, pad_left, pad_right, cv2.BORDER_CONSTANT, value=pad_value)
         padded_images.append(img)
 
     return np.vstack(padded_images)
