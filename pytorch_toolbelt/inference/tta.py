@@ -596,7 +596,7 @@ class GeneralizedTTA(nn.Module):
             if not isinstance(outputs, dict):
                 raise ValueError("Output of the model must be a dict")
 
-            deaugmented_output = dict((key, self.deaugment_fn[key](value)) for (key, value) in outputs.items())
+            deaugmented_output = dict((key, self.deaugment_fn[key](outputs[key])) for key in self.deaugment_fn.keys())
         elif isinstance(self.deaugment_fn, (list, tuple)):
             if not isinstance(outputs, (dict, tuple)):
                 raise ValueError("Output of the model must be a dict")
