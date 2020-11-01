@@ -102,7 +102,7 @@ def render_figure_to_tensor(figure):
     return image
 
 
-def hstack_autopad(images: List[np.ndarray]) -> np.ndarray:
+def hstack_autopad(images: List[np.ndarray], pad_value=0) -> np.ndarray:
     """
     Stack images horizontally with automatic padding
 
@@ -123,7 +123,7 @@ def hstack_autopad(images: List[np.ndarray]) -> np.ndarray:
         pad_bottom = max_height - height
         pad_left = 0
         pad_right = 0
-        img = cv2.copyMakeBorder(img, pad_top, pad_bottom, pad_left, pad_right, cv2.BORDER_CONSTANT, value=0)
+        img = cv2.copyMakeBorder(img, pad_top, pad_bottom, pad_left, pad_right, cv2.BORDER_CONSTANT, value=pad_value)
         (rows, cols) = img.shape[0:2]
         padded_images.append(img)
 
