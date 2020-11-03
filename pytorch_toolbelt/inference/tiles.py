@@ -265,10 +265,22 @@ class TileMerger:
         self.image = torch.zeros((channels, self.image_height, self.image_width), device=device)
         self.norm_mask = torch.zeros((1, self.image_height, self.image_width), device=device)
 
+    def accumulate_single(self, tile: torch.Tensor, coords):
+        """
+        Accumulates single element
+        :param sample: Predicted image of shape [C,H,W]
+        :param crop_coords: Corresponding tile crops w.r.t to original image
+        """
+        tile = tile.to(device=self.image.device)
+        x, y, tile_width, tile_height = coords
+        self.image[:, y : y + tile_height, x : x + tile_width] += tile * self.weight
+        self.norm_mask[:, y : y + tile_height, x : x + tile_width] += self.weight
+
+
     def integrate_batch(self, batch: torch.Tensor, crop_coords):
         """
         Accumulates batch of tile predictions
-        :param batch: Predicted tiles
+        :param batch: Predicted tiles  of shape [B,C,H,W]
         :param crop_coords: Corresponding tile crops w.r.t to original image
         """
         if len(batch) != len(crop_coords):
