@@ -262,8 +262,8 @@ class TileMerger:
         self.channels = channels
 
         self.weight = torch.from_numpy(np.expand_dims(weight, axis=0)).to(device).float()
-        self.image = torch.zeros((channels, self.image_height, self.image_width), device=device)
-        self.norm_mask = torch.zeros((1, self.image_height, self.image_width), device=device)
+        self.image = torch.zeros((channels, self.image_height, self.image_width), device=device).float()
+        self.norm_mask = torch.zeros((1, self.image_height, self.image_width), device=device).float()
 
     def accumulate_single(self, tile: torch.Tensor, coords):
         """
