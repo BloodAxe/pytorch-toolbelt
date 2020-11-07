@@ -155,9 +155,11 @@ def image_to_tensor(image: np.ndarray, dummy_channels_dim=True) -> torch.Tensor:
     if len(image.shape) not in {2, 3}:
         raise ValueError(f"Image must have shape [H,W] or [H,W,C]. Got image with shape {image.shape}")
 
-    if len(image.shape) == 2 and dummy_channels_dim:
-        image = np.expand_dims(image, 0)
+    if len(image.shape) == 2:
+        if dummy_channels_dim:
+            image = np.expand_dims(image, 0)
     else:
+        # HWC -> CHW
         image = np.moveaxis(image, -1, 0)
     image = np.ascontiguousarray(image)
     image = torch.from_numpy(image)
