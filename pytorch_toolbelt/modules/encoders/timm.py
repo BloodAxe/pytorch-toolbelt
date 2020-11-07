@@ -70,9 +70,7 @@ class B0Encoder(EncoderModule):
     def __init__(self, pretrained=True, layers=[1, 2, 3, 4], act_layer=Swish, no_stride=False):
         from timm.models.efficientnet import tf_efficientnet_b0_ns
 
-        encoder = tf_efficientnet_b0_ns(
-            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.05
-        )
+        encoder = tf_efficientnet_b0_ns(pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.05)
         strides = [2, 4, 8, 16, 32]
 
         if no_stride:
@@ -100,9 +98,7 @@ class B1Encoder(EncoderModule):
     def __init__(self, pretrained=True, layers=[1, 2, 3, 4], act_layer=Swish, no_stride=False):
         from timm.models.efficientnet import tf_efficientnet_b1_ns
 
-        encoder = tf_efficientnet_b1_ns(
-            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.05
-        )
+        encoder = tf_efficientnet_b1_ns(pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.05)
         strides = [2, 4, 8, 16, 32]
         if no_stride:
             encoder.blocks[5][0].conv_dw.stride = (1, 1)
@@ -128,9 +124,7 @@ class B2Encoder(EncoderModule):
     def __init__(self, pretrained=True, layers=[1, 2, 3, 4], act_layer=Swish, no_stride=False):
         from timm.models.efficientnet import tf_efficientnet_b2_ns
 
-        encoder = tf_efficientnet_b2_ns(
-            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.1
-        )
+        encoder = tf_efficientnet_b2_ns(pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.1)
         strides = [2, 4, 8, 16, 32]
         if no_stride:
             encoder.blocks[5][0].conv_dw.stride = (1, 1)
@@ -156,9 +150,7 @@ class B3Encoder(EncoderModule):
     def __init__(self, pretrained=True, layers=[1, 2, 3, 4], act_layer=Swish, no_stride=False):
         from timm.models.efficientnet import tf_efficientnet_b3_ns
 
-        encoder = tf_efficientnet_b3_ns(
-            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.1
-        )
+        encoder = tf_efficientnet_b3_ns(pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.1)
         strides = [2, 4, 8, 16, 32]
         if no_stride:
             encoder.blocks[5][0].conv_dw.stride = (1, 1)
@@ -184,9 +176,7 @@ class B4Encoder(EncoderModule):
     def __init__(self, pretrained=True, layers=[1, 2, 3, 4], act_layer=Swish, no_stride=False):
         from timm.models.efficientnet import tf_efficientnet_b4_ns
 
-        encoder = tf_efficientnet_b4_ns(
-            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.2
-        )
+        encoder = tf_efficientnet_b4_ns(pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.2)
         strides = [2, 4, 8, 16, 32]
         if no_stride:
             encoder.blocks[5][0].conv_dw.stride = (1, 1)
@@ -212,9 +202,7 @@ class B5Encoder(EncoderModule):
     def __init__(self, pretrained=True, layers=[1, 2, 3, 4], act_layer=Swish, no_stride=False):
         from timm.models.efficientnet import tf_efficientnet_b5_ns
 
-        encoder = tf_efficientnet_b5_ns(
-            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.2
-        )
+        encoder = tf_efficientnet_b5_ns(pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.2)
         strides = [2, 4, 8, 16, 32]
         if no_stride:
             encoder.blocks[5][0].conv_dw.stride = (1, 1)
@@ -240,9 +228,7 @@ class B6Encoder(EncoderModule):
     def __init__(self, pretrained=True, layers=[1, 2, 3, 4], act_layer=Swish, no_stride=False):
         from timm.models.efficientnet import tf_efficientnet_b6_ns
 
-        encoder = tf_efficientnet_b6_ns(
-            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.2
-        )
+        encoder = tf_efficientnet_b6_ns(pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.2)
         strides = [2, 4, 8, 16, 32]
         if no_stride:
             encoder.blocks[5][0].conv_dw.stride = (1, 1)
@@ -268,9 +254,7 @@ class B7Encoder(EncoderModule):
     def __init__(self, pretrained=True, layers=[1, 2, 3, 4], act_layer=Swish, no_stride=False):
         from timm.models.efficientnet import tf_efficientnet_b7_ns
 
-        encoder = tf_efficientnet_b7_ns(
-            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.2
-        )
+        encoder = tf_efficientnet_b7_ns(pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.2)
         strides = [2, 4, 8, 16, 32]
         if no_stride:
             encoder.blocks[5][0].conv_dw.stride = (1, 1)
@@ -338,9 +322,7 @@ class SKResNet18Encoder(EncoderModule):
 
         encoder = skresnet18(pretrained=pretrained, features_only=True)
         super().__init__([64, 64, 128, 256, 512], [2, 4, 8, 16, 32], layers)
-        self.stem = nn.Sequential(
-            OrderedDict([("conv1", encoder.conv1), ("bn1", encoder.bn1), ("act1", encoder.act1)])
-        )
+        self.stem = nn.Sequential(OrderedDict([("conv1", encoder.conv1), ("bn1", encoder.bn1), ("act1", encoder.act1)]))
 
         self.layer1 = nn.Sequential(
             nn.Conv2d(64, 64, kernel_size=3, padding=1, stride=2) if no_first_max_pool else encoder.maxpool,
@@ -367,9 +349,7 @@ class SKResNeXt50Encoder(EncoderModule):
 
         encoder = skresnext50_32x4d(pretrained=pretrained)
         super().__init__([64, 256, 512, 1024, 2048], [2, 4, 8, 16, 32], layers)
-        self.stem = nn.Sequential(
-            OrderedDict([("conv1", encoder.conv1), ("bn1", encoder.bn1), ("act1", encoder.act1)])
-        )
+        self.stem = nn.Sequential(OrderedDict([("conv1", encoder.conv1), ("bn1", encoder.bn1), ("act1", encoder.act1)]))
 
         self.layer1 = nn.Sequential(encoder.maxpool, encoder.layer1)
         self.layer2 = encoder.layer2
@@ -469,7 +449,7 @@ class DPN68Encoder(EncoderModule):
         return y
 
     def change_input_channels(self, input_channels: int, mode="auto"):
-        self.encoder.conv1 = make_n_channel_input(self.encoder.conv1, input_channels, mode)
+        self.encoder.features_conv1_1.conv = make_n_channel_input(self.encoder.features_conv1_1.conv, input_channels, mode)
         return self
 
 
@@ -486,7 +466,7 @@ class DPN68BEncoder(EncoderModule):
         return y
 
     def change_input_channels(self, input_channels: int, mode="auto"):
-        self.encoder.conv1 = make_n_channel_input(self.encoder.conv1, input_channels, mode)
+        self.encoder.features_conv1_1.conv = make_n_channel_input(self.encoder.features_conv1_1.conv, input_channels, mode)
         return self
 
 
@@ -503,7 +483,7 @@ class DPN92Encoder(EncoderModule):
         return y
 
     def change_input_channels(self, input_channels: int, mode="auto"):
-        self.encoder.conv1 = make_n_channel_input(self.encoder.conv1, input_channels, mode)
+        self.encoder.features_conv1_1.conv = make_n_channel_input(self.encoder.features_conv1_1.conv, input_channels, mode)
         return self
 
 
@@ -520,7 +500,7 @@ class DPN107Encoder(EncoderModule):
         return y
 
     def change_input_channels(self, input_channels: int, mode="auto"):
-        self.encoder.conv1 = make_n_channel_input(self.encoder.conv1, input_channels, mode)
+        self.encoder.features_conv1_1.conv = make_n_channel_input(self.encoder.features_conv1_1.conv, input_channels, mode)
         return self
 
 
@@ -537,5 +517,5 @@ class DPN131Encoder(EncoderModule):
         return y
 
     def change_input_channels(self, input_channels: int, mode="auto"):
-        self.encoder.conv1 = make_n_channel_input(self.encoder.conv1, input_channels, mode)
+        self.encoder.features_conv1_1.conv = make_n_channel_input(self.encoder.features_conv1_1.conv, input_channels, mode)
         return self
