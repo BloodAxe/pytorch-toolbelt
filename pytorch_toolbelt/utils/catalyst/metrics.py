@@ -190,6 +190,10 @@ class F1ScoreCallback(Callback):
 
         outputs = np.argmax(outputs, axis=1)
 
+        # Flatten
+        outputs = outputs.flatten()
+        targets = targets.flatten()
+
         if self.ignore_index is not None:
             mask = targets != self.ignore_index
             outputs = outputs[mask]
