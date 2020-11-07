@@ -185,7 +185,6 @@ def rgb_image_from_tensor(
     Args:
         image: A torch tensor of [C,H,W] shape
     """
-
     image = np.moveaxis(to_numpy(image), 0, -1)
     mean = to_numpy(mean)
     std = to_numpy(std)

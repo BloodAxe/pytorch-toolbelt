@@ -276,7 +276,6 @@ class TileMerger:
         self.image[:, y : y + tile_height, x : x + tile_width] += tile * self.weight
         self.norm_mask[:, y : y + tile_height, x : x + tile_width] += self.weight
 
-
     def integrate_batch(self, batch: torch.Tensor, crop_coords):
         """
         Accumulates batch of tile predictions

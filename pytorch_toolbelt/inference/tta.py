@@ -276,7 +276,15 @@ def d2_image_augment(image: Tensor) -> Tensor:
             - Vertically-flipped tensor
 
     """
-    return torch.cat([image, F.torch_rot180(image), F.torch_fliplr(image), F.torch_flipud(image),], dim=0,)
+    return torch.cat(
+        [
+            image,
+            F.torch_rot180(image),
+            F.torch_fliplr(image),
+            F.torch_flipud(image),
+        ],
+        dim=0,
+    )
 
 
 def d2_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") -> Tensor:
@@ -295,7 +303,12 @@ def d2_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") ->
     b1, b2, b3, b4 = torch.chunk(image, 4)
 
     image: Tensor = torch.stack(
-        [b1, F.torch_rot180(b2), F.torch_fliplr(b3), F.torch_flipud(b4),]
+        [
+            b1,
+            F.torch_rot180(b2),
+            F.torch_fliplr(b3),
+            F.torch_flipud(b4),
+        ]
     )
 
     if reduction == "mean":
@@ -401,7 +414,10 @@ def flips_augment(image: Tensor) -> Tensor:
     return torch.cat([image, F.torch_fliplr(image), F.torch_flipud(image)], dim=0)
 
 
-def flips_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean",) -> Tensor:
+def flips_deaugment(
+    image: Tensor,
+    reduction: MaybeStrOrCallable = "mean",
+) -> Tensor:
     """
     Deaugment input tensor (output of the model) assuming the input was flip-augmented image (See flips_augment).
     Args:
