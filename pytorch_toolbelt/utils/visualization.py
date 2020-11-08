@@ -44,22 +44,22 @@ def plot_confusion_matrix(
     if cmap is None:
         cmap = plt.cm.Oranges
 
-    f = plt.figure(figsize=figsize)
-    plt.imshow(cm, interpolation="nearest", cmap=cmap)
-    plt.title(title)
-    plt.colorbar()
-
     if normalize:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             cm = cm.astype(np.float32) / cm.sum(axis=1)[:, np.newaxis]
+
+    f = plt.figure(figsize=figsize)
+    plt.imshow(cm, interpolation="nearest", cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
 
     tick_marks = np.arange(len(class_names))
     plt.xticks(tick_marks, class_names, rotation=45, ha="right")
     plt.yticks(tick_marks, class_names)
 
     fmt = ".3f" if normalize else "d"
-    thresh = (cm.max() - cm.min()) / 2.0
+    thresh = (cm.max() + cm.min()) / 2.0
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
         if np.isfinite(cm[i, j]):
             plt.text(
