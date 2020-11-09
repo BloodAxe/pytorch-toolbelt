@@ -5,13 +5,13 @@ from typing import List, Optional, Callable
 import numpy as np
 import torch
 from catalyst.dl import Callback, MetricCallback, CallbackOrder, IRunner
-from sklearn.metrics import f1_score
-from torchnet.meter import ConfusionMeter
+from sklearn.metrics import multilabel_confusion_matrix, confusion_matrix
+from torch import Tensor
 
 from .visualization import get_tensorboard_logger
-from .. import pytorch_toolbelt_deprecated
+from ..support import pytorch_toolbelt_deprecated
 from ..distributed import all_gather, is_main_process
-from ..torch_utils import to_numpy
+from ..torch_utils import to_numpy, argmax_over_dim_1
 from ..visualization import render_figure_to_tensor, plot_confusion_matrix
 
 __all__ = [
@@ -21,7 +21,6 @@ __all__ = [
     "IoUMetricsCallback",
     "MULTICLASS_MODE",
     "MULTILABEL_MODE",
-    "MacroF1Callback",
     "OutputDistributionCallback",
     "PixelAccuracyCallback",
     "binary_dice_iou_score",
@@ -58,9 +57,7 @@ class PixelAccuracyCallback(MetricCallback):
     """Pixel accuracy metric callback
     """
 
-    def __init__(
-        self, input_key: str = "targets", output_key: str = "logits", prefix: str = "accuracy", ignore_index=None
-    ):
+    def __init__(self, input_key: str = "targets", output_key: str = "logits", prefix: str = "accuracy", ignore_index=None):
         """
         :param input_key: input key to use for iou calculation;
             specifies our `y_true`.
@@ -84,13 +81,13 @@ class ConfusionMatrixCallback(Callback):
 
     def __init__(
         self,
+        outputs_to_labels: Callable[[Tensor], Tensor] = argmax_over_dim_1,
         input_key: str = "targets",
         output_key: str = "logits",
         prefix: str = "confusion_matrix",
         class_names: List[str] = None,
         num_classes: int = None,
         ignore_index=None,
-        activation_fn=partial(torch.argmax, dim=1),
     ):
         """
         :param input_key: input key to use for precision calculation;
@@ -107,30 +104,29 @@ class ConfusionMatrixCallback(Callback):
         self.input_key = input_key
         self.ignore_index = ignore_index
         self.confusion_matrix = None
-        self.activation_fn = activation_fn
+        self.outputs_to_labels = outputs_to_labels
 
     def on_loader_start(self, state):
-        self.confusion_matrix = ConfusionMeter(self.num_classes)
+        self.confusion_matrix = np.zeros((self.num_classes, self.num_classes), dtype=np.long)
 
     @torch.no_grad()
     def on_batch_end(self, runner: IRunner):
-        outputs: torch.Tensor = runner.output[self.output_key].detach().cpu()
-        outputs: torch.Tensor = self.activation_fn(outputs)
+        pred_labels = self.outputs_to_labels(runner.output[self.output_key])
+        true_labels = runner.input[self.input_key].type_as(pred_labels)
 
-        targets: torch.Tensor = runner.input[self.input_key].detach().cpu()
-
-        # Flatten
-        outputs = outputs.view(-1)
-        targets = targets.view(-1)
+        true_labels = true_labels.view(-1)
+        pred_labels = pred_labels.view(-1)
 
         if self.ignore_index is not None:
-            mask = targets != self.ignore_index
-            outputs = outputs[mask]
-            targets = targets[mask]
+            mask = true_labels != self.ignore_index
+            pred_labels = pred_labels[mask]
+            true_labels = true_labels[mask]
 
-        if len(targets):
-            targets = targets.type_as(outputs)
-            self.confusion_matrix.add(predicted=outputs, target=targets)
+        if len(true_labels):
+            true_labels = to_numpy(true_labels)
+            pred_labels = to_numpy(pred_labels)
+            batch_cm = confusion_matrix(y_true=true_labels, y_pred=pred_labels, labels=np.arange(self.num_classes))
+            self.confusion_matrix += batch_cm
 
     def on_loader_end(self, runner: IRunner):
         if self.class_names is None:
@@ -139,14 +135,10 @@ class ConfusionMatrixCallback(Callback):
             class_names = self.class_names
 
         num_classes = len(class_names)
-        cm = self.confusion_matrix.value()
+        cm = np.sum(all_gather(self.confusion_matrix), axis=0)
 
         fig = plot_confusion_matrix(
-            cm,
-            figsize=(6 + num_classes // 3, 6 + num_classes // 3),
-            class_names=class_names,
-            normalize=True,
-            noshow=True,
+            cm, figsize=(6 + num_classes // 3, 6 + num_classes // 3), class_names=class_names, normalize=True, noshow=True,
         )
         fig = render_figure_to_tensor(fig)
 
@@ -162,11 +154,13 @@ class F1ScoreCallback(Callback):
 
     def __init__(
         self,
+        num_classes: int,
+        outputs_to_labels: Callable[[Tensor], Tensor] = argmax_over_dim_1,
         input_key: str = "targets",
         output_key: str = "logits",
         prefix: str = "f1",
         average="macro",
-        ignore_index=None,
+        ignore_index: Optional[int] = None,
     ):
         """
         :param input_key: input key to use for precision calculation;
@@ -175,64 +169,114 @@ class F1ScoreCallback(Callback):
             specifies our `y_pred`.
         """
         super().__init__(CallbackOrder.Metric)
-        self.metric_fn = lambda outputs, targets: f1_score(targets, outputs, average=average)
+        self.num_classes = num_classes
         self.prefix = prefix
         self.output_key = output_key
         self.input_key = input_key
         self.outputs = []
         self.targets = []
         self.ignore_index = ignore_index
+        self.outputs_to_labels = outputs_to_labels
+        self.average = average
+
+    def on_loader_start(self, state):
+        self.confusion_matrix = np.zeros((self.num_classes, 2, 2), dtype=np.long)
 
     @torch.no_grad()
-    def on_batch_end(self, state: IRunner):
-        outputs = to_numpy(state.output[self.output_key])
-        targets = to_numpy(state.input[self.input_key])
+    def on_batch_end(self, runner: IRunner):
+        pred_labels = self.outputs_to_labels(runner.output[self.output_key])
+        true_labels = runner.input[self.input_key].type_as(pred_labels)
 
-        outputs = np.argmax(outputs, axis=1)
-
-        # Flatten
-        outputs = outputs.flatten()
-        targets = targets.flatten()
+        true_labels = true_labels.view(-1)
+        pred_labels = pred_labels.view(-1)
 
         if self.ignore_index is not None:
-            mask = targets != self.ignore_index
-            outputs = outputs[mask]
-            targets = targets[mask]
+            mask = true_labels != self.ignore_index
+            pred_labels = pred_labels[mask]
+            true_labels = true_labels[mask]
 
-        self.outputs.extend(outputs)
-        self.targets.extend(targets)
-
-    def on_loader_start(self, runner: IRunner):
-        self.outputs = []
-        self.targets = []
+        if len(true_labels):
+            true_labels = to_numpy(true_labels)
+            pred_labels = to_numpy(pred_labels)
+            self.confusion_matrix += multilabel_confusion_matrix(y_true=true_labels, y_pred=pred_labels, labels=np.arange(self.num_classes))
 
     def on_loader_end(self, runner: IRunner):
-        metric_name = self.prefix
+        MCM = np.sum(all_gather(self.confusion_matrix), axis=0)
+        metric = self._f1_from_confusion_matrix(MCM, self.average)
+        runner.loader_metrics[self.prefix] = metric
 
-        targets = np.array(self.targets)
-        outputs = np.array(self.outputs)
+    def _f1_from_confusion_matrix(self, MCM, average, beta=1, warn_for=("precision", "recall", "f-score"), zero_division="warn"):
+        """
+        Code borrowed from sklear.metrics
 
-        # Aggregate metrics if in distributed mode
-        targets = np.concatenate(all_gather(targets), axis=0)
-        outputs = np.concatenate(all_gather(outputs), axis=0)
+        Args:
+            MCM:
+            average:
+            beta:
+            warn_for:
+            zero_division:
 
-        metric = self.metric_fn(outputs, targets)
-        runner.loader_metrics[metric_name] = metric
+        Returns:
 
+        """
+        tp_sum = MCM[:, 1, 1]
+        pred_sum = tp_sum + MCM[:, 0, 1]
+        true_sum = tp_sum + MCM[:, 1, 0]
 
-@pytorch_toolbelt_deprecated(
-    "MacroF1Callback class is deprecated and will be removed in 0.5.0 release. " "Please use F1ScoreCallback instead."
-)
-class MacroF1Callback(F1ScoreCallback):
-    def __init__(
-        self,
-        input_key: str = "targets",
-        output_key: str = "logits",
-        prefix: str = "f1",
-        average="macro",
-        ignore_index=None,
-    ):
-        super().__init__(input_key, output_key, prefix, average, ignore_index)
+        if average == "micro":
+            tp_sum = np.array([tp_sum.sum()])
+            pred_sum = np.array([pred_sum.sum()])
+            true_sum = np.array([true_sum.sum()])
+
+        # Finally, we have all our sufficient statistics. Divide! #
+        beta2 = beta ** 2
+
+        # Divide, and on zero-division, set scores and/or warn according to
+        # zero_division:
+        from sklearn.metrics._classification import _prf_divide, _warn_prf
+
+        precision = _prf_divide(tp_sum, pred_sum, "precision", "predicted", average, warn_for, zero_division)
+        recall = _prf_divide(tp_sum, true_sum, "recall", "true", average, warn_for, zero_division)
+
+        # warn for f-score only if zero_division is warn, it is in warn_for
+        # and BOTH prec and rec are ill-defined
+        if zero_division == "warn" and ("f-score",) == warn_for:
+            if (pred_sum[true_sum == 0] == 0).any():
+                _warn_prf(average, "true nor predicted", "F-score is", len(true_sum))
+
+        # if tp == 0 F will be 1 only if all predictions are zero, all labels are
+        # zero, and zero_division=1. In all other case, 0
+        if np.isposinf(beta):
+            f_score = recall
+        else:
+            denom = beta2 * precision + recall
+
+            denom[denom == 0.0] = 1  # avoid division by 0
+            f_score = (1 + beta2) * precision * recall / denom
+
+        # Average the results
+        if average == "weighted":
+            weights = true_sum
+            if weights.sum() == 0:
+                zero_division_value = 0.0 if zero_division in ["warn", 0] else 1.0
+                # precision is zero_division if there are no positive predictions
+                # recall is zero_division if there are no positive labels
+                # fscore is zero_division if all labels AND predictions are
+                # negative
+                return (
+                    zero_division_value if pred_sum.sum() == 0 else 0,
+                    zero_division_value,
+                    zero_division_value if pred_sum.sum() == 0 else 0,
+                    None,
+                )
+        else:
+            weights = None
+
+        if average is not None:
+            assert average != "binary" or len(precision) == 1
+            f_score = np.average(f_score, weights=weights)
+
+        return f_score
 
 
 def binary_dice_iou_score(
@@ -383,9 +427,7 @@ class IoUMetricsCallback(Callback):
 
             if class_names is not None:
                 if len(class_names) != len(classes_of_interest):
-                    raise ValueError(
-                        "Length of 'classes_of_interest' must be equal to length of 'classes_of_interest'"
-                    )
+                    raise ValueError("Length of 'classes_of_interest' must be equal to length of 'classes_of_interest'")
 
         self.mode = mode
         self.prefix = prefix
@@ -469,9 +511,7 @@ class OutputDistributionCallback(Callback):
     Plot histogram of predictions for each class. This callback supports binary & multi-classs predictions
     """
 
-    def __init__(
-        self, input_key: str, output_key: str, output_activation: Callable, num_classes: int, prefix="distribution"
-    ):
+    def __init__(self, input_key: str, output_key: str, output_activation: Callable, num_classes: int, prefix="distribution"):
         """
 
         Args:
@@ -510,6 +550,4 @@ class OutputDistributionCallback(Callback):
             logger = get_tensorboard_logger(state)
 
             for class_label in range(self.num_classes):
-                logger.add_histogram(
-                    f"{self.prefix}/{class_label}", pred_probas[true_labels == class_label], state.epoch
-                )
+                logger.add_histogram(f"{self.prefix}/{class_label}", pred_probas[true_labels == class_label], state.epoch)
