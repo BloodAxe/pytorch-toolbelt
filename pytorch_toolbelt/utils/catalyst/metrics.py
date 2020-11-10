@@ -119,8 +119,8 @@ class ConfusionMatrixCallback(Callback):
 
         if self.ignore_index is not None:
             mask = true_labels != self.ignore_index
-            pred_labels = pred_labels[mask]
-            true_labels = true_labels[mask]
+            pred_labels = torch.masked_select(pred_labels, mask)
+            true_labels = torch.masked_select(true_labels, mask)
 
         if len(true_labels):
             true_labels = to_numpy(true_labels)
@@ -192,8 +192,8 @@ class F1ScoreCallback(Callback):
 
         if self.ignore_index is not None:
             mask = true_labels != self.ignore_index
-            pred_labels = pred_labels[mask]
-            true_labels = true_labels[mask]
+            pred_labels = torch.masked_select(pred_labels, mask)
+            true_labels = torch.masked_select(true_labels, mask)
 
         if len(true_labels):
             true_labels = to_numpy(true_labels)
