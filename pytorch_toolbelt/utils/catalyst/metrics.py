@@ -9,7 +9,6 @@ from sklearn.metrics import multilabel_confusion_matrix, confusion_matrix
 from torch import Tensor
 
 from .visualization import get_tensorboard_logger
-from ..support import pytorch_toolbelt_deprecated
 from ..distributed import all_gather, is_main_process
 from ..torch_utils import to_numpy, argmax_over_dim_1
 from ..visualization import render_figure_to_tensor, plot_confusion_matrix
@@ -57,7 +56,9 @@ class PixelAccuracyCallback(MetricCallback):
     """Pixel accuracy metric callback
     """
 
-    def __init__(self, input_key: str = "targets", output_key: str = "logits", prefix: str = "accuracy", ignore_index=None):
+    def __init__(
+        self, input_key: str = "targets", output_key: str = "logits", prefix: str = "accuracy", ignore_index=None
+    ):
         """
         :param input_key: input key to use for iou calculation;
             specifies our `y_true`.
@@ -138,7 +139,11 @@ class ConfusionMatrixCallback(Callback):
         cm = np.sum(all_gather(self.confusion_matrix), axis=0)
 
         fig = plot_confusion_matrix(
-            cm, figsize=(6 + num_classes // 3, 6 + num_classes // 3), class_names=class_names, normalize=True, noshow=True,
+            cm,
+            figsize=(6 + num_classes // 3, 6 + num_classes // 3),
+            class_names=class_names,
+            normalize=True,
+            noshow=True,
         )
         fig = render_figure_to_tensor(fig)
 
@@ -173,11 +178,10 @@ class F1ScoreCallback(Callback):
         self.prefix = prefix
         self.output_key = output_key
         self.input_key = input_key
-        self.outputs = []
-        self.targets = []
         self.ignore_index = ignore_index
         self.outputs_to_labels = outputs_to_labels
         self.average = average
+        self.confusion_matrix = None
 
     def on_loader_start(self, state):
         self.confusion_matrix = np.zeros((self.num_classes, 2, 2), dtype=np.long)
@@ -198,14 +202,18 @@ class F1ScoreCallback(Callback):
         if len(true_labels):
             true_labels = to_numpy(true_labels)
             pred_labels = to_numpy(pred_labels)
-            self.confusion_matrix += multilabel_confusion_matrix(y_true=true_labels, y_pred=pred_labels, labels=np.arange(self.num_classes))
+            self.confusion_matrix += multilabel_confusion_matrix(
+                y_true=true_labels, y_pred=pred_labels, labels=np.arange(self.num_classes)
+            )
 
     def on_loader_end(self, runner: IRunner):
         MCM = np.sum(all_gather(self.confusion_matrix), axis=0)
         metric = self._f1_from_confusion_matrix(MCM, self.average)
         runner.loader_metrics[self.prefix] = metric
 
-    def _f1_from_confusion_matrix(self, MCM, average, beta=1, warn_for=("precision", "recall", "f-score"), zero_division="warn"):
+    def _f1_from_confusion_matrix(
+        self, MCM, average, beta=1, warn_for=("precision", "recall", "f-score"), zero_division="warn"
+    ):
         """
         Code borrowed from sklear.metrics
 
@@ -427,7 +435,9 @@ class IoUMetricsCallback(Callback):
 
             if class_names is not None:
                 if len(class_names) != len(classes_of_interest):
-                    raise ValueError("Length of 'classes_of_interest' must be equal to length of 'classes_of_interest'")
+                    raise ValueError(
+                        "Length of 'classes_of_interest' must be equal to length of 'classes_of_interest'"
+                    )
 
         self.mode = mode
         self.prefix = prefix
@@ -511,7 +521,9 @@ class OutputDistributionCallback(Callback):
     Plot histogram of predictions for each class. This callback supports binary & multi-classs predictions
     """
 
-    def __init__(self, input_key: str, output_key: str, output_activation: Callable, num_classes: int, prefix="distribution"):
+    def __init__(
+        self, input_key: str, output_key: str, output_activation: Callable, num_classes: int, prefix="distribution"
+    ):
         """
 
         Args:
@@ -550,4 +562,6 @@ class OutputDistributionCallback(Callback):
             logger = get_tensorboard_logger(state)
 
             for class_label in range(self.num_classes):
-                logger.add_histogram(f"{self.prefix}/{class_label}", pred_probas[true_labels == class_label], state.epoch)
+                logger.add_histogram(
+                    f"{self.prefix}/{class_label}", pred_probas[true_labels == class_label], state.epoch
+                )
