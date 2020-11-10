@@ -126,8 +126,10 @@ class ConfusionMatrixCallback(Callback):
         if len(true_labels):
             true_labels = to_numpy(true_labels)
             pred_labels = to_numpy(pred_labels)
-            batch_cm = confusion_matrix(y_true=true_labels, y_pred=pred_labels, labels=np.arange(self.num_classes))
-            self.confusion_matrix += batch_cm
+            batch_cm = confusion_matrix(
+                y_true=true_labels, y_pred=pred_labels, labels=np.arange(self.num_classes, dtype=int)
+            )
+            self.confusion_matrix = self.confusion_matrix + batch_cm
 
     def on_loader_end(self, runner: IRunner):
         if self.class_names is None:
@@ -202,9 +204,10 @@ class F1ScoreCallback(Callback):
         if len(true_labels):
             true_labels = to_numpy(true_labels)
             pred_labels = to_numpy(pred_labels)
-            self.confusion_matrix += multilabel_confusion_matrix(
-                y_true=true_labels, y_pred=pred_labels, labels=np.arange(self.num_classes)
+            batch_cm = multilabel_confusion_matrix(
+                y_true=true_labels, y_pred=pred_labels, labels=np.arange(self.num_classes, dtype=int)
             )
+            self.confusion_matrix = self.confusion_matrix + batch_cm
 
     def on_loader_end(self, runner: IRunner):
         MCM = np.sum(all_gather(self.confusion_matrix), axis=0)
