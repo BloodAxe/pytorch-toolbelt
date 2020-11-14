@@ -18,7 +18,18 @@ def _take(elements, indexes):
     return list([elements[i] for i in indexes])
 
 
-def make_n_channel_input(conv: nn.Conv2d, in_channels: int, mode="auto"):
+def make_n_channel_input(conv: nn.Conv2d, in_channels: int, mode="auto", **kwargs):
+    """
+
+    Args:
+        conv: Input nn.Conv2D object to copy settings/weights from
+        in_channels: Desired number of input channels
+        mode:
+        **kwargs: Optional overrides for Conv2D parameters
+
+    Returns:
+
+    """
     assert isinstance(conv, nn.Conv2d)
     if conv.in_channels == in_channels:
         warnings.warn("make_n_channel_input call is spurious")
@@ -27,13 +38,13 @@ def make_n_channel_input(conv: nn.Conv2d, in_channels: int, mode="auto"):
     new_conv = nn.Conv2d(
         in_channels,
         out_channels=conv.out_channels,
-        kernel_size=conv.kernel_size,
-        stride=conv.stride,
-        padding=conv.padding,
-        dilation=conv.dilation,
-        groups=conv.groups,
-        bias=conv.bias is not None,
-        padding_mode=conv.padding_mode,
+        kernel_size=kwargs.get("kernel_size", conv.kernel_size),
+        stride=kwargs.get("stride", conv.stride),
+        padding=kwargs.get("padding", conv.padding),
+        dilation=kwargs.get("dilation", conv.dilation),
+        groups=kwargs.get("groups", conv.groups),
+        bias=kwargs.get("bias", conv.bias is not None),
+        padding_mode=kwargs.get("padding_mode", conv.padding_mode),
     )
 
     w = conv.weight
