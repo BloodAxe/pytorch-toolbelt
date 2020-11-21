@@ -186,7 +186,7 @@ class GeneralizedMeanPooling2d(nn.Module):
         self.flatten = flatten
 
     def forward(self, x: Tensor) -> Tensor:
-        x = F.adaptive_avg_pool2d(x.clamp_min(self.eps).pow(p), output_size=1).pow(1.0 / p)
+        x = F.adaptive_avg_pool2d(x.clamp_min(self.eps).pow(self.p), output_size=1).pow(1.0 / self.p)
         if self.flatten:
             x = x.view(x.size(0), x.size(1))
 
