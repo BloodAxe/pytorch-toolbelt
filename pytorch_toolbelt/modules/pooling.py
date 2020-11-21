@@ -14,6 +14,7 @@ __all__ = [
     "GlobalKMaxPool2d",
     "GlobalMaxPool2d",
     "GlobalRankPooling",
+    "GeneralizedMeanPooling2d",
     "GlobalWeightedAvgPool2d",
     "MILCustomPoolingModule",
     "RMSPool",
@@ -169,3 +170,36 @@ class GlobalRankPooling(nn.Module):
         if self.flatten:
             x = x.squeeze(2)
         return x
+
+
+class GeneralizedMeanPooling2d(nn.Module):
+    """
+
+    https://arxiv.org/pdf/1902.05509v2.pdf
+    https://amaarora.github.io/2020/08/30/gempool.html
+    """
+
+    def __init__(self, p: float = 3, eps=1e-6, flatten=False):
+        super(GeneralizedMeanPooling2d, self).__init__()
+        self.p = nn.Parameter(torch.ones(1) * p)
+        self.eps = eps
+        self.flatten = flatten
+
+    def forward(self, x: Tensor) -> Tensor:
+        x = F.adaptive_avg_pool2d(x.clamp_min(eps).pow(p), output_size=1).pow(1.0 / p)
+        if self.flatten:
+            x = x.view(x.size(0), x.size(1))
+
+        return x
+
+    def __repr__(self):
+        return (
+            self.__class__.__name__
+            + "("
+            + "p="
+            + "{:.4f}".format(self.p.data.item())
+            + ", "
+            + "eps="
+            + str(self.eps)
+            + ")"
+        )
