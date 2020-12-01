@@ -3,6 +3,7 @@
 Despite this is called test-time augmentation, these method can be used at training time as well since all
 transformation written in PyTorch and respect gradients flow.
 """
+from collections import defaultdict
 from functools import partial
 from typing import Tuple, List, Optional, Union, Callable, Dict
 
@@ -13,17 +14,17 @@ from ..utils.support import pytorch_toolbelt_deprecated
 from . import functional as F
 
 __all__ = [
+    "GeneralizedTTA",
     "MultiscaleTTAWrapper",
     "TTAWrapper",
-    "GeneralizedTTA",
     "d2_image_augment",
     "d2_image_deaugment",
+    "d2_labels_deaugment",
     "d4_image2label",
     "d4_image2mask",
     "d4_image_augment",
     "d4_image_deaugment",
-    "ms_image_augment",
-    "ms_image_deaugment",
+    "d4_labels_deaugment",
     "fivecrop_image2label",
     "fliplr_image2label",
     "fliplr_image2mask",
@@ -31,6 +32,8 @@ __all__ = [
     "fliplr_image_deaugment",
     "flips_augment",
     "flips_deaugment",
+    "ms_image_augment",
+    "ms_image_deaugment",
     "tencrop_image2label",
 ]
 
@@ -272,19 +275,11 @@ def d2_image_augment(image: Tensor) -> Tensor:
         Tensor of [B * 8, C, H, W] shape with:
             - Original tensor
             - Original tensor rotated by 180 degrees
-            - Horisonalty-flipped tensor
+            - Horizontally-flipped tensor
             - Vertically-flipped tensor
 
     """
-    return torch.cat(
-        [
-            image,
-            F.torch_rot180(image),
-            F.torch_fliplr(image),
-            F.torch_flipud(image),
-        ],
-        dim=0,
-    )
+    return torch.cat([image, F.torch_rot180(image), F.torch_fliplr(image), F.torch_flipud(image),], dim=0,)
 
 
 def d2_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") -> Tensor:
@@ -303,13 +298,33 @@ def d2_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") ->
     b1, b2, b3, b4 = torch.chunk(image, 4)
 
     image: Tensor = torch.stack(
-        [
-            b1,
-            F.torch_rot180(b2),
-            F.torch_fliplr(b3),
-            F.torch_flipud(b4),
-        ]
+        [b1, F.torch_rot180(b2), F.torch_fliplr(b3), F.torch_flipud(b4),]
     )
+
+    if reduction == "mean":
+        image = image.mean(dim=0)
+    if reduction == "sum":
+        image = image.sum(dim=0)
+    if callable(reduction):
+        image = reduction(image, dim=0)
+    return image
+
+
+def d2_labels_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") -> Tensor:
+    """
+    Deaugment input tensor (output of the model) assuming the is 2D tensor (See d2_augment).
+    Args:
+        image: Tensor of [B * 4, C] shape
+        reduction: Reduction model for aggregating outputs. Default is taking mean.
+
+    Returns:
+        Tensor of [B, C] shape if reduction is not None or "none", otherwise returns de-augmented tensor of
+        [4, B, C] shape
+    """
+    assert image.size(0) % 4 == 0
+
+    b1, b2, b3, b4 = torch.chunk(image, 4)
+    image: Tensor = torch.stack([b1, b2, b3, b4])
 
     if reduction == "mean":
         image = image.mean(dim=0)
@@ -357,6 +372,31 @@ def d4_image_augment(image: Tensor) -> Tensor:
         ],
         dim=0,
     )
+
+
+def d4_labels_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") -> Tensor:
+    """
+    Deaugment input tensor (output of the model) assuming the is 2D tensor (See d2_augment).
+    Args:
+        image: Tensor of [B * 8, C] shape
+        reduction: Reduction model for aggregating outputs. Default is taking mean.
+
+    Returns:
+        Tensor of [B, C] shape if reduction is not None or "none", otherwise returns de-augmented tensor of
+        [8, B, C] shape
+    """
+    assert image.size(0) % 8 == 0
+
+    b1, b2, b3, b4, b5, b6, b7, b8 = torch.chunk(image, 8)
+    image: Tensor = torch.stack([b1, b2, b3, b4, b5, b7, b7, b8])
+
+    if reduction == "mean":
+        image = image.mean(dim=0)
+    if reduction == "sum":
+        image = image.sum(dim=0)
+    if callable(reduction):
+        image = reduction(image, dim=0)
+    return image
 
 
 def d4_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") -> Tensor:
@@ -414,10 +454,7 @@ def flips_augment(image: Tensor) -> Tensor:
     return torch.cat([image, F.torch_fliplr(image), F.torch_flipud(image)], dim=0)
 
 
-def flips_deaugment(
-    image: Tensor,
-    reduction: MaybeStrOrCallable = "mean",
-) -> Tensor:
+def flips_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean",) -> Tensor:
     """
     Deaugment input tensor (output of the model) assuming the input was flip-augmented image (See flips_augment).
     Args:
@@ -477,26 +514,74 @@ def ms_image_augment(
     return augmented_inputs
 
 
+def ms_labels_deaugment(
+    logits: List[Tensor], size_offsets: List[Union[int, Tuple[int, int]]], reduction: MaybeStrOrCallable = "mean",
+):
+    """
+    Deaugment logits
+
+    Args:
+        logits: List of tensors of shape [B, C]
+        size_offsets:
+        reduction:
+        mode:
+        align_corners:
+        stride: Stride of the output feature map w.r.t to model input size.
+        Used to correctly scale size_offsets to match with size of output feature maps
+
+    Returns:
+
+    """
+    if len(images) != len(size_offsets):
+        raise ValueError("Number of images must be equal to number of size offsets")
+
+    deaugmented_outputs = torch.stack(logits)
+
+    if reduction == "mean":
+        deaugmented_outputs = deaugmented_outputs.mean(dim=0)
+    if reduction == "sum":
+        deaugmented_outputs = deaugmented_outputs.sum(dim=0)
+    if callable(reduction):
+        deaugmented_outputs = reduction(deaugmented_outputs, dim=0)
+
+    return deaugmented_outputs
+
+
 def ms_image_deaugment(
     images: List[Tensor],
     size_offsets: List[Union[int, Tuple[int, int]]],
     reduction: MaybeStrOrCallable = "mean",
     mode: str = "bilinear",
     align_corners: bool = True,
+    stride: int = 1,
 ) -> Tensor:
+    """
+
+    Args:
+        images: List of tensors of shape [B, C, Hi, Wi], [B, C, Hj, Wj], [B, C, Hk, Wk]
+        size_offsets:
+        reduction:
+        mode:
+        align_corners:
+        stride: Stride of the output feature map w.r.t to model input size.
+        Used to correctly scale size_offsets to match with size of output feature maps 
+
+    Returns:
+
+    """
     if len(images) != len(size_offsets):
         raise ValueError("Number of images must be equal to number of size offsets")
 
     deaugmented_outputs = []
-    for image, offset in zip(images, size_offsets):
+    for feature_map, offset in zip(images, size_offsets):
         if offset == 0:
-            deaugmented_outputs.append(image)
+            deaugmented_outputs.append(feature_map)
         else:
-            batch_size, channels, rows, cols = image.size()
+            batch_size, channels, rows, cols = feature_map.size()
             # TODO: Add support of tuple (row_offset, col_offset)
-            original_size = rows - offset, cols - offset
+            original_size = rows - offset // stride, cols - offset // stride
             scaled_image = torch.nn.functional.interpolate(
-                image, size=original_size, mode=mode, align_corners=align_corners
+                feature_map, size=original_size, mode=mode, align_corners=align_corners
             )
             deaugmented_outputs.append(scaled_image)
 
@@ -622,3 +707,30 @@ class GeneralizedTTA(nn.Module):
             deaugmented_output = self.deaugment_fn(outputs)
 
         return deaugmented_output
+
+
+class MultiscaleTTA(nn.Module):
+    def __init__(self, model: nn.Module, size_offsets: List[int], deaugment_fn: Optional[Dict[str, Callable]] = None):
+        if deaugment_fn is None:
+            deaugment_fn = defaultdict(lambda: ms_image_deaugment)
+            self.keys = None
+        else:
+            self.keys = set(deaugment_fn.keys())
+
+        super().__init__()
+        self.model = model
+        self.size_offsets = size_offsets
+        self.deaugment_fn = deaugment_fn
+
+    def forward(self, x):
+        ms_inputs = ms_image_augment(x, self.size_offsets)
+        ms_outputs = [self.model(x) for x in ms_inputs]
+
+        outputs = {}
+        keys = self.keys or ms_outputs[0].keys()
+        for key in keys:
+            deaugment_fn: Callable = self.deaugment_fn[key]
+            values = [x[key] for x in ms_outputs]
+            outputs[key] = deaugment_fn(values, self.size_offsets)
+
+        return outputs
