@@ -156,7 +156,8 @@ class ConfusionMatrixCallback(Callback):
 
 class F1ScoreCallback(Callback):
     """
-    Compute F1 metric
+        Compute F1 metric score
+
     """
 
     def __init__(
@@ -168,6 +169,7 @@ class F1ScoreCallback(Callback):
         prefix: str = "f1",
         average="macro",
         ignore_index: Optional[int] = None,
+        zero_division="warn",
     ):
         """
         :param input_key: input key to use for precision calculation;
@@ -184,6 +186,7 @@ class F1ScoreCallback(Callback):
         self.outputs_to_labels = outputs_to_labels
         self.average = average
         self.confusion_matrix = None
+        self.zero_division = zero_division
 
     def on_loader_start(self, state):
         self.confusion_matrix = np.zeros((self.num_classes, 2, 2), dtype=np.long)
@@ -211,7 +214,7 @@ class F1ScoreCallback(Callback):
 
     def on_loader_end(self, runner: IRunner):
         MCM = np.sum(all_gather(self.confusion_matrix), axis=0)
-        metric = self._f1_from_confusion_matrix(MCM, self.average)
+        metric = self._f1_from_confusion_matrix(MCM, average=self.average, zero_division=self.zero_division)
         runner.loader_metrics[self.prefix] = metric
 
     def _f1_from_confusion_matrix(
