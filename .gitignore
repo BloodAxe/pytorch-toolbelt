@@ -18,3 +18,4 @@ var/
 .vscode
 .idea/
 .pytest_cache/
+/tests/tta_eval.csv
