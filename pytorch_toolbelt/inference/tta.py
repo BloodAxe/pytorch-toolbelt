@@ -163,9 +163,7 @@ def fliplr_image2mask(model: nn.Module, image: Tensor) -> Tensor:
     :param image: Model input.
     :return: Arithmetically averaged predictions
     """
-    output = model(image) + F.torch_fliplr(model(F.torch_fliplr(image)))
-    one_over_2 = float(1.0 / 2.0)
-    return output * one_over_2
+    return fliplr_image_deaugment(model(fliplr_image_augment(image)))
 
 
 def d4_image2label(model: nn.Module, image: Tensor) -> Tensor:
@@ -176,20 +174,7 @@ def d4_image2label(model: nn.Module, image: Tensor) -> Tensor:
     :param image: Model input.
     :return: Arithmetically averaged predictions
     """
-    output = model(image)
-
-    for aug in [F.torch_rot90, F.torch_rot180, F.torch_rot270]:
-        x = model(aug(image))
-        output = output + x
-
-    image = F.torch_transpose(image)
-
-    for aug in [F.torch_none, F.torch_rot90, F.torch_rot180, F.torch_rot270]:
-        x = model(aug(image))
-        output = output + x
-
-    one_over_8 = float(1.0 / 8.0)
-    return output * one_over_8
+    output = d4_labels_deaugment(model(d4_image_augment(image)))
 
 
 def d4_image2mask(model: nn.Module, image: Tensor) -> Tensor:
@@ -202,25 +187,7 @@ def d4_image2mask(model: nn.Module, image: Tensor) -> Tensor:
     :param image: Model input.
     :return: Arithmetically averaged predictions
     """
-    output = model(image)
-
-    for aug, deaug in zip(
-        [F.torch_rot90, F.torch_rot180, F.torch_rot270], [F.torch_rot270, F.torch_rot180, F.torch_rot90]
-    ):
-        x = deaug(model(aug(image)))
-        output += x
-
-    image = F.torch_transpose(image)
-
-    for aug, deaug in zip(
-        [F.torch_none, F.torch_rot90, F.torch_rot180, F.torch_rot270],
-        [F.torch_none, F.torch_rot270, F.torch_rot180, F.torch_rot90],
-    ):
-        x = deaug(model(aug(image)))
-        output += F.torch_transpose(x)
-
-    one_over_8 = float(1.0 / 8.0)
-    output *= one_over_8
+    output = d4_image_deaugment(model(d4_image_augment(image)))
     return output
 
 
