@@ -145,13 +145,16 @@ def _flatten_probas(probas, labels, ignore=None):
         # assumes output of a sigmoid layer
         B, H, W = probas.size()
         probas = probas.view(B, 1, H, W)
-    B, C, H, W = probas.size()
-    probas = probas.permute(0, 2, 3, 1).contiguous().view(-1, C)  # B * H * W, C = P, C
+
+    C = probas.size(1)
+    probas = torch.movedim(probas, 0, -1)  # [B, C, Di, Dj, Dk...] -> [B, C, Di...Dk, C]
+    probas = probas.contiguous().view(-1, C)  # [P, C]
+
     labels = labels.view(-1)
     if ignore is None:
         return probas, labels
     valid = labels != ignore
-    vprobas = probas[valid.nonzero().squeeze()]
+    vprobas = probas[valid]
     vlabels = labels[valid]
     return vprobas, vlabels
 
