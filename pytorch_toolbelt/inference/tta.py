@@ -30,8 +30,9 @@ __all__ = [
     "fliplr_image2mask",
     "fliplr_image_augment",
     "fliplr_image_deaugment",
-    "flips_augment",
-    "flips_deaugment",
+    "flips_image_augment",
+    "flips_image_deaugment",
+    "flips_labels_deaugment",
     "ms_image_augment",
     "ms_image_deaugment",
     "tencrop_image2label",
@@ -404,7 +405,7 @@ def d4_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") ->
     return image
 
 
-def flips_augment(image: Tensor) -> Tensor:
+def flips_image_augment(image: Tensor) -> Tensor:
     """
     Augment input tensor by adding vertically and horizontally flipped images to it.
 
@@ -421,7 +422,7 @@ def flips_augment(image: Tensor) -> Tensor:
     return torch.cat([image, F.torch_fliplr(image), F.torch_flipud(image)], dim=0)
 
 
-def flips_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean",) -> Tensor:
+def flips_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean",) -> Tensor:
     """
     Deaugment input tensor (output of the model) assuming the input was flip-augmented image (See flips_augment).
     Args:
@@ -447,6 +448,30 @@ def flips_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean",) -> T
     if callable(reduction):
         image = reduction(image, dim=0)
     return image
+
+
+def flips_labels_deaugment(logits: Tensor, reduction: MaybeStrOrCallable = "mean",) -> Tensor:
+    """
+    Deaugment input tensor (output of the model) assuming the input was flip-augmented image (See flips_image_augment).
+    Args:
+        logits: Tensor of [B * 3, C] shape
+        reduction: If True performs averaging of 3 outputs, otherwise - summation.
+
+    Returns:
+        Tensor of [B, C, H, W] shape.
+    """
+    assert logits.size(0) % 3 == 0
+
+    b1, b2, b3, b4 = torch.chunk(logits, 4)
+    logits: Tensor = torch.stack([b1, b2, b3, b4])
+
+    if reduction == "mean":
+        logits = logits.mean(dim=0)
+    if reduction == "sum":
+        logits = logits.sum(dim=0)
+    if callable(reduction):
+        logits = reduction(logits, dim=0)
+    return logits
 
 
 @pytorch_toolbelt_deprecated("This class is deprecated. Please use GeneralizedTTA instead")
@@ -499,7 +524,7 @@ def ms_labels_deaugment(
     Returns:
 
     """
-    if len(images) != len(size_offsets):
+    if len(logits) != len(size_offsets):
         raise ValueError("Number of images must be equal to number of size offsets")
 
     deaugmented_outputs = torch.stack(logits)
