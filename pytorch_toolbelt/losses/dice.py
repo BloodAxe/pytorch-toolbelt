@@ -94,10 +94,12 @@ class DiceLoss(_Loss):
             if self.ignore_index is not None:
                 mask = y_true != self.ignore_index
                 y_pred = y_pred * mask.unsqueeze(1)
-                y_true = y_true * mask
 
-            y_true = F.one_hot(y_true, num_classes)  # N,H*W -> N,H*W, C
-            y_true = y_true.permute(0, 2, 1)  # H, C, H*W
+                y_true = F.one_hot((y_true * mask).to(torch.long), num_classes)  # N,H*W -> N,H*W, C
+                y_true = y_true.permute(0, 2, 1) * mask.unsqueeze(1)  # H, C, H*W
+            else:
+                y_true = F.one_hot(y_true, num_classes)  # N,H*W -> N,H*W, C
+                y_true = y_true.permute(0, 2, 1)  # H, C, H*W
 
         if self.mode == MULTILABEL_MODE:
             y_true = y_true.view(bs, num_classes, -1)
