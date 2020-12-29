@@ -487,11 +487,14 @@ class HRNetW48Encoder(EncoderModule):
 
 
 class DPN68Encoder(EncoderModule):
-    def __init__(self, pretrained=True):
+    def __init__(self, pretrained=True, layers=None):
         from timm.models import dpn
 
+        if layers is None:
+            layers = [0, 1, 2, 3]
+
         encoder = dpn.dpn68(pretrained=pretrained, features_only=True, out_indices=(1, 2, 3, 4))
-        super().__init__([144, 320, 704, 832], [4, 8, 16, 32], [0, 1, 2, 3])
+        super().__init__([144, 320, 704, 832], [4, 8, 16, 32], layers)
         self.encoder = encoder
 
     def forward(self, x):
@@ -506,11 +509,14 @@ class DPN68Encoder(EncoderModule):
 
 
 class DPN68BEncoder(EncoderModule):
-    def __init__(self, pretrained=True):
+    def __init__(self, pretrained=True, layers=None):
         from timm.models import dpn
 
+        if layers is None:
+            layers = [0, 1, 2, 3]
+
         encoder = dpn.dpn68b(pretrained=pretrained, features_only=True, out_indices=(1, 2, 3, 4))
-        super().__init__([144, 320, 704, 832], [4, 8, 16, 32], [0, 1, 2, 3])
+        super().__init__([144, 320, 704, 832], [4, 8, 16, 32], layers)
         self.encoder = encoder
 
     def forward(self, x):
@@ -525,11 +531,14 @@ class DPN68BEncoder(EncoderModule):
 
 
 class DPN92Encoder(EncoderModule):
-    def __init__(self, pretrained=True):
+    def __init__(self, pretrained=True, layers=None):
         from timm.models import dpn
 
+        if layers is None:
+            layers = [0, 1, 2, 3]
+
         encoder = dpn.dpn92(pretrained=pretrained, features_only=True, out_indices=(1, 2, 3, 4))
-        super().__init__([336, 704, 1552, 2688], [4, 8, 16, 32], [0, 1, 2, 3])
+        super().__init__([336, 704, 1552, 2688], [4, 8, 16, 32], layers)
         self.encoder = encoder
 
     def forward(self, x):
@@ -544,11 +553,14 @@ class DPN92Encoder(EncoderModule):
 
 
 class DPN107Encoder(EncoderModule):
-    def __init__(self, pretrained=True):
+    def __init__(self, pretrained=True, layers=None):
         from timm.models import dpn
 
+        if layers is None:
+            layers = [0, 1, 2, 3]
+
         encoder = dpn.dpn107(pretrained=pretrained, features_only=True, out_indices=(1, 2, 3, 4))
-        super().__init__([376, 1152, 2432, 2688], [4, 8, 16, 32], [0, 1, 2, 3])
+        super().__init__([376, 1152, 2432, 2688], [4, 8, 16, 32], layers)
         self.encoder = encoder
 
     def forward(self, x):
@@ -563,11 +575,13 @@ class DPN107Encoder(EncoderModule):
 
 
 class DPN131Encoder(EncoderModule):
-    def __init__(self, pretrained=True):
+    def __init__(self, pretrained=True, layers=None):
         from timm.models import dpn
 
+        if layers is None:
+            layers = [0, 1, 2, 3]
         encoder = dpn.dpn131(pretrained=pretrained, features_only=True, out_indices=(1, 2, 3, 4))
-        super().__init__([352, 832, 1984, 2688], [4, 8, 16, 32], [0, 1, 2, 3])
+        super().__init__([352, 832, 1984, 2688], [4, 8, 16, 32], layers)
         self.encoder = encoder
 
     def forward(self, x):
