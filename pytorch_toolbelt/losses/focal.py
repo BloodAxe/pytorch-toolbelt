@@ -1,5 +1,6 @@
 from functools import partial
 
+import torch
 from torch.nn.modules.loss import _Loss
 
 from .functional import focal_loss_with_logits
@@ -32,8 +33,7 @@ class BinaryFocalLoss(_Loss):
         )
 
     def forward(self, label_input, label_target):
-        """Compute focal loss for binary classification problem.
-        """
+        """Compute focal loss for binary classification problem."""
         label_target = label_target.view(-1)
         label_input = label_input.view(-1)
 
@@ -42,6 +42,10 @@ class BinaryFocalLoss(_Loss):
             not_ignored = label_target != self.ignore_index
             label_input = label_input[not_ignored]
             label_target = label_target[not_ignored]
+
+            # This check is to prevent NaNs in the loss, when all targets are equal to ignore_index.
+            if label_target.numel() == 0:
+                return torch.tensor(0, dtype=label_input.dtype, device=label_input.device)
 
         loss = self.focal_loss_fn(label_input, label_target)
         return loss
