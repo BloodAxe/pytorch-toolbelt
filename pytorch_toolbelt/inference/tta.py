@@ -175,7 +175,7 @@ def d4_image2label(model: nn.Module, image: Tensor) -> Tensor:
     :param image: Model input.
     :return: Arithmetically averaged predictions
     """
-    output = d4_labels_deaugment(model(d4_image_augment(image)))
+    return d4_labels_deaugment(model(d4_image_augment(image)))
 
 
 def d4_image2mask(model: nn.Module, image: Tensor) -> Tensor:
@@ -188,8 +188,7 @@ def d4_image2mask(model: nn.Module, image: Tensor) -> Tensor:
     :param image: Model input.
     :return: Arithmetically averaged predictions
     """
-    output = d4_image_deaugment(model(d4_image_augment(image)))
-    return output
+    return d4_image_deaugment(model(d4_image_augment(image)))
 
 
 def fliplr_image_augment(image: Tensor) -> Tensor:
