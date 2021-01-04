@@ -1,5 +1,6 @@
 import torch
 from torch import nn, Tensor
+from typing import Optional
 
 __all__ = ["soft_micro_f1", "BinarySoftF1Loss"]
 
