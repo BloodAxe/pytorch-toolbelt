@@ -8,3 +8,4 @@ from .lovasz import *
 from .soft_bce import *
 from .soft_ce import *
 from .wing_loss import *
+from .soft_f1 import *
