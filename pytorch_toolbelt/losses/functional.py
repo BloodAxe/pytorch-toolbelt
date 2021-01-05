@@ -48,7 +48,7 @@ def focal_loss_with_logits(
     References:
         https://github.com/open-mmlab/mmdetection/blob/master/mmdet/core/loss/losses.py
     """
-    target = target.type(output.type())
+    target = target.type_as(output)
 
     logpt = F.binary_cross_entropy_with_logits(output, target, reduction="none")
     pt = torch.exp(-logpt)
@@ -66,15 +66,15 @@ def focal_loss_with_logits(
         loss *= alpha * target + (1 - alpha) * (1 - target)
 
     if normalized:
-        norm_factor = focal_term.sum().clamp_min(eps)
+        norm_factor = focal_term.sum(dtype=torch.float32).clamp_min(eps)
         loss /= norm_factor
 
     if reduction == "mean":
         loss = loss.mean()
     if reduction == "sum":
-        loss = loss.sum()
+        loss = loss.sum(dtype=torch.float32)
     if reduction == "batchwise_mean":
-        loss = loss.sum(0)
+        loss = loss.sum(dim=0, dtype=torch.float32)
 
     return loss
 
