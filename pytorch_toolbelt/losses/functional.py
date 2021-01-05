@@ -133,13 +133,11 @@ def softmax_focal_loss_with_logits(
     return loss
 
 
-# TODO: Mark as deprecated and emit warning
 @pytorch_toolbelt_deprecated("Function sigmoid_focal_loss is deprecated. Please use focal_loss_with_logits instead.")
 def sigmoid_focal_loss(*input, **kwargs):
     return focal_loss_with_logits(*input, **kwargs)
 
 
-# TODO: Mark as deprecated and emit warning
 @pytorch_toolbelt_deprecated("Function reduced_focal_loss is deprecated. Please use focal_loss_with_logits instead.")
 def reduced_focal_loss(output: torch.Tensor, target: torch.Tensor, threshold=0.5, gamma=2.0, reduction="mean"):
     return focal_loss_with_logits(
