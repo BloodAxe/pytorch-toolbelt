@@ -3,6 +3,7 @@ import warnings
 
 from catalyst.contrib.nn import OneCycleLRWithWarmup
 from torch.optim.lr_scheduler import (
+    _LRScheduler,
     ExponentialLR,
     CyclicLR,
     MultiStepLR,
@@ -183,9 +184,13 @@ def get_scheduler(scheduler_name: str, optimizer, learning_rate: float, num_epoc
     need_warmup = "warmup_" in name
     name = name.replace("warmup_", "")
 
+    scheduler = None
+
     if name == "cos":
         scheduler = CosineAnnealingLR(optimizer, num_epochs, eta_min=1e-6)
     elif name == "cos2":
+        scheduler = CosineAnnealingLR(optimizer, num_epochs, eta_min=float(learning_rate * 0.5))
+    elif name == "cos10":
         scheduler = CosineAnnealingLR(optimizer, num_epochs, eta_min=float(learning_rate * 0.1))
     elif name == "cosr":
         scheduler = CosineAnnealingWarmRestarts(optimizer, T_0=max(2, num_epochs // 4), eta_min=1e-6)
@@ -218,6 +223,8 @@ def get_scheduler(scheduler_name: str, optimizer, learning_rate: float, num_epoc
         )
     elif name == "simple":
         scheduler = MultiStepLR(optimizer, milestones=[int(num_epochs * 0.4), int(num_epochs * 0.7)], gamma=0.1)
+    else:
+        raise KeyError(f"Unsupported scheduler name {name}")
 
     if need_warmup:
         scheduler = GradualWarmupScheduler(optimizer, 1.0, 5, after_scheduler=scheduler)
