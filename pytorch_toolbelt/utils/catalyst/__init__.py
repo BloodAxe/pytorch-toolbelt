@@ -25,7 +25,10 @@ def _register_callbacks(r):
     r.add_from_module(c, prefix="tbt")
 
 
-def register_toolbelt():
+def register_toolbelt_in_catalyst():
+    """
+    Register modules, losses & callbacks from pytorch-toolbelt in Catalyst
+    """
     from catalyst.registry import MODULE, CRITERION
 
     MODULE.late_add(_register_modules)
