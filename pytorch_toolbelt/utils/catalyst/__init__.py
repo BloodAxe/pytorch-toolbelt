@@ -16,13 +16,13 @@ def _register_modules(r):
 def _register_criterions(r):
     from pytorch_toolbelt import losses as l
 
-    r.add_from_module(l, prefix="tbt")
+    r.add_from_module(l, prefix="tbt.")
 
 
 def _register_callbacks(r):
     from pytorch_toolbelt.utils.catalyst import callbacks as c
 
-    r.add_from_module(c, prefix="tbt")
+    r.add_from_module(c, prefix="tbt.")
 
 
 def register_toolbelt_in_catalyst():
