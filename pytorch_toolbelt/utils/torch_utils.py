@@ -20,6 +20,8 @@ __all__ = [
     "tensor_from_rgb_image",
     "to_numpy",
     "to_tensor",
+    "resize_like",
+    "resize_as",
     "transfer_weights",
     "softmax_over_dim_0",
     "softmax_over_dim_1",
@@ -227,3 +229,21 @@ def transfer_weights(model: nn.Module, model_state_dict: collections.OrderedDict
             model.load_state_dict(collections.OrderedDict([(name, value)]), strict=False)
         except Exception as e:
             print(e)
+
+
+def resize_like(x: Tensor, target: Tensor, mode="bilinear", align_corners=True) -> Tensor:
+    """
+    Resize input tensor to have the same spatial dimensions as target
+    Args:
+        x:
+        target:
+        mode:
+        align_corners:
+
+    Returns:
+
+    """
+    return torch.nn.functional.interpolate(x, target.size()[2:], mode=mode, align_corners=align_corners)
+
+
+resize_as = resize_like
