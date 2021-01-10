@@ -136,30 +136,34 @@ class ImageSlicer:
         self.crops = np.array(crops)
         self.bbox_crops = np.array(bbox_crops)
 
-    def iter_split(self) -> Iterable:
-        assert image.shape[0] == self.image_height
-        assert image.shape[1] == self.image_width
+    def iter_split(self, image: np.ndarray, border_type=cv2.BORDER_CONSTANT, value=0) -> Iterable:
+        if (image.shape[0] != self.image_height) or (image.shape[1] != self.image_width):
+            raise ValueError()
 
         orig_shape_len = len(image.shape)
-        image = cv2.copyMakeBorder(
-            image,
-            self.margin_top,
-            self.margin_bottom,
-            self.margin_left,
-            self.margin_right,
-            borderType=border_type,
-            value=value,
-        )
 
-        # This check recovers possible lack of last dummy dimension for single-channel images
-        if len(image.shape) != orig_shape_len:
-            image = np.expand_dims(image, axis=-1)
+        for coords, crop_coords in zip(self.crops, self.bbox_crops):
+            x, y, tile_width, tile_height = crop_coords
+            x1 = max(x, 0)
+            y1 = max(y, 0)
+            x2 = min(image.shape[1], x + tile_width)
+            y2 = min(image.shape[0], y + tile_height)
 
-        for coords in self.crops:
-            x, y, tile_width, tile_height = coords
-            tile = image[y : y + tile_height, x : x + tile_width]  # .copy()
-            assert tile.shape[0] == self.tile_size[0]
-            assert tile.shape[1] == self.tile_size[1]
+            tile = image[y1:y2, x1:x2]  # .copy()
+            if x < 0 or y < 0 or (x + tile_width) > image.shape[1] or (y + tile_height) > image.shape[0]:
+                tile = cv2.copyMakeBorder(
+                    tile,
+                    max(0, -y),
+                    max(0, y + tile_height - image.shape[0]),
+                    max(0, -x),
+                    max(0, x + tile_width - image.shape[1]),
+                    borderType=border_type,
+                    value=value,
+                )
+
+                # This check recovers possible lack of last dummy dimension for single-channel images
+                if len(tile.shape) != orig_shape_len:
+                    tile = np.expand_dims(tile, axis=-1)
 
             yield tile, coords
 
