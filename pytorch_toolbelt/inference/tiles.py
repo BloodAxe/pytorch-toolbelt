@@ -2,7 +2,7 @@
 in a sliding-window fashion and merging prediction mask back to full-resolution.
 """
 import math
-from typing import List
+from typing import List, Iterable
 
 import cv2
 import numpy as np
@@ -136,6 +136,33 @@ class ImageSlicer:
         self.crops = np.array(crops)
         self.bbox_crops = np.array(bbox_crops)
 
+    def iter_split(self) -> Iterable:
+        assert image.shape[0] == self.image_height
+        assert image.shape[1] == self.image_width
+
+        orig_shape_len = len(image.shape)
+        image = cv2.copyMakeBorder(
+            image,
+            self.margin_top,
+            self.margin_bottom,
+            self.margin_left,
+            self.margin_right,
+            borderType=border_type,
+            value=value,
+        )
+
+        # This check recovers possible lack of last dummy dimension for single-channel images
+        if len(image.shape) != orig_shape_len:
+            image = np.expand_dims(image, axis=-1)
+
+        for coords in self.crops:
+            x, y, tile_width, tile_height = coords
+            tile = image[y : y + tile_height, x : x + tile_width]  # .copy()
+            assert tile.shape[0] == self.tile_size[0]
+            assert tile.shape[1] == self.tile_size[1]
+
+            yield tile, coords
+
     def split(self, image, border_type=cv2.BORDER_CONSTANT, value=0):
         assert image.shape[0] == self.image_height
         assert image.shape[1] == self.image_width
@@ -157,7 +184,7 @@ class ImageSlicer:
 
         tiles = []
         for x, y, tile_width, tile_height in self.crops:
-            tile = image[y : y + tile_height, x : x + tile_width].copy()
+            tile = image[y : y + tile_height, x : x + tile_width]  # .copy()
             assert tile.shape[0] == self.tile_size[0]
             assert tile.shape[1] == self.tile_size[1]
 
@@ -250,7 +277,7 @@ class TileMerger:
     Helper class to merge final image on GPU. This generally faster than moving individual tiles to CPU.
     """
 
-    def __init__(self, image_shape, channels, weight, device="cpu"):
+    def __init__(self, image_shape, channels, weight, device="cpu", dtype=torch.float32):
         """
 
         :param image_shape: Shape of the source image
@@ -261,9 +288,9 @@ class TileMerger:
         self.image_width = image_shape[1]
         self.channels = channels
 
-        self.weight = torch.from_numpy(np.expand_dims(weight, axis=0)).to(device).float()
-        self.image = torch.zeros((channels, self.image_height, self.image_width), device=device).float()
-        self.norm_mask = torch.zeros((1, self.image_height, self.image_width), device=device).float()
+        self.weight = torch.from_numpy(np.expand_dims(weight, axis=0)).to(device=device, dtype=dtype)
+        self.image = torch.zeros((channels, self.image_height, self.image_width), device=device, dtype=dtype)
+        self.norm_mask = torch.zeros((1, self.image_height, self.image_width), device=device, dtype=dtype)
 
     def accumulate_single(self, tile: torch.Tensor, coords):
         """
