@@ -2,10 +2,10 @@ import os
 from collections import OrderedDict
 from pathlib import Path
 from typing import Dict
-
+import math
 import torch
 from catalyst import utils
-from catalyst.core.callbacks.checkpoint import BaseCheckpointCallback
+from catalyst.callbacks import BaseCheckpointCallback
 from catalyst.dl import IRunner, Callback, CallbackOrder
 
 
@@ -53,10 +53,20 @@ def report_checkpoint(checkpoint: Dict):
         "_timers/_fps",
     ]
     print(
-        "Metrics (Train):", [(k, v) for k, v, in checkpoint["epoch_metrics"]["train"].items() if k not in skip_fields]
+        "Metrics (Train):",
+        [
+            (k.replace("train_", ""), v)
+            for k, v, in checkpoint["epoch_metrics"].items()
+            if k not in skip_fields and str.startswith(k, "train_")
+        ],
     )
     print(
-        "Metrics (Valid):", [(k, v) for k, v, in checkpoint["epoch_metrics"]["valid"].items() if k not in skip_fields]
+        "Metrics (Valid):",
+        [
+            (k.replace("valid_", ""), v)
+            for k, v, in checkpoint["epoch_metrics"].items()
+            if k not in skip_fields and str.startswith(k, "valid_")
+        ],
     )
 
 
@@ -123,7 +133,20 @@ class BestMetricCheckpointCallback(BaseCheckpointCallback):
         return self.metrics
 
     def truncate_checkpoints(self, minimize_metric: bool) -> None:
-        self.top_best_metrics = sorted(self.top_best_metrics, key=lambda x: x[1], reverse=not minimize_metric)
+        def get_proper_sort_key(minimize):
+            def get_key(x):
+                metric_value = x[1]
+                if math.isfinite(metric_value):
+                    return metric_value
+                else:
+                    key = float("+inf") if self.minimize_metric else float("-inf")
+                    return key
+
+            return get_key
+
+        self.top_best_metrics = sorted(
+            self.top_best_metrics, key=get_proper_sort_key(minimize_metric), reverse=not minimize_metric
+        )
         if len(self.top_best_metrics) > self.save_n_best:
             last_item = self.top_best_metrics.pop(-1)
             last_filepath = Path(last_item[0])
@@ -179,9 +202,9 @@ class BestMetricCheckpointCallback(BaseCheckpointCallback):
 
         main_metric_value = valid_metrics[self.main_metric]
         if self.minimize_metric:
-            is_best = main_metric_value < self.best_main_metric_value
+            is_best = math.isfinite(main_metric_value) and main_metric_value < self.best_main_metric_value
         else:
-            is_best = main_metric_value > self.best_main_metric_value
+            is_best = math.isfinite(main_metric_value) and main_metric_value > self.best_main_metric_value
 
         if is_best:
             self.best_main_metric_value = main_metric_value
@@ -262,5 +285,5 @@ class HyperParametersCallback(Callback):
         hparam_dict["stage"] = state.stage_name
 
         logger.add_hparams(
-            hparam_dict=self.hparam_dict, metric_dict={"best_" + state.main_metric: state.best_valid_metrics},
+            hparam_dict=self.hparam_dict, metric_dict=state.best_valid_metrics,
         )

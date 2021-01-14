@@ -21,7 +21,16 @@ class DiceLoss(_Loss):
     It supports binary, multiclass and multilabel cases
     """
 
-    def __init__(self, mode: str, classes: List[int] = None, log_loss=False, from_logits=True, smooth=0, eps=1e-7):
+    def __init__(
+        self,
+        mode: str,
+        classes: List[int] = None,
+        log_loss=False,
+        from_logits=True,
+        smooth: float = 0.0,
+        ignore_index=None,
+        eps=1e-7,
+    ):
         """
 
         :param mode: Metric mode {'binary', 'multiclass', 'multilabel'}
@@ -30,6 +39,7 @@ class DiceLoss(_Loss):
         :param log_loss: If True, loss computed as `-log(jaccard)`; otherwise `1 - jaccard`
         :param from_logits: If True assumes input is raw logits
         :param smooth:
+        :param ignore_index: Label that indicates ignored pixels (does not contribute to loss)
         :param eps: Small epsilon for numerical stability
         """
         assert mode in {BINARY_MODE, MULTILABEL_MODE, MULTICLASS_MODE}
@@ -43,6 +53,7 @@ class DiceLoss(_Loss):
         self.from_logits = from_logits
         self.smooth = smooth
         self.eps = eps
+        self.ignore_index = ignore_index
         self.log_loss = log_loss
 
     def forward(self, y_pred: Tensor, y_true: Tensor) -> Tensor:
@@ -71,16 +82,33 @@ class DiceLoss(_Loss):
             y_true = y_true.view(bs, 1, -1)
             y_pred = y_pred.view(bs, 1, -1)
 
+            if self.ignore_index is not None:
+                mask = y_true != self.ignore_index
+                y_pred = y_pred * mask
+                y_true = y_true * mask
+
         if self.mode == MULTICLASS_MODE:
             y_true = y_true.view(bs, -1)
             y_pred = y_pred.view(bs, num_classes, -1)
 
-            y_true = F.one_hot(y_true, num_classes)  # N,H*W -> N,H*W, C
-            y_true = y_true.permute(0, 2, 1)  # H, C, H*W
+            if self.ignore_index is not None:
+                mask = y_true != self.ignore_index
+                y_pred = y_pred * mask.unsqueeze(1)
+
+                y_true = F.one_hot((y_true * mask).to(torch.long), num_classes)  # N,H*W -> N,H*W, C
+                y_true = y_true.permute(0, 2, 1) * mask.unsqueeze(1)  # H, C, H*W
+            else:
+                y_true = F.one_hot(y_true, num_classes)  # N,H*W -> N,H*W, C
+                y_true = y_true.permute(0, 2, 1)  # H, C, H*W
 
         if self.mode == MULTILABEL_MODE:
             y_true = y_true.view(bs, num_classes, -1)
             y_pred = y_pred.view(bs, num_classes, -1)
+
+            if self.ignore_index is not None:
+                mask = y_true != self.ignore_index
+                y_pred = y_pred * mask
+                y_true = y_true * mask
 
         scores = soft_dice_score(y_pred, y_true.type_as(y_pred), smooth=self.smooth, eps=self.eps, dims=dims)
 

@@ -1,18 +1,31 @@
-from typing import Optional, Iterator
+from typing import Optional, Iterator, Dict
 from torch import nn
 
 __all__ = ["get_lr_decay_parameters", "get_optimizable_parameters", "freeze_model"]
 
 
-def get_lr_decay_parameters(parameters, learning_rate: float, groups: dict):
+def get_lr_decay_parameters(model: nn.Module, learning_rate: float, lr_multipliers: Dict[str, float]):
+    """
+    Create different parameter groups with different settings
+    Args:
+        parameters:
+        learning_rate:
+        groups: {"encoder": 0.1 ,"encoder.layer2": 0.2}
+
+    Returns:
+
+    """
     custom_lr_parameters = dict(
-        (group_name, {"params": [], "lr": learning_rate * lr_factor}) for (group_name, lr_factor) in groups.items()
+        (group_name, {"params": [], "lr": learning_rate * lr_factor}) for (group_name, lr_factor) in lr_multipliers.items()
     )
     custom_lr_parameters["default"] = {"params": [], "lr": learning_rate}
 
-    for parameter_name, parameter in parameters:
+    for parameter_name, parameter in model.named_parameters():
+        if not parameter.requires_grad:
+            continue
+
         matches = False
-        for group_name, lr in groups.items():
+        for group_name, lr in lr_multipliers.items():
             if str.startswith(parameter_name, group_name):
                 custom_lr_parameters[group_name]["params"].append(parameter)
                 matches = True
@@ -21,7 +34,7 @@ def get_lr_decay_parameters(parameters, learning_rate: float, groups: dict):
         if not matches:
             custom_lr_parameters["default"]["params"].append(parameter)
 
-    return custom_lr_parameters.values()
+    return list(custom_lr_parameters.values())
 
 
 def get_optimizable_parameters(model: nn.Module) -> Iterator[nn.Parameter]:

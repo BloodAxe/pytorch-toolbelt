@@ -116,7 +116,7 @@ class FPNFuse(nn.Module):
 
     def forward(self, features: List[Tensor]):  # skipcq: PYL-W0221
         layers = []
-        dst_size = features[0].size()[-2:]
+        dst_size = features[0].size()[2:]  # Skip B, C, and use rest (This works for 1D, 2D, 3D and ND..)
 
         for f in features:
             layers.append(F.interpolate(f, size=dst_size, mode=self.mode, align_corners=self.align_corners))
@@ -134,7 +134,7 @@ class FPNFuseSum(nn.Module):
 
     def forward(self, features: List[Tensor]) -> Tensor:  # skipcq: PYL-W0221
         output = features[0]
-        dst_size = features[0].size()[-2:]
+        dst_size = features[0].size()[2:]  # Skip B, C, and use rest (This works for 1D, 2D, 3D and ND..)
 
         for f in features[1:]:
             output = output + F.interpolate(f, size=dst_size, mode=self.mode, align_corners=self.align_corners)
@@ -179,10 +179,7 @@ class HFF(nn.Module):
     def _upsample(self, x, output_size=None):
         if output_size is not None:
             x = F.interpolate(
-                x,
-                size=(output_size[0], output_size[1]),
-                mode=self.interpolation_mode,
-                align_corners=self.align_corners,
+                x, size=(output_size[0], output_size[1]), mode=self.interpolation_mode, align_corners=self.align_corners,
             )
         else:
             x = F.interpolate(

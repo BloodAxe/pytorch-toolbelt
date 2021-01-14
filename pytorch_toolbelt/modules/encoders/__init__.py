@@ -15,3 +15,4 @@ from .unet import *
 from .wide_resnet import *
 from .xresnet import *
 from .hourglass import *
+from .timm import *

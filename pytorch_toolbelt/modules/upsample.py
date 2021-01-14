@@ -1,3 +1,5 @@
+from typing import Optional, List
+
 import torch
 from torch import nn, Tensor
 from math import hypot
@@ -13,7 +15,6 @@ __all__ = [
 
 
 def bilinear_upsample_initializer(x):
-
     cc = x.size(2) // 2
     cr = x.size(3) // 2
 
@@ -74,15 +75,17 @@ class DepthToSpaceUpsample2d(nn.Module):
     https://arxiv.org/ftp/arxiv/papers/1707/1707.02937.pdf
     """
 
-    def __init__(self, features: int, scale_factor: int = 2):
+    def __init__(self, in_channels: int, out_channels: int, scale_factor: int = 2):
         super().__init__()
-        self.n = 2 ** scale_factor
-        self.conv = nn.Conv2d(features, features * self.n, kernel_size=3, padding=1, bias=False)
-        with torch.no_grad():
-            self.conv.weight.data = icnr_init(
-                self.conv.weight, upscale_factor=scale_factor, initializer=bilinear_upsample_initializer
-            )
+        n = 2 ** scale_factor
+        self.conv = nn.Conv2d(in_channels, out_channels * n, kernel_size=3, padding=1, bias=False)
+        self.out_channels = out_channels
         self.shuffle = nn.PixelShuffle(upscale_factor=scale_factor)
+
+        # with torch.no_grad():
+        #     self.conv.weight.data = icnr_init(
+        #         self.conv.weight, upscale_factor=scale_factor, initializer=bilinear_upsample_initializer
+        #     )
 
     def forward(self, x: Tensor) -> Tensor:  # skipcq: PYL-W0221
         x = self.shuffle(self.conv(x))
@@ -118,8 +121,8 @@ class DeconvolutionUpsample2d(nn.Module):
         self.out_channels = in_channels // n
         self.conv = nn.ConvTranspose2d(in_channels, in_channels // n, kernel_size=3, padding=1, stride=2)
 
-    def forward(self, x: Tensor) -> Tensor:  # skipcq: PYL-W0221
-        return self.conv(x)
+    def forward(self, x: Tensor, output_size: Optional[List[int]] = None) -> Tensor:  # skipcq: PYL-W0221
+        return self.conv(x, output_size=output_size)
 
 
 class ResidualDeconvolutionUpsample2d(nn.Module):

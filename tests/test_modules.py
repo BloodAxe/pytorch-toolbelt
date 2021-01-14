@@ -1,6 +1,6 @@
 import pytest
 import torch
-from pytorch_toolbelt.modules import HFF, ResidualDeconvolutionUpsample2d
+from pytorch_toolbelt.modules import HFF, ResidualDeconvolutionUpsample2d, GlobalKMaxPool2d
 
 skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="Cuda is not available")
 
@@ -54,3 +54,15 @@ def test_residualdeconvolutionupsampleblock():
     output = block(x)
     print(x.size(), x.mean(), x.std())
     print(output.size(), output.mean(), x.std())
+
+
+def test_kmax_pool():
+    x = torch.randn((8, 512, 16, 16))
+    module1 = GlobalKMaxPool2d(k=4, flatten=True)
+    module2 = GlobalKMaxPool2d(k=4, flatten=False)
+
+    y1 = module1(x)
+    y2 = module2(x)
+
+    assert y1.size() == (8, 512)
+    assert y2.size() == (8, 512, 1, 1)

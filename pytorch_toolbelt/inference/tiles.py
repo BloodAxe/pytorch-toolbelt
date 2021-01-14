@@ -2,13 +2,15 @@
 in a sliding-window fashion and merging prediction mask back to full-resolution.
 """
 import math
-from typing import List
+from typing import List, Iterable
 
 import cv2
 import numpy as np
 import torch
 
-__all__ = ["ImageSlicer", "CudaTileMerger", "compute_pyramid_patch_weight_loss"]
+from pytorch_toolbelt.utils import pytorch_toolbelt_deprecated
+
+__all__ = ["ImageSlicer", "TileMerger", "CudaTileMerger", "compute_pyramid_patch_weight_loss"]
 
 
 def compute_pyramid_patch_weight_loss(width: int, height: int) -> np.ndarray:
@@ -134,6 +136,37 @@ class ImageSlicer:
         self.crops = np.array(crops)
         self.bbox_crops = np.array(bbox_crops)
 
+    def iter_split(self, image: np.ndarray, border_type=cv2.BORDER_CONSTANT, value=0) -> Iterable:
+        if (image.shape[0] != self.image_height) or (image.shape[1] != self.image_width):
+            raise ValueError()
+
+        orig_shape_len = len(image.shape)
+
+        for coords, crop_coords in zip(self.crops, self.bbox_crops):
+            x, y, tile_width, tile_height = crop_coords
+            x1 = max(x, 0)
+            y1 = max(y, 0)
+            x2 = min(image.shape[1], x + tile_width)
+            y2 = min(image.shape[0], y + tile_height)
+
+            tile = image[y1:y2, x1:x2]  # .copy()
+            if x < 0 or y < 0 or (x + tile_width) > image.shape[1] or (y + tile_height) > image.shape[0]:
+                tile = cv2.copyMakeBorder(
+                    tile,
+                    max(0, -y),
+                    max(0, y + tile_height - image.shape[0]),
+                    max(0, -x),
+                    max(0, x + tile_width - image.shape[1]),
+                    borderType=border_type,
+                    value=value,
+                )
+
+                # This check recovers possible lack of last dummy dimension for single-channel images
+                if len(tile.shape) != orig_shape_len:
+                    tile = np.expand_dims(tile, axis=-1)
+
+            yield tile, coords
+
     def split(self, image, border_type=cv2.BORDER_CONSTANT, value=0):
         assert image.shape[0] == self.image_height
         assert image.shape[1] == self.image_width
@@ -155,7 +188,7 @@ class ImageSlicer:
 
         tiles = []
         for x, y, tile_width, tile_height in self.crops:
-            tile = image[y : y + tile_height, x : x + tile_width].copy()
+            tile = image[y : y + tile_height, x : x + tile_width]  # .copy()
             assert tile.shape[0] == self.tile_size[0]
             assert tile.shape[1] == self.tile_size[1]
 
@@ -243,12 +276,12 @@ class ImageSlicer:
         return w
 
 
-class CudaTileMerger:
+class TileMerger:
     """
     Helper class to merge final image on GPU. This generally faster than moving individual tiles to CPU.
     """
 
-    def __init__(self, image_shape, channels, weight):
+    def __init__(self, image_shape, channels, weight, device="cpu", dtype=torch.float32):
         """
 
         :param image_shape: Shape of the source image
@@ -257,24 +290,42 @@ class CudaTileMerger:
         """
         self.image_height = image_shape[0]
         self.image_width = image_shape[1]
-
-        self.weight = torch.from_numpy(np.expand_dims(weight, axis=0)).float().cuda()
         self.channels = channels
-        self.image = torch.zeros((channels, self.image_height, self.image_width)).cuda()
-        self.norm_mask = torch.zeros((1, self.image_height, self.image_width)).cuda()
+
+        self.weight = torch.from_numpy(np.expand_dims(weight, axis=0)).to(device=device, dtype=dtype)
+        self.image = torch.zeros((channels, self.image_height, self.image_width), device=device, dtype=dtype)
+        self.norm_mask = torch.zeros((1, self.image_height, self.image_width), device=device, dtype=dtype)
+
+    def accumulate_single(self, tile: torch.Tensor, coords):
+        """
+        Accumulates single element
+        :param sample: Predicted image of shape [C,H,W]
+        :param crop_coords: Corresponding tile crops w.r.t to original image
+        """
+        tile = tile.to(device=self.image.device)
+        x, y, tile_width, tile_height = coords
+        self.image[:, y : y + tile_height, x : x + tile_width] += tile * self.weight
+        self.norm_mask[:, y : y + tile_height, x : x + tile_width] += self.weight
 
     def integrate_batch(self, batch: torch.Tensor, crop_coords):
         """
         Accumulates batch of tile predictions
-        :param batch: Predicted tiles
+        :param batch: Predicted tiles  of shape [B,C,H,W]
         :param crop_coords: Corresponding tile crops w.r.t to original image
         """
         if len(batch) != len(crop_coords):
             raise ValueError("Number of images in batch does not correspond to number of coordinates")
 
+        batch = batch.to(device=self.image.device)
         for tile, (x, y, tile_width, tile_height) in zip(batch, crop_coords):
             self.image[:, y : y + tile_height, x : x + tile_width] += tile * self.weight
             self.norm_mask[:, y : y + tile_height, x : x + tile_width] += self.weight
 
     def merge(self) -> torch.Tensor:
         return self.image / self.norm_mask
+
+
+@pytorch_toolbelt_deprecated("This class is deprecated and will be removed in 0.5.0. Please use TileMerger instead.")
+class CudaTileMerger(TileMerger):
+    def __init__(self, image_shape, channels, weight, device="cuda"):
+        super().__init__(image_shape, channels, weight, device)

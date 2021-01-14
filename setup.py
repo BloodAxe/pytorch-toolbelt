@@ -25,7 +25,7 @@ EMAIL = "ekhvedchenya@gmail.com"
 AUTHOR = "Eugene Khvedchenya"
 REQUIRES_PYTHON = ">=3.6.0"
 
-DEPENDENCIES = ["torch>=1.4", "torchvision>=0.5", "opencv-python>=4.1", "torchnet>=0.0.4"]
+DEPENDENCIES = ["torch>=1.4", "torchvision>=0.5", "opencv-python>=4.1"]
 EXCLUDE_FROM_PACKAGES = ["contrib", "docs", "tests", "examples"]
 CURDIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -46,7 +46,7 @@ def load_readme():
 
 
 def get_test_requirements():
-    requirements = ["pytest", "catalyst>=20.8.2", "black==19.3b0"]
+    requirements = ["pytest", "catalyst>=20.10.1", "black==19.3b0"]
     if sys.version_info < (3, 3):
         requirements.append("mock")
     return requirements

@@ -121,7 +121,7 @@ def _lovasz_softmax_flat(probas, labels, classes="present"):
     losses = []
     class_to_sum = list(range(C)) if classes in ["all", "present"] else classes
     for c in class_to_sum:
-        fg = (labels == c).float()  # foreground for class c
+        fg = (labels == c).type_as(probas)  # foreground for class c
         if classes == "present" and fg.sum() == 0:
             continue
         if C == 1:
@@ -130,11 +130,11 @@ def _lovasz_softmax_flat(probas, labels, classes="present"):
             class_pred = probas[:, 0]
         else:
             class_pred = probas[:, c]
-        errors = (Variable(fg) - class_pred).abs()
+        errors = (fg - class_pred).abs()
         errors_sorted, perm = torch.sort(errors, 0, descending=True)
         perm = perm.data
         fg_sorted = fg[perm]
-        losses.append(torch.dot(errors_sorted, Variable(_lovasz_grad(fg_sorted))))
+        losses.append(torch.dot(errors_sorted, _lovasz_grad(fg_sorted)))
     return mean(losses)
 
 
@@ -145,13 +145,16 @@ def _flatten_probas(probas, labels, ignore=None):
         # assumes output of a sigmoid layer
         B, H, W = probas.size()
         probas = probas.view(B, 1, H, W)
-    B, C, H, W = probas.size()
-    probas = probas.permute(0, 2, 3, 1).contiguous().view(-1, C)  # B * H * W, C = P, C
+
+    C = probas.size(1)
+    probas = torch.movedim(probas, 0, -1)  # [B, C, Di, Dj, Dk...] -> [B, C, Di...Dk, C]
+    probas = probas.contiguous().view(-1, C)  # [P, C]
+
     labels = labels.view(-1)
     if ignore is None:
         return probas, labels
     valid = labels != ignore
-    vprobas = probas[valid.nonzero().squeeze()]
+    vprobas = probas[valid]
     vlabels = labels[valid]
     return vprobas, vlabels
 

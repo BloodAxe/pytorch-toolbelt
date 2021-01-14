@@ -7,6 +7,8 @@
 
 import random
 
+__all__ = ["get_random_name"]
+
 left = [
     "admiring",
     "adoring",
@@ -492,8 +494,8 @@ right = [
     # Frances Spence - one of the original programmers of the ENIAC. https://en.wikipedia.org/wiki/ENIAC -
     # https://en.wikipedia.org/wiki/Frances_Spence
     "spence",
-    # Richard Matthew Stallman - the founder of the Free Software movement, the GNU project, the Free Software Foundation,
-    # and the League for Programming Freedom.
+    # Richard Matthew Stallman - the founder of the Free Software movement,
+    # the GNU project, the Free Software Foundation, and the League for Programming Freedom.
     # He also invented the concept of copyleft to protect the ideals of this movement, and enshrined
     # this concept in the widely-used GPL (General Public License) for software.
     # https://en.wikiquote.org/wiki/Richard_Stallman
@@ -529,7 +531,8 @@ right = [
     # Sir Mokshagundam Visvesvaraya - is a notable Indian engineer.
     # He is a recipient of the Indian Republic's highest honour,
     # the Bharat Ratna, in 1955. On his birthday,
-    # 15 September is celebrated as Engineer's Day in India in his memory - https://en.wikipedia.org/wiki/Visvesvaraya
+    # 15 September is celebrated as Engineer's Day in India in his memory.
+    # https://en.wikipedia.org/wiki/Visvesvaraya
     "visvesvaraya",
     # Christiane Nüsslein-Volhard - German biologist, won Nobel Prize in Physiology or Medicine in 1995
     # for research on the genetic control of embryonic development.
@@ -544,22 +547,27 @@ right = [
     # Roberta Williams, did pioneering work in graphical adventure games for personal computers,
     # particularly the King's Quest series. https://en.wikipedia.org/wiki/Roberta_Williams
     "williams",
-    # Sophie Wilson designed the first Acorn Micro-Computer and the instruction set for ARM processors. https://en.wikipedia.org/wiki/Sophie_Wilson
+    # Sophie Wilson designed the first Acorn Micro-Computer and the instruction set for ARM processors.
+    # https://en.wikipedia.org/wiki/Sophie_Wilson
     "wilson",
-    # Jeannette Wing - co-developed the Liskov substitution principle. - https://en.wikipedia.org/wiki/Jeannette_Wing
+    # Jeannette Wing - co-developed the Liskov substitution principle.
+    # https://en.wikipedia.org/wiki/Jeannette_Wing
     "wing",
     # Steve Wozniak invented the Apple I and Apple II.
     # https://en.wikipedia.org/wiki/Steve_Wozniak
     "wozniak",
     # The Wright brothers, Orville and Wilbur - credited with inventing and building
-    # the world's first successful airplane and making the first controlled, powered and sustained heavier-than-air human flight -
+    # the world's first successful airplane and making the first controlled, powered and
+    # sustained heavier-than-air human flight.
     # https://en.wikipedia.org/wiki/Wright_brothers
     "wright",
     # Rosalyn Sussman Yalow - Rosalyn Sussman Yalow was an American medical physicist,
     # and a co-winner of the 1977 Nobel Prize in Physiology or Medicine for development of the radioimmunoassay technique.
     # https://en.wikipedia.org/wiki/Rosalyn_Sussman_Yalow
     "yalow",
-    # Ada Yonath - an Israeli crystallographer, the first woman from the Middle East to win a Nobel prize in the sciences. https://en.wikipedia.org/wiki/Ada_Yonath
+    # Ada Yonath - an Israeli crystallographer,
+    # the first woman from the Middle East to win a Nobel prize in the sciences.
+    # https://en.wikipedia.org/wiki/Ada_Yonath
     "yonath",
 ]
 
@@ -571,7 +579,3 @@ def get_random_name(sep="_"):
         if name == "boring" + sep + "wozniak":  # Steve Wozniak is not boring
             continue
         return name
-
-
-if __name__ == "__main__":
-    print(get_random_name())

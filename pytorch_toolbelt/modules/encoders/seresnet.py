@@ -77,8 +77,8 @@ class SEResnetEncoder(EncoderModule):
         # Return only features that were requested
         return _take(output_features, self._layers)
 
-    def change_input_channels(self, input_channels: int, mode="auto"):
-        self.layer0.conv1 = make_n_channel_input(self.layer0.conv1, input_channels, mode)
+    def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
+        self.layer0.conv1 = make_n_channel_input(self.layer0.conv1, input_channels, mode, **kwargs)
         return self
 
 

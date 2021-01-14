@@ -4,7 +4,7 @@ import torch
 from pytorch_toolbelt.losses import DiceLoss, JaccardLoss, SoftBCEWithLogitsLoss, SoftCrossEntropyLoss
 
 
-def test_sigmoid_focal_loss():
+def test_focal_loss_with_logits():
     input_good = torch.tensor([10, -10, 10]).float()
     input_bad = torch.tensor([-1, 2, 0]).float()
     target = torch.tensor([1, 0, 1])
@@ -14,13 +14,13 @@ def test_sigmoid_focal_loss():
     assert loss_good < loss_bad
 
 
-def test_reduced_focal_loss():
-    input_good = torch.tensor([10, -10, 10]).float()
-    input_bad = torch.tensor([-1, 2, 0]).float()
-    target = torch.tensor([1, 0, 1])
+def test_softmax_focal_loss_with_logits():
+    input_good = torch.tensor([[0, 10, 0], [10, 0, 0], [0, 0, 10]]).float()
+    input_bad = torch.tensor([[0, -10, 0], [0, 10, 0], [0, 0, 10]]).float()
+    target = torch.tensor([1, 0, 2]).long()
 
-    loss_good = F.reduced_focal_loss(input_good, target)
-    loss_bad = F.reduced_focal_loss(input_bad, target)
+    loss_good = F.softmax_focal_loss_with_logits(input_good, target)
+    loss_bad = F.softmax_focal_loss_with_logits(input_bad, target)
     assert loss_good < loss_bad
 
 

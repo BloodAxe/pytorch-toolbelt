@@ -255,7 +255,7 @@ def instantiate_activation_block(activation_name: str, **kwargs) -> nn.Module:
         act_params["inplace"] = kwargs["inplace"]
 
     if "slope" in kwargs and activation_name in {ACT_LEAKY_RELU}:
-        act_params["slope"] = kwargs["slope"]
+        act_params["negative_slope"] = kwargs["slope"]
 
     return block(**act_params)
 

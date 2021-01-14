@@ -4,6 +4,7 @@ import torch
 from torch import nn
 
 from .common import DecoderModule
+from .. import DeconvolutionUpsample2d
 from ..unet import UnetBlock
 
 __all__ = ["UNetDecoder"]
@@ -87,7 +88,7 @@ class UNetDecoder(DecoderModule):
         for index, (upsample_block, decoder_block) in enumerate(zip(self.upsamples, self.blocks)):
             encoder_input = feature_maps[num_feature_maps - index - 2]
 
-            if isinstance(upsample_block, nn.ConvTranspose2d):
+            if isinstance(upsample_block, (nn.ConvTranspose2d, DeconvolutionUpsample2d)):
                 x = upsample_block(x, output_size=encoder_input.size())
             else:
                 x = upsample_block(x)

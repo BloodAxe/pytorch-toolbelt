@@ -18,10 +18,8 @@ matrix:
 install:
 - if [[ "$TEST_MODE" == "DOCS" ]]; then pip install -q .; fi
 - if [[ "$TEST_MODE" != "DOCS" ]]; then pip install -q .[tests]; fi
-- if [[ "$TEST_MODE" != "DOCS" ]]; then pip install "pydocstyle<4.0.0" flake8 flake8-docstrings; fi
 script:
 - if [[ "$TEST_MODE" != "DOCS" ]]; then pytest; fi
-- if [[ "$TEST_MODE" != "DOCS" ]]; then flake8; fi
 deploy:
   provider: pypi
   user: BloodAxe
