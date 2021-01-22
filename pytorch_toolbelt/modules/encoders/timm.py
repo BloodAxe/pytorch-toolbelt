@@ -432,9 +432,9 @@ class HRNetW18Encoder(EncoderModule):
         from timm.models import hrnet
 
         if layers is None:
-            layers = [0, 1, 2, 3]
-        encoder = hrnet.hrnet_w18(pretrained=pretrained, features_only=True, out_indices=(1, 2, 3, 4))
-        super().__init__([128, 256, 512, 1024], [4, 8, 16, 32], layers)
+            layers = [1, 2, 3, 4]
+        encoder = hrnet.hrnet_w18(pretrained=pretrained, features_only=True, out_indices=(0, 1, 2, 3, 4))
+        super().__init__([64, 128, 256, 512, 1024], [2, 4, 8, 16, 32], layers)
         self.encoder = encoder
 
     def forward(self, x):
@@ -451,10 +451,10 @@ class HRNetW32Encoder(EncoderModule):
         from timm.models import hrnet
 
         if layers is None:
-            layers = [0, 1, 2, 3]
+            layers = [1, 2, 3, 4]
 
-        encoder = hrnet.hrnet_w32(pretrained=pretrained, features_only=True, out_indices=(1, 2, 3, 4))
-        super().__init__([128, 256, 512, 1024], [4, 8, 16, 32], layers)
+        encoder = hrnet.hrnet_w32(pretrained=pretrained, features_only=True, out_indices=(0, 1, 2, 3, 4))
+        super().__init__([64, 128, 256, 512, 1024], [2, 4, 8, 16, 32], layers)
         self.encoder = encoder
 
     def forward(self, x):
@@ -471,10 +471,10 @@ class HRNetW48Encoder(EncoderModule):
         from timm.models import hrnet
 
         if layers is None:
-            layers = [0, 1, 2, 3]
+            layers = [1, 2, 3, 4]
 
-        encoder = hrnet.hrnet_w48(pretrained=pretrained, features_only=True, out_indices=(1, 2, 3, 4))
-        super().__init__([128, 256, 512, 1024], [4, 8, 16, 32], layers)
+        encoder = hrnet.hrnet_w48(pretrained=pretrained, features_only=True, out_indices=(0, 1, 2, 3, 4))
+        super().__init__([64, 128, 256, 512, 1024], [2, 4, 8, 16, 32], layers)
         self.encoder = encoder
 
     def forward(self, x):
