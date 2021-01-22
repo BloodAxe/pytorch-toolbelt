@@ -7,6 +7,7 @@ from torch.optim.lr_scheduler import (
     ExponentialLR,
     CyclicLR,
     MultiStepLR,
+    ReduceLROnPlateau,
     CosineAnnealingLR,
     CosineAnnealingWarmRestarts,
 )
