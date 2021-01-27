@@ -12,7 +12,7 @@ from torch.optim.lr_scheduler import (
     CosineAnnealingWarmRestarts,
 )
 
-__all__ = ["get_scheduler", "CosineAnnealingWarmRestartsWithDecay"]
+__all__ = ["get_scheduler", "FlatCosineAnnealingLR", "CosineAnnealingWarmRestartsWithDecay"]
 
 
 class CosineAnnealingWarmRestartsWithDecay(CosineAnnealingWarmRestarts):

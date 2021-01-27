@@ -1,33 +1,73 @@
+from typing import Type, Dict, Any
+
 from torch.optim.optimizer import Optimizer
 from torch import nn
-__all__ = ["get_optimizer"]
+import torch.optim
+
+
+__all__ = ["get_optimizer", "get_optimizer_cls"]
+
+
+def get_optimizer_cls(optimizer_name) -> Type[Optimizer]:
+    _OPTIMIZERS_REGISTRY = {
+        "sgd": torch.optim.SGD,
+        "asgd": torch.optim.ASGD,
+        "adam": torch.optim.Adam,
+        "adamw": torch.optim.AdamW,
+        "adamax": torch.optim.Adamax,
+        "adagrad": torch.optim.Adagrad,
+        "adadelta": torch.optim.Adadelta,
+        "rmsprop": torch.optim.RMSprop,
+        "rprop": torch.optim.Rprop,
+    }
+
+    optimizer_name = optimizer_name.lower()
+    if optimizer_name in _OPTIMIZERS_REGISTRY:
+        return _OPTIMIZERS_REGISTRY[optimizer_name]
+
+    _APEX_OPTIMIZERS = ["fused_adam", "fused_sgd", "fused_lamb"]
+    if optimizer_name in _APEX_OPTIMIZERS:
+        try:
+            from apex.optimizers import FusedAdam, FusedSGD, FusedLAMB
+
+            _APEX_REGISTRY = {"fused_adam": FusedAdam, "fused_sgd": FusedSGD, "fused_lamb": FusedLAMB}
+            if optimizer_name in _OPTIMIZERS_REGISTRY:
+                return _APEX_REGISTRY[optimizer_name]
+        except ImportError:
+            raise ValueError(
+                f"Requested optimizer {optimizer_name} is not available since NVIDIA/apex is not installed"
+            )
+
+    try:
+        import torch_optimizer as to
+
+        return to.get(optimizer_name)
+    except ImportError:
+        raise ValueError(
+            f"Requested optimizer {optimizer_name} is not available since torch-optimizer is not installed. "
+            f"Please install it from https://github.com/jettify/pytorch-optimizer"
+        )
+    except ValueError:
+        raise
 
 
 def get_optimizer(
     model: nn.Module,
     optimizer_name: str,
-    learning_rate: float,
-    weight_decay: float = 1e-5,
-    no_weight_decay_on_bias: bool = False,
-    eps: float = 1e-5,
-    **kwargs,
+    optimizer_params: Dict[str, Any],
+    apply_weight_decay_to_bias: bool = True,
 ) -> Optimizer:
     """
     Construct an Optimizer for given model
     Args:
         model: Model to optimize. Only parameters that require_grad will be used
-        optimizer_name: Name of the optimizer. Case-insensitive
-        learning_rate: Target learning rate (regardless of the scheduler)
-        weight_decay: Target weight decay
-        no_weight_decay_on_bias: Whether to disable weight decay on bias parameters
-        eps: Default epsilon for Adam-like optimizers.
-        **kwargs: Additional parameters for optimizer
-
+        optimizer_name: Name of the optimizer (case-insensitive). Supports native pytorch optimizers, apex and
+            optimizers from pytorch-optimizers package.
+        optimizer_params: Dict of optimizer params (lr, weight_decay, eps, etc)
+        apply_weight_decay_to_bias: Whether to apply weight decay on bias parameters. Default is True
     Returns:
-
+        Optimizer instance
     """
-    from torch.optim import ASGD, SGD, Adam, RMSprop, AdamW
-    from torch_optimizer import RAdam, Lamb, DiffGrad, NovoGrad, Ranger
 
     # Optimizer parameter groups
     default_pg, biases_pg = [], []
@@ -39,108 +79,19 @@ def get_optimizer(
             else:
                 default_pg.append(v)  # all else
 
-    if no_weight_decay_on_bias:
-        parameters = default_pg
-    else:
+    if apply_weight_decay_to_bias:
         parameters = default_pg + biases_pg
-
-    optimizer: Optimizer = None
-
-    if optimizer_name.lower() == "sgd":
-        optimizer = SGD(
-            parameters,
-            lr=learning_rate,
-            momentum=0.9,
-            nesterov=True,
-            weight_decay=weight_decay,
-            **kwargs,
-        )
-    elif optimizer_name.lower() == "asgd":
-        optimizer = ASGD(
-            parameters,
-            lr=learning_rate,
-            weight_decay=weight_decay,
-            **kwargs,
-        )
-    elif optimizer_name.lower() == "adam":
-        optimizer = Adam(
-            parameters,
-            lr=learning_rate,
-            weight_decay=weight_decay,
-            eps=eps,
-            **kwargs,
-        )
-    elif optimizer_name.lower() == "rms":
-        optimizer = RMSprop(parameters, learning_rate, weight_decay=weight_decay, **kwargs)
-    elif optimizer_name.lower() == "adamw":
-        optimizer = AdamW(
-            parameters,
-            lr=learning_rate,
-            weight_decay=weight_decay,
-            eps=eps,
-            **kwargs,
-        )
-    elif optimizer_name.lower() == "radam":
-        optimizer = RAdam(
-            parameters,
-            lr=learning_rate,
-            weight_decay=weight_decay,
-            eps=eps,
-            **kwargs,
-        )
-    elif optimizer_name.lower() == "ranger":
-        optimizer = Ranger(
-            parameters,
-            lr=learning_rate,
-            eps=eps,
-            weight_decay=weight_decay,
-            **kwargs,
-        )
-    elif optimizer_name.lower() == "lamb":
-        optimizer = Lamb(
-            parameters,
-            lr=learning_rate,
-            eps=eps,
-            weight_decay=weight_decay,
-            **kwargs,
-        )
-    elif optimizer_name.lower() == "diffgrad":
-        optimizer = DiffGrad(
-            parameters,
-            lr=learning_rate,
-            eps=eps,
-            weight_decay=weight_decay,
-            **kwargs,
-        )
-    elif optimizer_name.lower() == "novograd":
-        optimizer = NovoGrad(
-            parameters,
-            lr=learning_rate,
-            eps=eps,
-            weight_decay=weight_decay,
-            **kwargs,
-        )
-    elif optimizer_name.lower() == "fused_lamb":
-        from apex.optimizers import FusedLAMB
-
-        optimizer = FusedLAMB(parameters, learning_rate, eps=eps, weight_decay=weight_decay, **kwargs)
-    elif optimizer_name.lower() == "fused_sgd":
-        from apex.optimizers import FusedSGD
-
-        optimizer = FusedSGD(
-            parameters, learning_rate, momentum=0.9, nesterov=True, weight_decay=weight_decay, **kwargs
-        )
-    elif optimizer_name.lower() == "fused_adam":
-        from apex.optimizers import FusedAdam
-
-        optimizer = FusedAdam(
-            parameters, learning_rate, eps=eps, weight_decay=weight_decay, adam_w_mode=True, **kwargs
-        )
     else:
-        raise KeyError(f"Cannot get optimizer by name {optimizer_name}")
+        parameters = default_pg
 
-    # Currently either no_wd or per-group lr
-    if no_weight_decay_on_bias:
-        optimizer.add_param_group({"params": biases_pg, "weight_decay": 0})
+    optimizer_cls = get_optimizer_cls(optimizer_name)
+
+    optimizer: Optimizer = optimizer_cls(
+        parameters,
+        **optimizer_params,
+    )
+
+    if not apply_weight_decay_to_bias:
+        optimizer.add_param_group({"params": biases_pg, "weight_decay": 0.0})
 
     return optimizer
