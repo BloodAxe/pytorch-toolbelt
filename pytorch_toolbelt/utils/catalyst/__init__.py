@@ -10,7 +10,7 @@ from .loss_adapter import *
 def _register_modules(r):
     from pytorch_toolbelt.modules import encoders as e
 
-    r.add_from_module(e, prefix="tbt")
+    r.add_from_module(e, prefix="tbt.")
 
 
 def _register_criterions(r):
