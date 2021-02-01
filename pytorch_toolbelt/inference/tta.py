@@ -500,8 +500,8 @@ def flips_labels_deaugment(
     """
     assert logits.size(0) % 3 == 0
 
-    b1, b2, b3, b4 = torch.chunk(logits, 4)
-    logits: Tensor = torch.stack([b1, b2, b3, b4])
+    orig, flipped_lr, flipped_ud = torch.chunk(logits, 3)
+    logits: Tensor = torch.stack([orig, flipped_lr, flipped_ud])
 
     if reduction == "mean":
         logits = logits.mean(dim=0)
