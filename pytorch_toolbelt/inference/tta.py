@@ -26,6 +26,8 @@ __all__ = [
     "d4_image_deaugment",
     "d4_labels_deaugment",
     "fivecrop_image2label",
+    "fivecrop_image_augment",
+    "fivecrop_label_deaugment",
     "fliplr_image2label",
     "fliplr_image2mask",
     "fliplr_image_augment",
@@ -54,6 +56,53 @@ def fliplr_image2label(model: nn.Module, image: Tensor) -> Tensor:
     return output * one_over_2
 
 
+def fivecrop_image_augment(image: Tensor, crop_size: Tuple) -> Tensor:
+    """Test-time augmentation for image classification that takes five crops out of input tensor (4 on corners and central)
+    and averages predictions from them.
+
+    :param image: Input image tensor
+    :param crop_size: Crop size. Must be smaller than image size
+    :return: Averaged logits
+    """
+    image_height, image_width = int(image.size(2)), int(image.size(3))
+    crop_height, crop_width = crop_size
+
+    if crop_height > image_height:
+        raise ValueError(f"Tensor height ({image_height}) is less than requested crop size ({crop_height})")
+    if crop_width > image_width:
+        raise ValueError(f"Tensor width ({image_width}) is less than requested crop size ({crop_width})")
+
+    bottom_crop_start = image_height - crop_height
+    right_crop_start = image_width - crop_width
+    crop_tl = image[..., :crop_height, :crop_width]
+    crop_tr = image[..., :crop_height, right_crop_start:]
+    crop_bl = image[..., bottom_crop_start:, :crop_width]
+    crop_br = image[..., bottom_crop_start:, right_crop_start:]
+
+    center_crop_y = (image_height - crop_height) // 2
+    center_crop_x = (image_width - crop_width) // 2
+    crop_cc = image[..., center_crop_y : center_crop_y + crop_height, center_crop_x : center_crop_x + crop_width]
+
+    return torch.cat(
+        [crop_tl, crop_tr, crop_bl, crop_br, crop_cc],
+        dim=0,
+    )
+
+
+def fivecrop_label_deaugment(logits, reduction: MaybeStrOrCallable = "mean"):
+    crop_tl, crop_tr, crop_bl, crop_br, crop_cc = torch.chunk(logits, 5)
+
+    logits: Tensor = torch.stack([crop_tl, crop_tr, crop_bl, crop_br, crop_cc])
+
+    if reduction == "mean":
+        logits = logits.mean(dim=0)
+    if reduction == "sum":
+        logits = logits.sum(dim=0)
+    if callable(reduction):
+        logits = reduction(logits, dim=0)
+    return logits
+
+
 def fivecrop_image2label(model: nn.Module, image: Tensor, crop_size: Tuple) -> Tensor:
     """Test-time augmentation for image classification that takes five crops out of input tensor (4 on corners and central)
     and averages predictions from them.
@@ -63,39 +112,10 @@ def fivecrop_image2label(model: nn.Module, image: Tensor, crop_size: Tuple) -> T
     :param crop_size: Crop size. Must be smaller than image size
     :return: Averaged logits
     """
-    image_height, image_width = int(image.size(2)), int(image.size(3))
-    crop_height, crop_width = crop_size
-
-    assert crop_height <= image_height
-    assert crop_width <= image_width
-
-    bottom_crop_start = image_height - crop_height
-    right_crop_start = image_width - crop_width
-    crop_tl = image[..., :crop_height, :crop_width]
-    crop_tr = image[..., :crop_height, right_crop_start:]
-    crop_bl = image[..., bottom_crop_start:, :crop_width]
-    crop_br = image[..., bottom_crop_start:, right_crop_start:]
-
-    assert crop_tl.size(2) == crop_height
-    assert crop_tr.size(2) == crop_height
-    assert crop_bl.size(2) == crop_height
-    assert crop_br.size(2) == crop_height
-
-    assert crop_tl.size(3) == crop_width
-    assert crop_tr.size(3) == crop_width
-    assert crop_bl.size(3) == crop_width
-    assert crop_br.size(3) == crop_width
-
-    center_crop_y = (image_height - crop_height) // 2
-    center_crop_x = (image_width - crop_width) // 2
-
-    crop_cc = image[..., center_crop_y : center_crop_y + crop_height, center_crop_x : center_crop_x + crop_width]
-    assert crop_cc.size(2) == crop_height
-    assert crop_cc.size(3) == crop_width
-
-    output = model(crop_tl) + model(crop_tr) + model(crop_bl) + model(crop_br) + model(crop_cc)
-    one_over_5 = float(1.0 / 5.0)
-    return output * one_over_5
+    input_aug = fivecrop_image_augment(image, crop_size)
+    preds_aug = model(input_aug)
+    output = fivecrop_label_deaugment(preds_aug)
+    return output
 
 
 def tencrop_image2label(model: nn.Module, image: Tensor, crop_size: Tuple) -> Tensor:
@@ -246,7 +266,15 @@ def d2_image_augment(image: Tensor) -> Tensor:
             - Vertically-flipped tensor
 
     """
-    return torch.cat([image, F.torch_rot180(image), F.torch_fliplr(image), F.torch_flipud(image),], dim=0,)
+    return torch.cat(
+        [
+            image,
+            F.torch_rot180(image),
+            F.torch_fliplr(image),
+            F.torch_flipud(image),
+        ],
+        dim=0,
+    )
 
 
 def d2_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") -> Tensor:
@@ -265,7 +293,12 @@ def d2_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") ->
     b1, b2, b3, b4 = torch.chunk(image, 4)
 
     image: Tensor = torch.stack(
-        [b1, F.torch_rot180(b2), F.torch_fliplr(b3), F.torch_flipud(b4),]
+        [
+            b1,
+            F.torch_rot180(b2),
+            F.torch_fliplr(b3),
+            F.torch_flipud(b4),
+        ]
     )
 
     if reduction == "mean":
@@ -421,7 +454,10 @@ def flips_image_augment(image: Tensor) -> Tensor:
     return torch.cat([image, F.torch_fliplr(image), F.torch_flipud(image)], dim=0)
 
 
-def flips_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean",) -> Tensor:
+def flips_image_deaugment(
+    image: Tensor,
+    reduction: MaybeStrOrCallable = "mean",
+) -> Tensor:
     """
     Deaugment input tensor (output of the model) assuming the input was flip-augmented image (See flips_augment).
     Args:
@@ -449,7 +485,10 @@ def flips_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean",
     return image
 
 
-def flips_labels_deaugment(logits: Tensor, reduction: MaybeStrOrCallable = "mean",) -> Tensor:
+def flips_labels_deaugment(
+    logits: Tensor,
+    reduction: MaybeStrOrCallable = "mean",
+) -> Tensor:
     """
     Deaugment input tensor (output of the model) assuming the input was flip-augmented image (See flips_image_augment).
     Args:
@@ -506,7 +545,9 @@ def ms_image_augment(
 
 
 def ms_labels_deaugment(
-    logits: List[Tensor], size_offsets: List[Union[int, Tuple[int, int]]], reduction: MaybeStrOrCallable = "mean",
+    logits: List[Tensor],
+    size_offsets: List[Union[int, Tuple[int, int]]],
+    reduction: MaybeStrOrCallable = "mean",
 ):
     """
     Deaugment logits
@@ -555,7 +596,7 @@ def ms_image_deaugment(
         mode:
         align_corners:
         stride: Stride of the output feature map w.r.t to model input size.
-        Used to correctly scale size_offsets to match with size of output feature maps 
+        Used to correctly scale size_offsets to match with size of output feature maps
 
     Returns:
 
