@@ -624,54 +624,6 @@ def ms_image_deaugment(
     return deaugmented_outputs
 
 
-@pytorch_toolbelt_deprecated("This class is deprecated. Please use MultiscaleTTA instead")
-class MultiscaleTTAWrapper(nn.Module):
-    """
-    Multiscale TTA wrapper module
-    """
-
-    def __init__(self, model: nn.Module, scale_levels: List[float] = None, size_offsets: List[int] = None):
-        """
-        Initialize multi-scale TTA wrapper
-
-        :param model: Base model for inference
-        :param scale_levels: List of additional scale levels,
-            e.g: [0.5, 0.75, 1.25]
-        """
-        super().__init__()
-        assert scale_levels or size_offsets, "Either scale_levels or size_offsets must be set"
-        assert not (scale_levels and size_offsets), "Either scale_levels or size_offsets must be set"
-        self.model = model
-        self.scale_levels = scale_levels
-        self.size_offsets = size_offsets
-
-    def forward(self, input: Tensor) -> Tensor:
-        h = input.size(2)
-        w = input.size(3)
-
-        out_size = h, w
-        output = self.model(input)
-
-        if self.scale_levels:
-            for scale in self.scale_levels:
-                dst_size = int(h * scale), int(w * scale)
-                input_scaled = interpolate(input, dst_size, mode="bilinear", align_corners=False)
-                output_scaled = self.model(input_scaled)
-                output_scaled = interpolate(output_scaled, out_size, mode="bilinear", align_corners=False)
-                output += output_scaled
-            output /= 1.0 + len(self.scale_levels)
-        elif self.size_offsets:
-            for offset in self.size_offsets:
-                dst_size = int(h + offset), int(w + offset)
-                input_scaled = interpolate(input, dst_size, mode="bilinear", align_corners=False)
-                output_scaled = self.model(input_scaled)
-                output_scaled = interpolate(output_scaled, out_size, mode="bilinear", align_corners=False)
-                output += output_scaled
-            output /= 1.0 + len(self.size_offsets)
-
-        return output
-
-
 class GeneralizedTTA(nn.Module):
     """
     Example:
