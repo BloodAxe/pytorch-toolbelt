@@ -759,7 +759,11 @@ class MultiscaleTTA(nn.Module):
         ms_outputs = [self.model(x) for x in ms_inputs]
 
         outputs = {}
-        keys = self.keys or ms_outputs[0].keys()
+        if self.keys is None:
+            keys = ms_outputs[0].keys()
+        else:
+            keys = self.keys
+
         for key in keys:
             deaugment_fn: Callable = self.deaugment_fn[key]
             values = [x[key] for x in ms_outputs]
