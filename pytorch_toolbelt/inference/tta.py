@@ -567,11 +567,12 @@ def ms_labels_deaugment(
 
     if reduction == "mean":
         deaugmented_outputs = deaugmented_outputs.mean(dim=0)
-    if reduction == "sum":
+    elif reduction == "sum":
         deaugmented_outputs = deaugmented_outputs.sum(dim=0)
-    if callable(reduction):
+    elif callable(reduction):
         deaugmented_outputs = reduction(deaugmented_outputs, dim=0)
-
+    else:
+        raise ValueError(f"Usupported reduction mode {mode}")
     return deaugmented_outputs
 
 
