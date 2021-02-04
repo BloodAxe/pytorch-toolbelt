@@ -524,7 +524,7 @@ class TTAWrapper(nn.Module):
 
 
 def ms_image_augment(
-    image: Tensor, size_offsets: List[Union[int, Tuple[int, int]]], mode="bilinear", align_corners=True
+    image: Tensor, size_offsets: List[Union[int, Tuple[int, int]]], mode="bilinear", align_corners=False
 ) -> List[Tensor]:
     """
     Multi-scale image augmentation. This function create list of resized tensors from the input one.
@@ -556,10 +556,6 @@ def ms_labels_deaugment(
         logits: List of tensors of shape [B, C]
         size_offsets:
         reduction:
-        mode:
-        align_corners:
-        stride: Stride of the output feature map w.r.t to model input size.
-        Used to correctly scale size_offsets to match with size of output feature maps
 
     Returns:
 
