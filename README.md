@@ -160,9 +160,6 @@ logits = tta.fliplr_image2label(model, input)
 # Truly functional TTA for image segmentation using D4 augmentation:
 logits = tta.d4_image2mask(model, input)
 
-# TTA using wrapper module:
-tta_model = tta.TTAWrapper(model, tta.fivecrop_image2label, crop_size=512)
-logits = tta_model(input)
 ```
 
 ### Inference on huge images:
