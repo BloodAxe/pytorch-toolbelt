@@ -468,7 +468,7 @@ def draw_semantic_segmentation_predictions(
             for class_index, class_color in enumerate(class_colors):
                 pred_mask[logits == class_index, :] = class_color
 
-            overlay = np.hstack((image, true_mask, pred_mask))
+            overlay = np.hstack((image, true_mask, pred_mask)).copy()
         else:
             raise ValueError(mode)
 
