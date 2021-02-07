@@ -5,7 +5,7 @@ from torch import nn
 import torch.optim
 
 
-__all__ = ["get_optimizer", "get_optimizer_cls"]
+__all__ = ["get_optimizer", "get_optimizer_cls", "scale_learning_rate_for_ddp"]
 
 
 def get_optimizer_cls(optimizer_name) -> Type[Optimizer]:
@@ -51,11 +51,21 @@ def get_optimizer_cls(optimizer_name) -> Type[Optimizer]:
         raise
 
 
+def scale_learning_rate_for_ddp(optimizer_params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Scale learning rate with respect to world size for Distributed Data Parallel training.
+    Efficient learning rate is WORLD_SIZE * learning rate from config
+    For non-distributed runs WORLD_SIZE is 1
+    """
+    if torch.distributed.is_available():
+        optimizer_params = copy.deepcopy(optimizer_params)
+        optimizer_params["lr"] = optimizer_params["lr"] * torch.distributed.get_world_size()
+
+    return optimizer_params
+
+
 def get_optimizer(
-    model: nn.Module,
-    optimizer_name: str,
-    optimizer_params: Dict[str, Any],
-    apply_weight_decay_to_bias: bool = True,
+    model: nn.Module, optimizer_name: str, optimizer_params: Dict[str, Any], apply_weight_decay_to_bias: bool = True,
 ) -> Optimizer:
     """
     Construct an Optimizer for given model
@@ -87,8 +97,7 @@ def get_optimizer(
     optimizer_cls = get_optimizer_cls(optimizer_name)
 
     optimizer: Optimizer = optimizer_cls(
-        parameters,
-        **optimizer_params,
+        parameters, **optimizer_params,
     )
 
     if not apply_weight_decay_to_bias:
