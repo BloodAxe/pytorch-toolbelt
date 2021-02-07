@@ -53,8 +53,7 @@ def pixel_accuracy(outputs: torch.Tensor, targets: torch.Tensor, ignore_index=No
 
 
 class PixelAccuracyCallback(MetricCallback):
-    """Pixel accuracy metric callback
-    """
+    """Pixel accuracy metric callback"""
 
     def __init__(
         self, input_key: str = "targets", output_key: str = "logits", prefix: str = "accuracy", ignore_index=None
@@ -156,7 +155,7 @@ class ConfusionMatrixCallback(Callback):
 
 class F1ScoreCallback(Callback):
     """
-        Compute F1 metric score
+    Compute F1 metric score
 
     """
 
@@ -429,7 +428,8 @@ class IoUMetricsCallback(Callback):
         :param output_key: output key to use for precision calculation; specifies our `y_pred`.
         """
         super().__init__(CallbackOrder.Metric)
-        assert mode in {BINARY_MODE, MULTILABEL_MODE, MULTICLASS_MODE}
+        if mode not in {BINARY_MODE, MULTILABEL_MODE, MULTICLASS_MODE}:
+            raise ValueError("Mode must be one of BINARY_MODE, MULTILABEL_MODE, MULTICLASS_MODE")
 
         if prefix is None:
             prefix = metric
@@ -505,8 +505,9 @@ class IoUMetricsCallback(Callback):
         self.scores.extend(score_per_image)
 
     def on_loader_end(self, runner: IRunner):
-        scores = np.array(self.scores)
-        mean_score = np.nanmean(scores)
+        scores = np.concatenate(all_gather(np.array(self.scores)))
+        mean_per_class = np.nanmean(scores, axis=1)  # Average across classes
+        mean_score = np.nanmean(mean_per_class, axis=0)  # Average across images
 
         runner.loader_metrics[self.prefix] = float(mean_score)
 
