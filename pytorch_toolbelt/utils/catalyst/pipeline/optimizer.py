@@ -3,6 +3,7 @@ from typing import Type, Dict, Any
 from torch.optim.optimizer import Optimizer
 from torch import nn
 import torch.optim
+import copy
 
 
 __all__ = ["get_optimizer", "get_optimizer_cls", "scale_learning_rate_for_ddp"]
@@ -57,7 +58,7 @@ def scale_learning_rate_for_ddp(optimizer_params: Dict[str, Any]) -> Dict[str, A
     Efficient learning rate is WORLD_SIZE * learning rate from config
     For non-distributed runs WORLD_SIZE is 1
     """
-    if torch.distributed.is_available():
+    if torch.distributed.is_available() and torch.distributed.is_initialized():
         optimizer_params = copy.deepcopy(optimizer_params)
         optimizer_params["lr"] = optimizer_params["lr"] * torch.distributed.get_world_size()
 
