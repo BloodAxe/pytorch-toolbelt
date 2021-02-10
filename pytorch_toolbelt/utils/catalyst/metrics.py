@@ -351,6 +351,7 @@ def multiclass_dice_iou_score(
     eps=1e-7,
     nan_score_on_empty=False,
     classes_of_interest=None,
+    ignore_index=None,
 ):
     ious = []
     num_classes = y_pred.size(0)
@@ -360,9 +361,16 @@ def multiclass_dice_iou_score(
         classes_of_interest = range(num_classes)
 
     for class_index in classes_of_interest:
+        y_pred_i = (y_pred == class_index).float()
+        y_true_i = (y_true == class_index).float()
+        if ignore_index is not None:
+            not_ignore_mask = (y_true != ignore_index).float()
+            y_pred_i *= not_ignore_mask
+            y_true_i *= not_ignore_mask
+
         iou = binary_dice_iou_score(
-            y_pred=(y_pred == class_index).float(),
-            y_true=(y_true == class_index).float(),
+            y_pred=y_pred_i,
+            y_true=y_true_i,
             mode=mode,
             nan_score_on_empty=nan_score_on_empty,
             threshold=threshold,
@@ -463,17 +471,13 @@ class IoUMetricsCallback(Callback):
             )
 
         if self.mode == MULTICLASS_MODE:
-            if ignore_index is not None:
-                warnings.warn(
-                    f"Use of ignore_index on {self.__class__.__name__} with {self.mode} "
-                    "is not needed as this implementation will ignore all target values outside [0..num_classes) range."
-                )
             self.score_fn = partial(
                 multiclass_dice_iou_score,
                 mode=metric,
                 threshold=0.0,
                 nan_score_on_empty=nan_score_on_empty,
                 classes_of_interest=self.classes_of_interest,
+                ignore_index=ignore_index,
             )
 
         if self.mode == MULTILABEL_MODE:
