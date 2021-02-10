@@ -509,11 +509,15 @@ def ms_image_augment(
     batch_size, channels, rows, cols = image.size()
     augmented_inputs = []
     for offset in size_offsets:
-        # TODO: Add support of tuple (row_offset, col_offset)
-        if offset == 0:
+        if isinstance(offset, (tuple, list)):
+            rows_offset, cols_offset = offset
+        else:
+            rows_offset, cols_offset = offset, offset
+
+        if rows_offset == 0 and cols_offset == 0:
             augmented_inputs.append(image)
         else:
-            scale_size = rows + offset, cols + offset
+            scale_size = rows + rows_offset, cols + cols_offset
             scaled_input = torch.nn.functional.interpolate(
                 image, size=scale_size, mode=mode, align_corners=align_corners
             )
@@ -578,12 +582,16 @@ def ms_image_deaugment(
 
     deaugmented_outputs = []
     for feature_map, offset in zip(images, size_offsets):
-        if offset == 0:
+        if isinstance(offset, (tuple, list)):
+            rows_offset, cols_offset = offset
+        else:
+            rows_offset, cols_offset = offset, offset
+
+        if rows_offset == 0 and cols_offset == 0:
             deaugmented_outputs.append(feature_map)
         else:
             batch_size, channels, rows, cols = feature_map.size()
-            # TODO: Add support of tuple (row_offset, col_offset)
-            original_size = rows - offset // stride, cols - offset // stride
+            original_size = rows - rows_offset // stride, cols - cols_offset // stride
             scaled_image = torch.nn.functional.interpolate(
                 feature_map, size=original_size, mode=mode, align_corners=align_corners
             )
@@ -679,7 +687,7 @@ class MultiscaleTTA(nn.Module):
         self.deaugment_fn = deaugment_fn
 
     def forward(self, x):
-        ms_inputs = ms_image_augment(x, self.size_offsets)
+        ms_inputs = ms_image_augment(x, size_offsets=self.size_offsets)
         ms_outputs = [self.model(x) for x in ms_inputs]
 
         outputs = {}
