@@ -18,6 +18,7 @@ __all__ = [
     "ACT_RELU",
     "ACT_RELU6",
     "ACT_SELU",
+    "ACT_SOFTPLUS",
     "ACT_SWISH",
     "ACT_SWISH_NAIVE",
     "AGN",
@@ -52,9 +53,9 @@ ACT_PRELU = "prelu"
 ACT_RELU = "relu"
 ACT_RELU6 = "relu6"
 ACT_SELU = "selu"
+ACT_SOFTPLUS = "softplus"
 ACT_SWISH = "swish"
 ACT_SWISH_NAIVE = "swish_naive"
-
 
 # This version reduces memory overhead of Swish during training by
 # recomputing torch.sigmoid(x) in backward instead of saving it.
@@ -227,18 +228,19 @@ class HardSwish(nn.Module):
 def get_activation_block(activation_name: str):
     ACTIVATIONS = {
         ACT_CELU: nn.CELU,
-        ACT_GLU: nn.GLU,
-        ACT_PRELU: nn.PReLU,
         ACT_ELU: nn.ELU,
+        ACT_GLU: nn.GLU,
         ACT_HARD_SIGMOID: HardSigmoid,
         ACT_HARD_SWISH: HardSwish,
         ACT_LEAKY_RELU: nn.LeakyReLU,
         ACT_MISH: Mish,
         ACT_MISH_NAIVE: MishNaive,
         ACT_NONE: Identity,
+        ACT_PRELU: nn.PReLU,
         ACT_RELU6: nn.ReLU6,
         ACT_RELU: nn.ReLU,
         ACT_SELU: nn.SELU,
+        ACT_SOFTPLUS: nn.Softplus,
         ACT_SWISH: Swish,
         ACT_SWISH_NAIVE: SwishNaive,
     }
