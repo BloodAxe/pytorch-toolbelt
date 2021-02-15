@@ -1,0 +1,113 @@
+from collections import OrderedDict
+from typing import List
+
+from torch import nn
+
+from ..common import EncoderModule, make_n_channel_input
+
+__all__ = [
+    "SKResNet18Encoder",
+    "SKResNeXt50Encoder",
+    "SWSLResNeXt101Encoder",
+    "TResNetMEncoder",
+]
+
+
+class TResNetMEncoder(EncoderModule):
+    def __init__(self, pretrained=True, layers=None):
+        if layers is None:
+            layers = [1, 2, 3, 4]
+        from timm.models import tresnet_m
+
+        encoder = tresnet_m(pretrained=pretrained)
+
+        super().__init__([64, 64, 128, 1024, 2048], [4, 4, 8, 16, 32], layers)
+        self.stem = nn.Sequential(encoder.body.SpaceToDepth, encoder.body.conv1)
+
+        self.layer1 = encoder.body.layer1
+        self.layer2 = encoder.body.layer2
+        self.layer3 = encoder.body.layer3
+        self.layer4 = encoder.body.layer4
+
+    @property
+    def encoder_layers(self) -> List[nn.Module]:
+        return [self.stem, self.layer1, self.layer2, self.layer3, self.layer4]
+
+
+class SKResNet18Encoder(EncoderModule):
+    def __init__(self, pretrained=True, layers=None, no_first_max_pool=False):
+        if layers is None:
+            layers = [1, 2, 3, 4]
+        from timm.models import skresnet18
+
+        encoder = skresnet18(pretrained=pretrained, features_only=True)
+        super().__init__([64, 64, 128, 256, 512], [2, 4, 8, 16, 32], layers)
+        self.stem = nn.Sequential(
+            OrderedDict([("conv1", encoder.conv1), ("bn1", encoder.bn1), ("act1", encoder.act1)])
+        )
+
+        self.layer1 = nn.Sequential(
+            nn.Conv2d(64, 64, kernel_size=3, padding=1, stride=2) if no_first_max_pool else encoder.maxpool,
+            encoder.layer1,
+        )
+        self.layer2 = encoder.layer2
+        self.layer3 = encoder.layer3
+        self.layer4 = encoder.layer4
+
+    @property
+    def encoder_layers(self) -> List[nn.Module]:
+        return [self.stem, self.layer1, self.layer2, self.layer3, self.layer4]
+
+    def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
+        self.stem.conv1 = make_n_channel_input(self.stem.conv1, input_channels, mode, **kwargs)
+        return self
+
+
+class SKResNeXt50Encoder(EncoderModule):
+    def __init__(self, pretrained=True, layers=None):
+        if layers is None:
+            layers = [1, 2, 3, 4]
+        from timm.models import skresnext50_32x4d
+
+        encoder = skresnext50_32x4d(pretrained=pretrained)
+        super().__init__([64, 256, 512, 1024, 2048], [2, 4, 8, 16, 32], layers)
+        self.stem = nn.Sequential(
+            OrderedDict([("conv1", encoder.conv1), ("bn1", encoder.bn1), ("act1", encoder.act1)])
+        )
+
+        self.layer1 = nn.Sequential(encoder.maxpool, encoder.layer1)
+        self.layer2 = encoder.layer2
+        self.layer3 = encoder.layer3
+        self.layer4 = encoder.layer4
+
+    @property
+    def encoder_layers(self) -> List[nn.Module]:
+        return [self.stem, self.layer1, self.layer2, self.layer3, self.layer4]
+
+    def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
+        self.stem.conv1 = make_n_channel_input(self.stem.conv1, input_channels, mode, **kwargs)
+        return self
+
+
+class SWSLResNeXt101Encoder(EncoderModule):
+    def __init__(self, pretrained=True, layers=None):
+        if layers is None:
+            layers = [1, 2, 3, 4]
+        from timm.models.resnet import swsl_resnext101_32x8d
+
+        encoder = swsl_resnext101_32x8d(pretrained=pretrained)
+        super().__init__([64, 256, 512, 1024, 2048], [2, 4, 8, 16, 32], layers)
+        self.stem = nn.Sequential(encoder.conv1, encoder.bn1, encoder.act1)
+
+        self.layer1 = nn.Sequential(encoder.maxpool, encoder.layer1)
+        self.layer2 = encoder.layer2
+        self.layer3 = encoder.layer3
+        self.layer4 = encoder.layer4
+
+    @property
+    def encoder_layers(self) -> List[nn.Module]:
+        return [self.stem, self.layer1, self.layer2, self.layer3, self.layer4]
+
+    def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
+        self.stem.conv1 = make_n_channel_input(self.stem.conv1, input_channels, mode, **kwargs)
+        return self
