@@ -22,6 +22,7 @@ __all__ = [
     "OUTPUT_MASK_64_KEY",
     "UNLABELED_SAMPLE",
     "IGNORE_LABEL",
+    "TARGET_LABELS_KEY",
 ]
 
 # Smaller masks for deep supervision
@@ -36,6 +37,7 @@ INPUT_IMAGE_ID_KEY = "image_id"
 TARGET_MASK_KEY = "true_mask"
 TARGET_MASK_WEIGHT_KEY = "true_weights"
 TARGET_CLASS_KEY = "true_class"
+TARGET_LABELS_KEY = "true_labels"
 
 
 TARGET_MASK_2_KEY = name_for_stride(TARGET_MASK_KEY, 2)
