@@ -14,7 +14,7 @@ from ..torch_utils import to_numpy, argmax_over_dim_1
 from ..visualization import render_figure_to_tensor, plot_confusion_matrix
 
 __all__ = [
-    "AccuracyCallback"
+    "AccuracyCallback",
     "BINARY_MODE",
     "ConfusionMatrixCallback",
     "F1ScoreCallback",
