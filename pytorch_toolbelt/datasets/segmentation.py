@@ -14,7 +14,7 @@ from .common import (
     INPUT_INDEX_KEY,
     TARGET_MASK_WEIGHT_KEY,
     TARGET_MASK_KEY,
-    name_for_stride,
+    name_for_stride, UNLABELED_SAMPLE,
 )
 from ..utils import fs, image_to_tensor
 
