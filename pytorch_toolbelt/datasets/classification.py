@@ -5,7 +5,7 @@ from torch.utils.data import Dataset
 
 from .common import read_image_rgb
 
-__all__ = ["ClassificationDataset"]
+__all__ = ["ClassificationDataset", "label_to_tensor"]
 
 
 def label_to_tensor(x):
