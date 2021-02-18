@@ -5,7 +5,7 @@ import torch
 from torch import nn
 from typing import Union
 
-from pytorch_toolbelt.modules import Swish
+from pytorch_toolbelt.modules import Swish, get_activation_block
 from ..common import EncoderModule, _take
 
 __all__ = [

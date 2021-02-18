@@ -1,9 +1,11 @@
 from typing import Optional, List
 
 import albumentations as A
+import torch
 from torch.utils.data import Dataset
 
-from .common import read_image_rgb
+from .common import read_image_rgb, INPUT_IMAGE_KEY, INPUT_IMAGE_ID_KEY, INPUT_INDEX_KEY, TARGET_CLASS_KEY
+from ..utils import fs, image_to_tensor
 
 __all__ = ["ClassificationDataset", "label_to_tensor"]
 
@@ -23,7 +25,7 @@ class ClassificationDataset(Dataset):
         labels: Optional[List[str]],
         transform: A.Compose,
         read_image_fn=read_image_rgb,
-        make_mask_target_fn=label_to_tensor,
+        make_target_fn=label_to_tensor,
     ):
         if labels is not None and len(image_filenames) != len(labels):
             raise ValueError("Number of images does not corresponds to number of targets")
@@ -33,7 +35,7 @@ class ClassificationDataset(Dataset):
         self.images = image_filenames
         self.read_image = read_image_fn
         self.transform = transform
-        self.make_target = make_mask_target_fn
+        self.make_target = make_target_fn
 
     def __len__(self):
         return len(self.images)

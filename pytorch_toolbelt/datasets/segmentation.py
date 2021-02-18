@@ -4,9 +4,19 @@ from typing import Optional, List, Callable
 import albumentations as A
 import cv2
 import numpy as np
+from skimage.measure import block_reduce
 from torch.utils.data import Dataset
 
-from .common import read_image_rgb
+from .common import (
+    read_image_rgb,
+    INPUT_IMAGE_KEY,
+    INPUT_IMAGE_ID_KEY,
+    INPUT_INDEX_KEY,
+    TARGET_MASK_WEIGHT_KEY,
+    TARGET_MASK_KEY,
+    name_for_stride,
+)
+from ..utils import fs, image_to_tensor
 
 __all__ = ["mask_to_bce_target", "mask_to_ce_target", "SegmentationDataset", "compute_weight_mask"]
 
@@ -20,6 +30,8 @@ def mask_to_ce_target(mask):
 
 
 def compute_weight_mask(mask: np.ndarray, edge_weight=4) -> np.ndarray:
+    from skimage.morphology import binary_dilation, binary_erosion
+
     binary_mask = mask > 0
     weight_mask = np.ones(mask.shape[:2]).astype(np.float32)
 
