@@ -15,6 +15,7 @@ from ..visualization import render_figure_to_tensor, plot_confusion_matrix
 
 __all__ = [
     "AccuracyCallback",
+    "MultilabelAccuracyCallback",
     "BINARY_MODE",
     "ConfusionMatrixCallback",
     "F1ScoreCallback",
@@ -632,6 +633,75 @@ class AccuracyCallback(Callback):
 
         batch_correct = int((pred_labels == true_labels).sum())
         batch_totals = len(true_labels)
+
+        if len(true_labels):
+            self.correct += batch_correct
+            self.totals += batch_totals
+
+        batch_accuracy = float(batch_correct) / float(batch_totals)
+        runner.batch_metrics[self.prefix] = batch_accuracy
+
+    def on_loader_end(self, runner: IRunner):
+        correct = np.sum(all_gather(self.correct))
+        total = np.sum(all_gather(self.totals))
+        accuracy = float(correct) / float(total)
+        runner.loader_metrics[self.prefix] = accuracy
+
+
+class MultilabelAccuracyCallback(Callback):
+    """
+    Accuracy score metric for multi-label case (aka Exact Match Ratio, Subset accuracy).
+    """
+
+    def __init__(
+        self,
+        outputs_to_labels: Callable[[Tensor], Tensor] = argmax_over_dim_1,
+        input_key: str = "targets",
+        output_key: str = "logits",
+        prefix: str = "accuracy",
+        ignore_index: Optional[int] = None,
+    ):
+        """
+        Args:
+            input_key: input key to use for accuracy calculation;
+                specifies our `y_true`
+            output_key: output key to use for accuracy calculation;
+                specifies our `y_pred`
+            prefix: key for the metric's name
+            num_classes: number of classes to calculate ``topk_args``
+                if ``accuracy_args`` is None
+        """
+
+        super().__init__(CallbackOrder.Metric)
+        self.prefix = prefix
+        self.output_key = output_key
+        self.input_key = input_key
+        self.ignore_index = ignore_index
+        self.outputs_to_labels = outputs_to_labels
+        self.correct = 0
+        self.totals = 0
+
+    def on_loader_start(self, state):
+        self.correct = 0
+        self.totals = 0
+
+    @torch.no_grad()
+    def on_batch_end(self, runner: IRunner):
+        pred_labels = self.outputs_to_labels(runner.output[self.output_key])
+        true_labels = runner.input[self.input_key].type_as(pred_labels)
+
+        correct_preds = pred_labels == true_labels
+
+        if self.ignore_index is not None:
+            mask = true_labels == self.ignore_index
+            correct_preds = correct_preds | mask
+
+        batch_correct = correct_preds.all(dim=1, keepdim=False)
+        if len(batch_correct.size()) > 1:
+            batch_correct = batch_correct.view((batch_correct.size(0), -1)).mean(dim=1)
+
+        batch_totals = int(batch_correct.numel())
+        batch_correct = float(batch_correct.float().mean())
 
         if len(true_labels):
             self.correct += batch_correct

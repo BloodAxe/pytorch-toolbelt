@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 import itertools
+import math
 import warnings
 from typing import List
 
@@ -15,6 +16,7 @@ __all__ = [
     "hstack_autopad",
     "vstack_autopad",
     "vstack_header",
+    "grid_stack",
 ]
 
 
@@ -181,3 +183,22 @@ def vstack_header(
     )
 
     return vstack_autopad([title_image, image])
+
+
+def grid_stack(images: List[np.ndarray], rows: int = None, cols: int = None) -> np.ndarray:
+    if rows is None and cols is None:
+        rows = int(math.ceil(math.sqrt(len(images))))
+        cols = int(math.ceil(len(images) / rows))
+    elif rows is None:
+        rows = math.ceil(len(images) / cols)
+    elif cols is None:
+        cols = math.ceil(len(images) / rows)
+    else:
+        if len(images) > rows * cols:
+            raise ValueError("Number of rows * cols must be greater than number of images")
+
+    image_rows = []
+    for r in range(rows):
+        image_rows.append(hstack_autopad(images[r * cols : (r + 1) * cols]))
+
+    return vstack_autopad(image_rows)
