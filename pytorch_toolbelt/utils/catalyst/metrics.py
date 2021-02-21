@@ -701,7 +701,7 @@ class MultilabelAccuracyCallback(Callback):
             batch_correct = batch_correct.view((batch_correct.size(0), -1)).mean(dim=1)
 
         batch_totals = int(batch_correct.numel())
-        batch_correct = float(batch_correct.float().mean())
+        batch_correct = float(batch_correct.float().sum())
 
         if len(true_labels):
             self.correct += batch_correct
