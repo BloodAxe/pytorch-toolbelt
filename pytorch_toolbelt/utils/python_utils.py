@@ -25,10 +25,9 @@ def without(dictionary: Dict, key: str) -> Dict:
     Returns:
         Always returns new dictionary even without given key
     """
-    new_d = dictionary.copy()
-    if key in dictionary:
-        new_d.pop(key)
-    return new_d
+    if isinstance(key, str):
+        key = {key}
+    return dict((k, v) for (k, v) in dictionary.items() if k not in key)
 
 
 def load_yaml(stream: Any):
