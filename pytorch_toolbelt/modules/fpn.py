@@ -179,7 +179,10 @@ class HFF(nn.Module):
     def _upsample(self, x, output_size=None):
         if output_size is not None:
             x = F.interpolate(
-                x, size=(output_size[0], output_size[1]), mode=self.interpolation_mode, align_corners=self.align_corners,
+                x,
+                size=(output_size[0], output_size[1]),
+                mode=self.interpolation_mode,
+                align_corners=self.align_corners,
             )
         else:
             x = F.interpolate(
