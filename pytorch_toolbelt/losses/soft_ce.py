@@ -14,9 +14,7 @@ class SoftCrossEntropyLoss(nn.Module):
 
     __constants__ = ["reduction", "ignore_index", "smooth_factor"]
 
-    def __init__(
-        self, reduction: str = "mean", smooth_factor: Optional[float] = None, ignore_index: Optional[int] = -100, dim=1
-    ):
+    def __init__(self, reduction: str = "mean", smooth_factor: float = 0.0, ignore_index: Optional[int] = -100, dim=1):
         super().__init__()
         self.smooth_factor = smooth_factor
         self.ignore_index = ignore_index

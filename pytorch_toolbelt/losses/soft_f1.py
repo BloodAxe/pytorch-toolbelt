@@ -2,7 +2,7 @@ import torch
 from torch import nn, Tensor
 from typing import Optional
 
-__all__ = ["soft_micro_f1", "BinarySoftF1Loss"]
+__all__ = ["soft_micro_f1", "BinarySoftF1Loss", "SoftF1Loss"]
 
 
 def soft_micro_f1(preds: Tensor, targets: Tensor, eps=1e-6) -> Tensor:
@@ -76,3 +76,25 @@ class BinarySoftF1Loss(nn.Module):
 
         preds = preds.sigmoid().clamp(self.eps, 1 - self.eps)
         return soft_micro_f1(preds.view(-1, 1), targets.view(-1, 1))
+
+
+class SoftF1Loss(nn.Module):
+    def __init__(self, ignore_index: Optional[int] = None, eps=1e-6):
+        super().__init__()
+        self.ignore_index = ignore_index
+        self.eps = eps
+
+    def forward(self, preds: Tensor, targets: Tensor) -> Tensor:
+        preds = preds.softmax(dim=1).clamp(self.eps, 1 - self.eps)
+        targets = torch.nn.functional.one_hot(targets, preds.size(1))
+
+        if self.ignore_index is not None:
+            # Filter predictions with ignore label from loss computation
+            not_ignored = targets != self.ignore_index
+            preds = preds[not_ignored]
+            targets = targets[not_ignored]
+
+            if targets.numel() == 0:
+                return torch.tensor(0, dtype=preds.dtype, device=preds.device)
+
+        return soft_micro_f1(preds, targets)
