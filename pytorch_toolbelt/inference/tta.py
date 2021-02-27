@@ -43,19 +43,6 @@ __all__ = [
 MaybeStrOrCallable = Optional[Union[str, Callable]]
 
 
-def fliplr_image2label(model: nn.Module, image: Tensor) -> Tensor:
-    """Test-time augmentation for image classification that averages predictions
-    for input image and horizontally flipped one.
-
-    :param model:
-    :param image:
-    :return:
-    """
-    output = model(image) + model(F.torch_fliplr(image))
-    one_over_2 = float(1.0 / 2.0)
-    return output * one_over_2
-
-
 def fivecrop_image_augment(image: Tensor, crop_size: Tuple) -> Tensor:
     """Test-time augmentation for image classification that takes five crops out of input tensor (4 on corners and central)
     and averages predictions from them.
@@ -172,6 +159,17 @@ def tencrop_image2label(model: nn.Module, image: Tensor, crop_size: Tuple) -> Te
 
     one_over_10 = float(1.0 / 10.0)
     return output * one_over_10
+
+
+def fliplr_image2label(model: nn.Module, image: Tensor) -> Tensor:
+    """Test-time augmentation for image classification that averages predictions
+    for input image and horizontally flipped one.
+
+    :param model:
+    :param image:
+    :return:
+    """
+    return fliplr_labels_deaugment(model(fliplr_image_augment(image)))
 
 
 def fliplr_image2mask(model: nn.Module, image: Tensor) -> Tensor:
