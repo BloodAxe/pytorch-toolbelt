@@ -9,14 +9,13 @@ from typing import Tuple, List, Optional, Union, Callable, Dict
 
 import torch
 from torch import Tensor, nn
-from torch.nn.functional import interpolate
-from ..utils.support import pytorch_toolbelt_deprecated
+
 from . import functional as F
+from ..utils.support import pytorch_toolbelt_deprecated
 
 __all__ = [
     "GeneralizedTTA",
-    "MultiscaleTTAWrapper",
-    "TTAWrapper",
+    "MultiscaleTTA",
     "d2_image_augment",
     "d2_image_deaugment",
     "d2_labels_deaugment",
@@ -26,10 +25,13 @@ __all__ = [
     "d4_image_deaugment",
     "d4_labels_deaugment",
     "fivecrop_image2label",
+    "fivecrop_image_augment",
+    "fivecrop_label_deaugment",
     "fliplr_image2label",
     "fliplr_image2mask",
     "fliplr_image_augment",
     "fliplr_image_deaugment",
+    "fliplr_labels_deaugment",
     "flips_image_augment",
     "flips_image_deaugment",
     "flips_labels_deaugment",
@@ -41,17 +43,51 @@ __all__ = [
 MaybeStrOrCallable = Optional[Union[str, Callable]]
 
 
-def fliplr_image2label(model: nn.Module, image: Tensor) -> Tensor:
-    """Test-time augmentation for image classification that averages predictions
-    for input image and horizontally flipped one.
+def fivecrop_image_augment(image: Tensor, crop_size: Tuple[int, int]) -> Tensor:
+    """Test-time augmentation for image classification that takes five crops out of input tensor (4 on corners and central)
+    and averages predictions from them.
 
-    :param model:
-    :param image:
-    :return:
+    :param image: Input image tensor
+    :param crop_size: Crop size. Must be smaller than image size
+    :return: Averaged logits
     """
-    output = model(image) + model(F.torch_fliplr(image))
-    one_over_2 = float(1.0 / 2.0)
-    return output * one_over_2
+    image_height, image_width = int(image.size(2)), int(image.size(3))
+    crop_height, crop_width = crop_size
+
+    if crop_height > image_height:
+        raise ValueError(f"Tensor height ({image_height}) is less than requested crop size ({crop_height})")
+    if crop_width > image_width:
+        raise ValueError(f"Tensor width ({image_width}) is less than requested crop size ({crop_width})")
+
+    bottom_crop_start = image_height - crop_height
+    right_crop_start = image_width - crop_width
+    crop_tl = image[..., :crop_height, :crop_width]
+    crop_tr = image[..., :crop_height, right_crop_start:]
+    crop_bl = image[..., bottom_crop_start:, :crop_width]
+    crop_br = image[..., bottom_crop_start:, right_crop_start:]
+
+    center_crop_y = (image_height - crop_height) // 2
+    center_crop_x = (image_width - crop_width) // 2
+    crop_cc = image[..., center_crop_y : center_crop_y + crop_height, center_crop_x : center_crop_x + crop_width]
+
+    return torch.cat(
+        [crop_tl, crop_tr, crop_bl, crop_br, crop_cc],
+        dim=0,
+    )
+
+
+def fivecrop_label_deaugment(logits, reduction: MaybeStrOrCallable = "mean"):
+    crop_tl, crop_tr, crop_bl, crop_br, crop_cc = torch.chunk(logits, 5)
+
+    logits: Tensor = torch.stack([crop_tl, crop_tr, crop_bl, crop_br, crop_cc])
+
+    if reduction == "mean":
+        logits = logits.mean(dim=0)
+    if reduction == "sum":
+        logits = logits.sum(dim=0)
+    if callable(reduction):
+        logits = reduction(logits, dim=0)
+    return logits
 
 
 def fivecrop_image2label(model: nn.Module, image: Tensor, crop_size: Tuple) -> Tensor:
@@ -63,39 +99,10 @@ def fivecrop_image2label(model: nn.Module, image: Tensor, crop_size: Tuple) -> T
     :param crop_size: Crop size. Must be smaller than image size
     :return: Averaged logits
     """
-    image_height, image_width = int(image.size(2)), int(image.size(3))
-    crop_height, crop_width = crop_size
-
-    assert crop_height <= image_height
-    assert crop_width <= image_width
-
-    bottom_crop_start = image_height - crop_height
-    right_crop_start = image_width - crop_width
-    crop_tl = image[..., :crop_height, :crop_width]
-    crop_tr = image[..., :crop_height, right_crop_start:]
-    crop_bl = image[..., bottom_crop_start:, :crop_width]
-    crop_br = image[..., bottom_crop_start:, right_crop_start:]
-
-    assert crop_tl.size(2) == crop_height
-    assert crop_tr.size(2) == crop_height
-    assert crop_bl.size(2) == crop_height
-    assert crop_br.size(2) == crop_height
-
-    assert crop_tl.size(3) == crop_width
-    assert crop_tr.size(3) == crop_width
-    assert crop_bl.size(3) == crop_width
-    assert crop_br.size(3) == crop_width
-
-    center_crop_y = (image_height - crop_height) // 2
-    center_crop_x = (image_width - crop_width) // 2
-
-    crop_cc = image[..., center_crop_y : center_crop_y + crop_height, center_crop_x : center_crop_x + crop_width]
-    assert crop_cc.size(2) == crop_height
-    assert crop_cc.size(3) == crop_width
-
-    output = model(crop_tl) + model(crop_tr) + model(crop_bl) + model(crop_br) + model(crop_cc)
-    one_over_5 = float(1.0 / 5.0)
-    return output * one_over_5
+    input_aug = fivecrop_image_augment(image, crop_size)
+    preds_aug = model(input_aug)
+    output = fivecrop_label_deaugment(preds_aug)
+    return output
 
 
 def tencrop_image2label(model: nn.Module, image: Tensor, crop_size: Tuple) -> Tensor:
@@ -152,6 +159,17 @@ def tencrop_image2label(model: nn.Module, image: Tensor, crop_size: Tuple) -> Te
 
     one_over_10 = float(1.0 / 10.0)
     return output * one_over_10
+
+
+def fliplr_image2label(model: nn.Module, image: Tensor) -> Tensor:
+    """Test-time augmentation for image classification that averages predictions
+    for input image and horizontally flipped one.
+
+    :param model:
+    :param image:
+    :return:
+    """
+    return fliplr_labels_deaugment(model(fliplr_image_augment(image)))
 
 
 def fliplr_image2mask(model: nn.Module, image: Tensor) -> Tensor:
@@ -246,7 +264,15 @@ def d2_image_augment(image: Tensor) -> Tensor:
             - Vertically-flipped tensor
 
     """
-    return torch.cat([image, F.torch_rot180(image), F.torch_fliplr(image), F.torch_flipud(image),], dim=0,)
+    return torch.cat(
+        [
+            image,
+            F.torch_rot180(image),
+            F.torch_fliplr(image),
+            F.torch_flipud(image),
+        ],
+        dim=0,
+    )
 
 
 def d2_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") -> Tensor:
@@ -265,7 +291,12 @@ def d2_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") ->
     b1, b2, b3, b4 = torch.chunk(image, 4)
 
     image: Tensor = torch.stack(
-        [b1, F.torch_rot180(b2), F.torch_fliplr(b3), F.torch_flipud(b4),]
+        [
+            b1,
+            F.torch_rot180(b2),
+            F.torch_fliplr(b3),
+            F.torch_flipud(b4),
+        ]
     )
 
     if reduction == "mean":
@@ -421,7 +452,10 @@ def flips_image_augment(image: Tensor) -> Tensor:
     return torch.cat([image, F.torch_fliplr(image), F.torch_flipud(image)], dim=0)
 
 
-def flips_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean",) -> Tensor:
+def flips_image_deaugment(
+    image: Tensor,
+    reduction: MaybeStrOrCallable = "mean",
+) -> Tensor:
     """
     Deaugment input tensor (output of the model) assuming the input was flip-augmented image (See flips_augment).
     Args:
@@ -449,7 +483,37 @@ def flips_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean",
     return image
 
 
-def flips_labels_deaugment(logits: Tensor, reduction: MaybeStrOrCallable = "mean",) -> Tensor:
+def fliplr_labels_deaugment(
+    logits: Tensor,
+    reduction: MaybeStrOrCallable = "mean",
+) -> Tensor:
+    """
+    Deaugment input tensor (output of the model) assuming the input was fliplr-augmented image (See fliplr_image_augment).
+    Args:
+        logits: Tensor of [B * 2, C] shape
+        reduction: If True performs averaging of 3 outputs, otherwise - summation.
+
+    Returns:
+        Tensor of [B, C, H, W] shape.
+    """
+    assert logits.size(0) % 2 == 0
+
+    orig, flipped_lr = torch.chunk(logits, 2)
+    logits: Tensor = torch.stack([orig, flipped_lr])
+
+    if reduction == "mean":
+        logits = logits.mean(dim=0)
+    if reduction == "sum":
+        logits = logits.sum(dim=0)
+    if callable(reduction):
+        logits = reduction(logits, dim=0)
+    return logits
+
+
+def flips_labels_deaugment(
+    logits: Tensor,
+    reduction: MaybeStrOrCallable = "mean",
+) -> Tensor:
     """
     Deaugment input tensor (output of the model) assuming the input was flip-augmented image (See flips_image_augment).
     Args:
@@ -461,8 +525,8 @@ def flips_labels_deaugment(logits: Tensor, reduction: MaybeStrOrCallable = "mean
     """
     assert logits.size(0) % 3 == 0
 
-    b1, b2, b3, b4 = torch.chunk(logits, 4)
-    logits: Tensor = torch.stack([b1, b2, b3, b4])
+    orig, flipped_lr, flipped_ud = torch.chunk(logits, 3)
+    logits: Tensor = torch.stack([orig, flipped_lr, flipped_ud])
 
     if reduction == "mean":
         logits = logits.mean(dim=0)
@@ -485,7 +549,7 @@ class TTAWrapper(nn.Module):
 
 
 def ms_image_augment(
-    image: Tensor, size_offsets: List[Union[int, Tuple[int, int]]], mode="bilinear", align_corners=True
+    image: Tensor, size_offsets: List[Union[int, Tuple[int, int]]], mode="bilinear", align_corners=False
 ) -> List[Tensor]:
     """
     Multi-scale image augmentation. This function create list of resized tensors from the input one.
@@ -493,11 +557,15 @@ def ms_image_augment(
     batch_size, channels, rows, cols = image.size()
     augmented_inputs = []
     for offset in size_offsets:
-        # TODO: Add support of tuple (row_offset, col_offset)
-        if offset == 0:
+        if isinstance(offset, (tuple, list)):
+            rows_offset, cols_offset = offset
+        else:
+            rows_offset, cols_offset = offset, offset
+
+        if rows_offset == 0 and cols_offset == 0:
             augmented_inputs.append(image)
         else:
-            scale_size = rows + offset, cols + offset
+            scale_size = rows + rows_offset, cols + cols_offset
             scaled_input = torch.nn.functional.interpolate(
                 image, size=scale_size, mode=mode, align_corners=align_corners
             )
@@ -506,7 +574,9 @@ def ms_image_augment(
 
 
 def ms_labels_deaugment(
-    logits: List[Tensor], size_offsets: List[Union[int, Tuple[int, int]]], reduction: MaybeStrOrCallable = "mean",
+    logits: List[Tensor],
+    size_offsets: List[Union[int, Tuple[int, int]]],
+    reduction: MaybeStrOrCallable = "mean",
 ):
     """
     Deaugment logits
@@ -515,10 +585,6 @@ def ms_labels_deaugment(
         logits: List of tensors of shape [B, C]
         size_offsets:
         reduction:
-        mode:
-        align_corners:
-        stride: Stride of the output feature map w.r.t to model input size.
-        Used to correctly scale size_offsets to match with size of output feature maps
 
     Returns:
 
@@ -530,11 +596,12 @@ def ms_labels_deaugment(
 
     if reduction == "mean":
         deaugmented_outputs = deaugmented_outputs.mean(dim=0)
-    if reduction == "sum":
+    elif reduction == "sum":
         deaugmented_outputs = deaugmented_outputs.sum(dim=0)
-    if callable(reduction):
+    elif callable(reduction):
         deaugmented_outputs = reduction(deaugmented_outputs, dim=0)
-
+    else:
+        raise ValueError(f"Usupported reduction mode {mode}")
     return deaugmented_outputs
 
 
@@ -555,7 +622,7 @@ def ms_image_deaugment(
         mode:
         align_corners:
         stride: Stride of the output feature map w.r.t to model input size.
-        Used to correctly scale size_offsets to match with size of output feature maps 
+        Used to correctly scale size_offsets to match with size of output feature maps
 
     Returns:
 
@@ -565,12 +632,16 @@ def ms_image_deaugment(
 
     deaugmented_outputs = []
     for feature_map, offset in zip(images, size_offsets):
-        if offset == 0:
+        if isinstance(offset, (tuple, list)):
+            rows_offset, cols_offset = offset
+        else:
+            rows_offset, cols_offset = offset, offset
+
+        if rows_offset == 0 and cols_offset == 0:
             deaugmented_outputs.append(feature_map)
         else:
             batch_size, channels, rows, cols = feature_map.size()
-            # TODO: Add support of tuple (row_offset, col_offset)
-            original_size = rows - offset // stride, cols - offset // stride
+            original_size = rows - rows_offset // stride, cols - cols_offset // stride
             scaled_image = torch.nn.functional.interpolate(
                 feature_map, size=original_size, mode=mode, align_corners=align_corners
             )
@@ -585,54 +656,6 @@ def ms_image_deaugment(
         deaugmented_outputs = reduction(deaugmented_outputs, dim=0)
 
     return deaugmented_outputs
-
-
-@pytorch_toolbelt_deprecated("This class is deprecated. Please use MultiscaleTTA instead")
-class MultiscaleTTAWrapper(nn.Module):
-    """
-    Multiscale TTA wrapper module
-    """
-
-    def __init__(self, model: nn.Module, scale_levels: List[float] = None, size_offsets: List[int] = None):
-        """
-        Initialize multi-scale TTA wrapper
-
-        :param model: Base model for inference
-        :param scale_levels: List of additional scale levels,
-            e.g: [0.5, 0.75, 1.25]
-        """
-        super().__init__()
-        assert scale_levels or size_offsets, "Either scale_levels or size_offsets must be set"
-        assert not (scale_levels and size_offsets), "Either scale_levels or size_offsets must be set"
-        self.model = model
-        self.scale_levels = scale_levels
-        self.size_offsets = size_offsets
-
-    def forward(self, input: Tensor) -> Tensor:
-        h = input.size(2)
-        w = input.size(3)
-
-        out_size = h, w
-        output = self.model(input)
-
-        if self.scale_levels:
-            for scale in self.scale_levels:
-                dst_size = int(h * scale), int(w * scale)
-                input_scaled = interpolate(input, dst_size, mode="bilinear", align_corners=False)
-                output_scaled = self.model(input_scaled)
-                output_scaled = interpolate(output_scaled, out_size, mode="bilinear", align_corners=False)
-                output += output_scaled
-            output /= 1.0 + len(self.scale_levels)
-        elif self.size_offsets:
-            for offset in self.size_offsets:
-                dst_size = int(h + offset), int(w + offset)
-                input_scaled = interpolate(input, dst_size, mode="bilinear", align_corners=False)
-                output_scaled = self.model(input_scaled)
-                output_scaled = interpolate(output_scaled, out_size, mode="bilinear", align_corners=False)
-                output += output_scaled
-            output /= 1.0 + len(self.size_offsets)
-
-        return output
 
 
 class GeneralizedTTA(nn.Module):
@@ -714,11 +737,15 @@ class MultiscaleTTA(nn.Module):
         self.deaugment_fn = deaugment_fn
 
     def forward(self, x):
-        ms_inputs = ms_image_augment(x, self.size_offsets)
+        ms_inputs = ms_image_augment(x, size_offsets=self.size_offsets)
         ms_outputs = [self.model(x) for x in ms_inputs]
 
         outputs = {}
-        keys = self.keys or ms_outputs[0].keys()
+        if self.keys is None:
+            keys = ms_outputs[0].keys()
+        else:
+            keys = self.keys
+
         for key in keys:
             deaugment_fn: Callable = self.deaugment_fn[key]
             values = [x[key] for x in ms_outputs]

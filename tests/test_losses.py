@@ -1,7 +1,9 @@
+import numpy as np
 import pytest
 import pytorch_toolbelt.losses.functional as F
 import torch
-from pytorch_toolbelt.losses import DiceLoss, JaccardLoss, SoftBCEWithLogitsLoss, SoftCrossEntropyLoss
+from pytorch_toolbelt import losses as L
+from torch import nn
 
 
 def test_focal_loss_with_logits():
@@ -73,7 +75,7 @@ def test_soft_dice_score(y_true, y_pred, expected, eps):
 @torch.no_grad()
 def test_dice_loss_binary():
     eps = 1e-5
-    criterion = DiceLoss(mode="binary", from_logits=False)
+    criterion = L.DiceLoss(mode="binary", from_logits=False)
 
     # Ideal case
     y_pred = torch.tensor([1.0, 1.0, 1.0]).view(1, 1, 1, -1)
@@ -111,7 +113,7 @@ def test_dice_loss_binary():
 @torch.no_grad()
 def test_binary_jaccard_loss():
     eps = 1e-5
-    criterion = JaccardLoss(mode="binary", from_logits=False)
+    criterion = L.JaccardLoss(mode="binary", from_logits=False)
 
     # Ideal case
     y_pred = torch.tensor([1.0]).view(1, 1, 1, 1)
@@ -149,7 +151,7 @@ def test_binary_jaccard_loss():
 @torch.no_grad()
 def test_multiclass_jaccard_loss():
     eps = 1e-5
-    criterion = JaccardLoss(mode="multiclass", from_logits=False)
+    criterion = L.JaccardLoss(mode="multiclass", from_logits=False)
 
     # Ideal case
     y_pred = torch.tensor([[[1.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 1.0]]])
@@ -176,7 +178,7 @@ def test_multiclass_jaccard_loss():
 @torch.no_grad()
 def test_multilabel_jaccard_loss():
     eps = 1e-5
-    criterion = JaccardLoss(mode="multilabel", from_logits=False)
+    criterion = L.JaccardLoss(mode="multilabel", from_logits=False)
 
     # Ideal case
     y_pred = torch.tensor([[[1.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 1.0]]])
@@ -201,23 +203,43 @@ def test_multilabel_jaccard_loss():
 
 @torch.no_grad()
 def test_soft_ce_loss():
-    criterion = SoftCrossEntropyLoss(smooth_factor=0.1, ignore_index=-100)
+    soft_ce_criterion = L.SoftCrossEntropyLoss(smooth_factor=0.0)
+    ce_criterion = nn.CrossEntropyLoss()
+
+    y_pred = torch.tensor([[+1, -1, -1, -1], [-1, +1, -1, -1], [-1, -1, +1, -1], [-1, -1, -1, +1]]).float()
+    y_true = torch.tensor([0, 1, 2, 3]).long()
+
+    actual = soft_ce_criterion(y_pred, y_true).item()
+    expected = ce_criterion(y_pred, y_true).item()
+    np.testing.assert_almost_equal(actual, expected)
+
+
+@torch.no_grad()
+def test_soft_bce_loss():
+    criterion = L.SoftBCEWithLogitsLoss(smooth_factor=0.1, ignore_index=-100)
 
     # Ideal case
-    y_pred = torch.tensor([[+9, -9, -9, -9], [-9, +9, -9, -9], [-9, -9, +9, -9], [-9, -9, -9, +9]]).float()
-    y_true = torch.tensor([0, 1, -100, 3]).long()
+    y_pred = torch.tensor([-9, 9, 1, 9, -9]).float()
+    y_true = torch.tensor([0, 1, -100, 1, 0]).long()
 
     loss = criterion(y_pred, y_true)
     print(loss)
 
 
-@torch.no_grad()
-def test_soft_bce_loss():
-    criterion = SoftBCEWithLogitsLoss(smooth_factor=0.1, ignore_index=-100)
-
+@pytest.mark.parametrize(
+    "criterion",
+    [
+        L.BiTemperedLogisticLoss(t1=1, t2=0.8),
+        L.FocalCosineLoss(),
+        L.FocalLoss(),
+        L.SoftF1Loss(),
+        L.SoftCrossEntropyLoss(),
+    ],
+)
+def test_classification_losses(criterion):
     # Ideal case
-    y_pred = torch.tensor([-9, 9, 1, 9, -9]).float()
-    y_true = torch.tensor([0, 1, -100, 1, 0]).long()
+    y_pred = torch.tensor([[+9, -9, -9, -9], [-9, +9, -9, -9], [-9, -9, +9, -9], [-9, -9, -9, +9]]).float()
+    y_true = torch.tensor([0, 1, 2, 3]).long()
 
     loss = criterion(y_pred, y_true)
     print(loss)

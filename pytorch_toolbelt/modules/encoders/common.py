@@ -63,7 +63,8 @@ def make_n_channel_input(conv: nn.Conv2d, in_channels: int, mode="auto", **kwarg
 class EncoderModule(nn.Module):
     def __init__(self, channels: List[int], strides: List[int], layers: List[int]):
         super().__init__()
-        assert len(channels) == len(strides)
+        if len(channels) != len(strides):
+            raise ValueError("Number of channels must be equal to number of strides")
 
         self._layers = layers
 

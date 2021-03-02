@@ -223,6 +223,30 @@ def test_xresnet_encoder(encoder, encoder_params):
         [timm.DPN92Encoder, {"pretrained": False}],
         [timm.DPN107Encoder, {"pretrained": False}],
         [timm.DPN131Encoder, {"pretrained": False}],
+        [timm.NFNetF0Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.NFNetF1Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.NFNetF2Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.NFNetF3Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.NFNetF4Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.NFNetF5Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.NFNetF6Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.NFNetF7Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        #
+        [timm.NFNetF0SEncoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.NFNetF1SEncoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.NFNetF2SEncoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.NFNetF3SEncoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.NFNetF4SEncoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.NFNetF5SEncoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.NFNetF6SEncoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.NFNetF7SEncoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        #
+        [timm.NFRegNetB0Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.NFRegNetB1Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.NFRegNetB2Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.NFRegNetB3Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.NFRegNetB4Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.NFRegNetB5Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
     ],
 )
 @torch.no_grad()
@@ -238,9 +262,10 @@ def test_timm_encoders(encoder, encoder_params):
     output = net(x)
     assert len(output) == len(net.channels)
     for feature_map, expected_stride, expected_channels in zip(output, net.strides, net.channels):
+        assert feature_map.size(0) == x.size(0)
         assert feature_map.size(1) == expected_channels
-        assert feature_map.size(2) * expected_stride == 256
-        assert feature_map.size(3) * expected_stride == 256
+        assert feature_map.size(2) * expected_stride == x.size(2)
+        assert feature_map.size(3) * expected_stride == x.size(3)
 
 
 @pytest.mark.parametrize(

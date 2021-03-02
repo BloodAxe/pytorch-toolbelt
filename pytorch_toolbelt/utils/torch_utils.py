@@ -31,6 +31,7 @@ __all__ = [
     "argmax_over_dim_1",
     "argmax_over_dim_2",
     "argmax_over_dim_3",
+    "sigmoid_with_threshold",
 ]
 
 
@@ -64,6 +65,10 @@ def argmax_over_dim_2(x: Tensor) -> Tensor:
 
 def argmax_over_dim_3(x: Tensor) -> Tensor:
     return torch.argmax(x, dim=3)
+
+
+def sigmoid_with_threshold(x: Tensor, threshold):
+    return x.float().sigmoid().gt(threshold)
 
 
 def logit(x: torch.Tensor, eps=1e-5) -> torch.Tensor:

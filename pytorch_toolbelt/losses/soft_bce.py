@@ -27,9 +27,9 @@ class SoftBCEWithLogitsLoss(nn.Module):
 
     def forward(self, input: Tensor, target: Tensor) -> Tensor:
         if self.smooth_factor is not None:
-            soft_targets = (1 - target) * self.smooth_factor + target * (1 - self.smooth_factor)
+            soft_targets = ((1 - target) * self.smooth_factor + target * (1 - self.smooth_factor)).type_as(input)
         else:
-            soft_targets = target
+            soft_targets = target.type_as(input)
 
         loss = F.binary_cross_entropy_with_logits(
             input, soft_targets, self.weight, pos_weight=self.pos_weight, reduction="none"

@@ -14,6 +14,8 @@ from ..torch_utils import to_numpy, argmax_over_dim_1
 from ..visualization import render_figure_to_tensor, plot_confusion_matrix
 
 __all__ = [
+    "AccuracyCallback",
+    "MultilabelAccuracyCallback",
     "BINARY_MODE",
     "ConfusionMatrixCallback",
     "F1ScoreCallback",
@@ -53,8 +55,7 @@ def pixel_accuracy(outputs: torch.Tensor, targets: torch.Tensor, ignore_index=No
 
 
 class PixelAccuracyCallback(MetricCallback):
-    """Pixel accuracy metric callback
-    """
+    """Pixel accuracy metric callback"""
 
     def __init__(
         self, input_key: str = "targets", output_key: str = "logits", prefix: str = "accuracy", ignore_index=None
@@ -156,7 +157,7 @@ class ConfusionMatrixCallback(Callback):
 
 class F1ScoreCallback(Callback):
     """
-        Compute F1 metric score
+    Compute F1 metric score
 
     """
 
@@ -352,6 +353,7 @@ def multiclass_dice_iou_score(
     eps=1e-7,
     nan_score_on_empty=False,
     classes_of_interest=None,
+    ignore_index=None,
 ):
     ious = []
     num_classes = y_pred.size(0)
@@ -361,9 +363,16 @@ def multiclass_dice_iou_score(
         classes_of_interest = range(num_classes)
 
     for class_index in classes_of_interest:
+        y_pred_i = (y_pred == class_index).float()
+        y_true_i = (y_true == class_index).float()
+        if ignore_index is not None:
+            not_ignore_mask = (y_true != ignore_index).float()
+            y_pred_i *= not_ignore_mask
+            y_true_i *= not_ignore_mask
+
         iou = binary_dice_iou_score(
-            y_pred=(y_pred == class_index).float(),
-            y_true=(y_true == class_index).float(),
+            y_pred=y_pred_i,
+            y_true=y_true_i,
             mode=mode,
             nan_score_on_empty=nan_score_on_empty,
             threshold=threshold,
@@ -429,7 +438,8 @@ class IoUMetricsCallback(Callback):
         :param output_key: output key to use for precision calculation; specifies our `y_pred`.
         """
         super().__init__(CallbackOrder.Metric)
-        assert mode in {BINARY_MODE, MULTILABEL_MODE, MULTICLASS_MODE}
+        if mode not in {BINARY_MODE, MULTILABEL_MODE, MULTICLASS_MODE}:
+            raise ValueError("Mode must be one of BINARY_MODE, MULTILABEL_MODE, MULTICLASS_MODE")
 
         if prefix is None:
             prefix = metric
@@ -463,17 +473,13 @@ class IoUMetricsCallback(Callback):
             )
 
         if self.mode == MULTICLASS_MODE:
-            if ignore_index is not None:
-                warnings.warn(
-                    f"Use of ignore_index on {self.__class__.__name__} with {self.mode} "
-                    "is not needed as this implementation will ignore all target values outside [0..num_classes) range."
-                )
             self.score_fn = partial(
                 multiclass_dice_iou_score,
                 mode=metric,
                 threshold=0.0,
                 nan_score_on_empty=nan_score_on_empty,
                 classes_of_interest=self.classes_of_interest,
+                ignore_index=ignore_index,
             )
 
         if self.mode == MULTILABEL_MODE:
@@ -505,8 +511,9 @@ class IoUMetricsCallback(Callback):
         self.scores.extend(score_per_image)
 
     def on_loader_end(self, runner: IRunner):
-        scores = np.array(self.scores)
-        mean_score = np.nanmean(scores)
+        scores = np.concatenate(all_gather(np.array(self.scores)))
+        mean_per_class = np.nanmean(scores, axis=1)  # Average across classes
+        mean_score = np.nanmean(mean_per_class, axis=0)  # Average across images
 
         runner.loader_metrics[self.prefix] = float(mean_score)
 
@@ -571,3 +578,140 @@ class OutputDistributionCallback(Callback):
                 logger.add_histogram(
                     f"{self.prefix}/{class_label}", pred_probas[true_labels == class_label], state.epoch
                 )
+
+
+class AccuracyCallback(Callback):
+    """
+    Accuracy metric callback.
+    DDP mode supported
+    """
+
+    def __init__(
+        self,
+        outputs_to_labels: Callable[[Tensor], Tensor] = argmax_over_dim_1,
+        input_key: str = "targets",
+        output_key: str = "logits",
+        prefix: str = "accuracy",
+        ignore_index: Optional[int] = None,
+    ):
+        """
+        Args:
+            input_key: input key to use for accuracy calculation;
+                specifies our `y_true`
+            output_key: output key to use for accuracy calculation;
+                specifies our `y_pred`
+            prefix: key for the metric's name
+            num_classes: number of classes to calculate ``topk_args``
+                if ``accuracy_args`` is None
+        """
+
+        super().__init__(CallbackOrder.Metric)
+        self.prefix = prefix
+        self.output_key = output_key
+        self.input_key = input_key
+        self.ignore_index = ignore_index
+        self.outputs_to_labels = outputs_to_labels
+        self.correct = 0
+        self.totals = 0
+
+    def on_loader_start(self, state):
+        self.correct = 0
+        self.totals = 0
+
+    @torch.no_grad()
+    def on_batch_end(self, runner: IRunner):
+        pred_labels = self.outputs_to_labels(runner.output[self.output_key])
+        true_labels = runner.input[self.input_key].type_as(pred_labels)
+
+        true_labels = true_labels.view(-1)
+        pred_labels = pred_labels.view(-1)
+
+        if self.ignore_index is not None:
+            mask = true_labels != self.ignore_index
+            pred_labels = torch.masked_select(pred_labels, mask)
+            true_labels = torch.masked_select(true_labels, mask)
+
+        batch_correct = int((pred_labels == true_labels).sum())
+        batch_totals = len(true_labels)
+
+        if len(true_labels):
+            self.correct += batch_correct
+            self.totals += batch_totals
+
+        batch_accuracy = float(batch_correct) / float(batch_totals)
+        runner.batch_metrics[self.prefix] = batch_accuracy
+
+    def on_loader_end(self, runner: IRunner):
+        correct = np.sum(all_gather(self.correct))
+        total = np.sum(all_gather(self.totals))
+        accuracy = float(correct) / float(total)
+        runner.loader_metrics[self.prefix] = accuracy
+
+
+class MultilabelAccuracyCallback(Callback):
+    """
+    Accuracy score metric for multi-label case (aka Exact Match Ratio, Subset accuracy).
+    """
+
+    def __init__(
+        self,
+        outputs_to_labels: Callable[[Tensor], Tensor] = argmax_over_dim_1,
+        input_key: str = "targets",
+        output_key: str = "logits",
+        prefix: str = "accuracy",
+        ignore_index: Optional[int] = None,
+    ):
+        """
+        Args:
+            input_key: input key to use for accuracy calculation;
+                specifies our `y_true`
+            output_key: output key to use for accuracy calculation;
+                specifies our `y_pred`
+            prefix: key for the metric's name
+            num_classes: number of classes to calculate ``topk_args``
+                if ``accuracy_args`` is None
+        """
+
+        super().__init__(CallbackOrder.Metric)
+        self.prefix = prefix
+        self.output_key = output_key
+        self.input_key = input_key
+        self.ignore_index = ignore_index
+        self.outputs_to_labels = outputs_to_labels
+        self.correct = 0
+        self.totals = 0
+
+    def on_loader_start(self, state):
+        self.correct = 0
+        self.totals = 0
+
+    @torch.no_grad()
+    def on_batch_end(self, runner: IRunner):
+        pred_labels = self.outputs_to_labels(runner.output[self.output_key])
+        true_labels = runner.input[self.input_key].type_as(pred_labels)
+
+        correct_preds = pred_labels == true_labels
+
+        if self.ignore_index is not None:
+            mask = true_labels == self.ignore_index
+            correct_preds = correct_preds | mask
+
+        batch_correct = correct_preds.all(dim=1, keepdim=False)
+        if len(batch_correct.size()) > 1:
+            batch_correct = batch_correct.view((batch_correct.size(0), -1)).mean(dim=1)
+
+        batch_totals = int(batch_correct.numel())
+        batch_correct = float(batch_correct.float().sum())
+
+        if len(true_labels):
+            self.correct += batch_correct
+            self.totals += batch_totals
+
+        batch_accuracy = float(batch_correct) / float(batch_totals)
+        runner.batch_metrics[self.prefix] = batch_accuracy
+
+    def on_loader_end(self, runner: IRunner):
+        correct = np.sum(all_gather(self.correct))
+        total = np.sum(all_gather(self.totals))
+        accuracy = float(correct) / float(total)
+        runner.loader_metrics[self.prefix] = accuracy
