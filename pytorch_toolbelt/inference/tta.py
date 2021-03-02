@@ -43,7 +43,7 @@ __all__ = [
 MaybeStrOrCallable = Optional[Union[str, Callable]]
 
 
-def fivecrop_image_augment(image: Tensor, crop_size: Tuple) -> Tensor:
+def fivecrop_image_augment(image: Tensor, crop_size: Tuple[int, int]) -> Tensor:
     """Test-time augmentation for image classification that takes five crops out of input tensor (4 on corners and central)
     and averages predictions from them.
 
