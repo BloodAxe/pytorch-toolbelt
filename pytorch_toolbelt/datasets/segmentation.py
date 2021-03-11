@@ -99,7 +99,7 @@ class SegmentationDataset(Dataset):
         if mask_filenames is not None and len(image_filenames) != len(mask_filenames):
             raise ValueError("Number of images does not corresponds to number of targets")
 
-        if self.image_ids is None:
+        if image_ids is None:
             self.image_ids = [fs.id_from_fname(fname) for fname in image_filenames]
         else:
             self.image_ids = image_ids
