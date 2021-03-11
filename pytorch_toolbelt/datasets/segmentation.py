@@ -19,7 +19,7 @@ from .common import (
 )
 from ..utils import fs, image_to_tensor
 
-__all__ = ["mask_to_bce_target", "mask_to_ce_target", "SegmentationDataset", "compute_weight_mask"]
+__all__ = ["mask_to_bce_target", "mask_to_ce_target", "read_binary_mask", "SegmentationDataset", "compute_weight_mask"]
 
 
 def mask_to_bce_target(mask):
@@ -62,8 +62,21 @@ def _block_reduce_dominant_label(x: np.ndarray, axis):
 
 
 def read_binary_mask(mask_fname: str) -> np.ndarray:
-    mask = cv2.imread(mask_fname, cv2.IMREAD_COLOR)
-    return cv2.threshold(mask, 0, 255, cv2.THRESH_BINARY, dst=mask)
+    """
+    Read image as binary mask, all non-zero values are treated as positive labels and converted to 1
+    Args:
+        mask_fname: Image with mask
+
+    Returns:
+        Numpy array with {0,1} values
+    """
+
+    mask = cv2.imread(mask_fname, cv2.IMREAD_GRAYSCALE)
+    if mask is None:
+        raise FileNotFoundError(f"Cannot find {mask_fname}")
+
+    cv2.threshold(mask, thresh=0, maxval=1, type=cv2.THRESH_BINARY, dst=mask)
+    return mask
 
 
 class SegmentationDataset(Dataset):
@@ -81,11 +94,16 @@ class SegmentationDataset(Dataset):
         need_weight_mask=False,
         need_supervision_masks=False,
         make_mask_target_fn: Callable = mask_to_ce_target,
+        image_ids: Optional[List[str]] = None,
     ):
         if mask_filenames is not None and len(image_filenames) != len(mask_filenames):
             raise ValueError("Number of images does not corresponds to number of targets")
 
-        self.image_ids = [fs.id_from_fname(fname) for fname in image_filenames]
+        if self.image_ids is None:
+            self.image_ids = [fs.id_from_fname(fname) for fname in image_filenames]
+        else:
+            self.image_ids = image_ids
+
         self.need_weight_mask = need_weight_mask
         self.need_supervision_masks = need_supervision_masks
 
