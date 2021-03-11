@@ -118,39 +118,31 @@ class SegmentationDataset(Dataset):
     def __len__(self):
         return len(self.images)
 
-    def set_target(self, index: int, value: np.ndarray):
-        mask_fname = self.masks[index]
-
-        value = (value * 255).astype(np.uint8)
-        cv2.imwrite(mask_fname, value)
-
     def __getitem__(self, index):
         image = self.read_image(self.images[index])
-
+        data = {"image": image}
         if self.masks is not None:
-            mask = self.read_mask(self.masks[index])
-        else:
-            mask = np.ones((image.shape[0], image.shape[1], 1), dtype=np.uint8) * UNLABELED_SAMPLE
+            data["mask"] = self.read_mask(self.masks[index])
 
-        data = self.transform(image=image, mask=mask)
+        data = self.transform(**data)
 
         image = data["image"]
-        mask = data["mask"]
-
         sample = {
             INPUT_INDEX_KEY: index,
             INPUT_IMAGE_ID_KEY: self.image_ids[index],
             INPUT_IMAGE_KEY: image_to_tensor(image),
-            TARGET_MASK_KEY: self.make_target(mask),
         }
 
-        if self.need_weight_mask:
-            sample[TARGET_MASK_WEIGHT_KEY] = image_to_tensor(compute_weight_mask(mask)).float()
+        if self.masks is not None:
+            mask = data["mask"]
+            sample[TARGET_MASK_KEY] = self.make_target(mask)
+            if self.need_weight_mask:
+                sample[TARGET_MASK_WEIGHT_KEY] = image_to_tensor(compute_weight_mask(mask)).float()
 
-        if self.need_supervision_masks:
-            for i in range(1, 5):
-                stride = 2 ** i
-                mask = block_reduce(mask, (2, 2), partial(_block_reduce_dominant_label))
-                sample[name_for_stride(TARGET_MASK_KEY, stride)] = self.make_target(mask)
+            if self.need_supervision_masks:
+                for i in range(1, 5):
+                    stride = 2 ** i
+                    mask = block_reduce(mask, (2, 2), partial(_block_reduce_dominant_label))
+                    sample[name_for_stride(TARGET_MASK_KEY, stride)] = self.make_target(mask)
 
         return sample
