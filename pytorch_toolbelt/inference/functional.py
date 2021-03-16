@@ -25,6 +25,8 @@ __all__ = [
     "pad_image_tensor",
     "unpad_image_tensor",
     "unpad_xyxy_bboxes",
+    "geometric_mean",
+    "harmonic_mean",
 ]
 
 
@@ -205,3 +207,34 @@ def unpad_xyxy_bboxes(bboxes_tensor: torch.Tensor, pad, dim=-1):
         pad = pad.unsqueeze(dim)
 
     return bboxes_tensor - pad
+
+
+def geometric_mean(x: Tensor, dim: int) -> Tensor:
+    """
+    Compute geometric mean along given dimension.
+    This implementation assume values are in range (0...1) (Probabilities)
+    Args:
+        x: Input tensor of arbitrary shape
+        dim: Dimension to reduce
+
+    Returns:
+        Tensor
+    """
+    return x.log().mean(dim=dim).exp()
+
+
+def harmonic_mean(x: Tensor, dim: int, eps: float = 1e-6) -> Tensor:
+    """
+    Compute harmonic mean along given dimension.
+    This implementation assume values are in range (0...1) (Probabilities)
+    Args:
+        x: Input tensor of arbitrary shape
+        dim: Dimension to reduce
+
+    Returns:
+        Tensor
+    """
+    x = torch.reciprocal(x.clamp_min(eps))
+    x = torch.mean(x, dim=dim)
+    x = torch.reciprocal(x.clamp_min(eps))
+    return x
