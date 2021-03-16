@@ -1,14 +1,14 @@
 import pytest
 import torch
 
-from pytorch_toolbelt.zoo import resnet34_unet32_s2, resnet34_unet64_s4
+from pytorch_toolbelt.zoo import resnet34_unet32_s2, resnet34_unet64_s4, hrnet34_unet64
 
 skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA is not available")
 
 
 @skip_if_no_cuda
 @torch.no_grad()
-@pytest.mark.parametrize("model_cls", [resnet34_unet32_s2, resnet34_unet64_s4])
+@pytest.mark.parametrize("model_cls", [resnet34_unet32_s2, resnet34_unet64_s4, hrnet34_unet64])
 def test_segmentation_models(model_cls):
     num_classes = 7
     net = model_cls(num_classes=num_classes).cuda().eval()
