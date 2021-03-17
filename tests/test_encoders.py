@@ -215,6 +215,7 @@ def test_xresnet_encoder(encoder, encoder_params):
         [timm.SKResNet18Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
         [timm.SKResNeXt50Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
         [timm.SWSLResNeXt101Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.TimmResnet200D, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
         [timm.HRNetW18Encoder, {"pretrained": False}],
         [timm.HRNetW32Encoder, {"pretrained": False}],
         [timm.HRNetW48Encoder, {"pretrained": False}],
@@ -247,16 +248,20 @@ def test_xresnet_encoder(encoder, encoder_params):
         [timm.NFRegNetB3Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
         [timm.NFRegNetB4Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
         [timm.NFRegNetB5Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        # Res2Net
+        [timm.TimmRes2Net101Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.TimmRes2Next50Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
     ],
 )
 @torch.no_grad()
 @skip_if_no_cuda
 def test_timm_encoders(encoder, encoder_params):
-    net = encoder(**encoder_params).eval()
+    net = encoder(**encoder_params).eval().change_input_channels(5)
+
     print(net.__class__.__name__, count_parameters(net))
     print(net.strides)
     print(net.channels)
-    x = torch.rand((4, 3, 256, 256))
+    x = torch.rand((4, 5, 256, 256))
     x = maybe_cuda(x)
     net = maybe_cuda(net)
     output = net(x)

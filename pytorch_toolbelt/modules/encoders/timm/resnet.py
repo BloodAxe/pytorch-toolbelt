@@ -4,13 +4,11 @@ from typing import List
 from torch import nn
 
 from ..common import EncoderModule, make_n_channel_input
+from .common import GenericTimmEncoder
 
-__all__ = [
-    "SKResNet18Encoder",
-    "SKResNeXt50Encoder",
-    "SWSLResNeXt101Encoder",
-    "TResNetMEncoder",
-]
+__all__ = ["SKResNet18Encoder", "SKResNeXt50Encoder", "SWSLResNeXt101Encoder", "TResNetMEncoder", "TimmResnet200D"]
+
+from ... import ACT_RELU, get_activation_block
 
 
 class TResNetMEncoder(EncoderModule):
@@ -97,7 +95,15 @@ class SWSLResNeXt101Encoder(EncoderModule):
 
         encoder = swsl_resnext101_32x8d(pretrained=pretrained)
         super().__init__([64, 256, 512, 1024, 2048], [2, 4, 8, 16, 32], layers)
-        self.stem = nn.Sequential(encoder.conv1, encoder.bn1, encoder.act1)
+        self.stem = nn.Sequential(
+            OrderedDict(
+                [
+                    ("conv1", encoder.conv1),
+                    ("bn1", encoder.bn1),
+                    ("act1", encoder.act1),
+                ]
+            )
+        )
 
         self.layer1 = nn.Sequential(encoder.maxpool, encoder.layer1)
         self.layer2 = encoder.layer2
@@ -110,4 +116,17 @@ class SWSLResNeXt101Encoder(EncoderModule):
 
     def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
         self.stem.conv1 = make_n_channel_input(self.stem.conv1, input_channels, mode, **kwargs)
+        return self
+
+
+class TimmResnet200D(GenericTimmEncoder):
+    def __init__(self, pretrained=True, activation=ACT_RELU, layers=None):
+        from timm.models.resnet import resnet200d
+
+        act_layer = get_activation_block(activation)
+        encoder = resnet200d(features_only=True, pretrained=pretrained, act_layer=act_layer)
+        super().__init__(encoder, layers)
+
+    def change_input_channels(self, input_channels: int, mode="auto"):
+        self.encoder.conv1[0] = make_n_channel_input(self.encoder.conv1[0], input_channels, mode=mode)
         return self

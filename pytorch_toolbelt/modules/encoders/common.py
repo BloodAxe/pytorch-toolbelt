@@ -4,7 +4,7 @@ Encodes listed here provides easy way to swap backbone of classification/segment
 """
 import math
 import warnings
-from typing import List
+from typing import List, Union
 
 import torch
 from torch import nn, Tensor
@@ -18,7 +18,9 @@ def _take(elements, indexes):
     return list([elements[i] for i in indexes])
 
 
-def make_n_channel_input(conv: nn.Conv2d, in_channels: int, mode="auto", **kwargs):
+def make_n_channel_input_conv(
+    conv: Union[nn.Conv1d, nn.Conv2d, nn.Conv3d], in_channels: int, mode="auto", **kwargs
+) -> Union[nn.Conv1d, nn.Conv2d, nn.Conv3d]:
     """
 
     Args:
@@ -30,12 +32,13 @@ def make_n_channel_input(conv: nn.Conv2d, in_channels: int, mode="auto", **kwarg
     Returns:
 
     """
-    assert isinstance(conv, nn.Conv2d)
+    conv_cls = conv.__class__
+
     if conv.in_channels == in_channels:
         warnings.warn("make_n_channel_input call is spurious")
         return conv
 
-    new_conv = nn.Conv2d(
+    new_conv = conv_cls(
         in_channels,
         out_channels=conv.out_channels,
         kernel_size=kwargs.get("kernel_size", conv.kernel_size),
@@ -58,6 +61,24 @@ def make_n_channel_input(conv: nn.Conv2d, in_channels: int, mode="auto", **kwarg
         new_conv.weight = nn.Parameter(w, requires_grad=True)
 
     return new_conv
+
+
+def make_n_channel_input(conv: nn.Module, in_channels: int, mode="auto", **kwargs) -> nn.Module:
+    """
+
+    Args:
+        conv: Input nn.Conv2D object to copy settings/weights from
+        in_channels: Desired number of input channels
+        mode:
+        **kwargs: Optional overrides for Conv2D parameters
+
+    Returns:
+
+    """
+    if isinstance(conv, (nn.Conv1d, nn.Conv2d, nn.Conv3d)):
+        return make_n_channel_input_conv(conv, in_channels=in_channels, mode=mode, **kwargs)
+
+    raise ValueError(f"Unsupported class {conv.__class__.__name__}")
 
 
 class EncoderModule(nn.Module):
