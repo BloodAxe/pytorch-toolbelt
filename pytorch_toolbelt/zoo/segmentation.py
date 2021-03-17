@@ -94,4 +94,4 @@ def hrnet34_unet64(input_channels=3, num_classes=1, dropout=0.2, pretrained=True
     if input_channels != 3:
         encoder.change_input_channels(input_channels)
 
-    return UnetSegmentationModel(encoder, num_classes=num_classes, unet_channels=[64, 128, 256], dropout=dropout)
+    return UnetSegmentationModel(encoder, num_classes=num_classes, unet_channels=[64, 128, 256  ], dropout=dropout)
