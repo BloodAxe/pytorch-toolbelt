@@ -8,6 +8,15 @@ from ..common import EncoderModule, _take
 from ...activations import ACT_SILU, get_activation_block
 
 __all__ = [
+    "TimmB0Encoder",
+    "TimmB1Encoder",
+    "TimmB2Encoder",
+    "TimmB3Encoder",
+    "TimmB4Encoder",
+    "TimmB5Encoder",
+    "TimmB6Encoder",
+    "TimmB7Encoder",
+    "TimmMixNetXLEncoder",
     "B0Encoder",
     "B1Encoder",
     "B2Encoder",
@@ -52,7 +61,7 @@ def make_n_channel_input_conv2d_same(conv: nn.Conv2d, in_channels: int, mode="au
     return new_conv
 
 
-class B0Encoder(EncoderModule):
+class TimmB0Encoder(EncoderModule):
     def __init__(self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU, no_stride=False):
         from timm.models.efficientnet import tf_efficientnet_b0_ns
 
@@ -85,7 +94,7 @@ class B0Encoder(EncoderModule):
         return self
 
 
-class B1Encoder(EncoderModule):
+class TimmB1Encoder(EncoderModule):
     def __init__(self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU, no_stride=False):
         from timm.models.efficientnet import tf_efficientnet_b1_ns
 
@@ -116,7 +125,7 @@ class B1Encoder(EncoderModule):
         return self
 
 
-class B2Encoder(EncoderModule):
+class TimmB2Encoder(EncoderModule):
     def __init__(self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU, no_stride=False):
         from timm.models.efficientnet import tf_efficientnet_b2_ns
 
@@ -147,7 +156,7 @@ class B2Encoder(EncoderModule):
         return self
 
 
-class B3Encoder(EncoderModule):
+class TimmB3Encoder(EncoderModule):
     def __init__(self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU, no_stride=False):
         from timm.models.efficientnet import tf_efficientnet_b3_ns
 
@@ -178,7 +187,7 @@ class B3Encoder(EncoderModule):
         return self
 
 
-class B4Encoder(EncoderModule):
+class TimmB4Encoder(EncoderModule):
     def __init__(self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU, no_stride=False):
         from timm.models.efficientnet import tf_efficientnet_b4_ns
 
@@ -209,7 +218,7 @@ class B4Encoder(EncoderModule):
         return self
 
 
-class B5Encoder(EncoderModule):
+class TimmB5Encoder(EncoderModule):
     def __init__(self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU, no_stride=False):
         from timm.models.efficientnet import tf_efficientnet_b5_ns
 
@@ -240,7 +249,7 @@ class B5Encoder(EncoderModule):
         return self
 
 
-class B6Encoder(EncoderModule):
+class TimmB6Encoder(EncoderModule):
     def __init__(self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU, no_stride=False):
         from timm.models.efficientnet import tf_efficientnet_b6_ns
 
@@ -271,7 +280,7 @@ class B6Encoder(EncoderModule):
         return self
 
 
-class B7Encoder(EncoderModule):
+class TimmB7Encoder(EncoderModule):
     def __init__(self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU, no_stride=False):
         from timm.models.efficientnet import tf_efficientnet_b7_ns
 
@@ -302,7 +311,7 @@ class B7Encoder(EncoderModule):
         return self
 
 
-class MixNetXLEncoder(EncoderModule):
+class TimmMixNetXLEncoder(EncoderModule):
     def __init__(self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU):
         from timm.models.efficientnet import mixnet_xl
 
@@ -320,3 +329,15 @@ class MixNetXLEncoder(EncoderModule):
             self.encoder.conv_stem, input_channels, mode, **kwargs
         )
         return self
+
+
+# Aliases to keep backward compatibility
+B0Encoder = TimmB0Encoder
+B1Encoder = TimmB1Encoder
+B2Encoder = TimmB2Encoder
+B3Encoder = TimmB3Encoder
+B4Encoder = TimmB4Encoder
+B5Encoder = TimmB5Encoder
+B6Encoder = TimmB6Encoder
+B7Encoder = TimmB7Encoder
+MixNetXLEncoder = TimmMixNetXLEncoder
