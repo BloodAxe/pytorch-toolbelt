@@ -59,9 +59,9 @@ def _deaugment_averaging(x: Tensor, reduction: MaybeStrOrCallable) -> Tensor:
     elif reduction == "sum":
         x = x.sum(dim=0)
     elif reduction in {"gmean", "geometric_mean"}:
-        x = geometric_mean(x, dim=0)
+        x = F.geometric_mean(x, dim=0)
     elif reduction in {"hmean", "harmonic_mean"}:
-        x = harmonic_mean(x, dim=0)
+        x = F.harmonic_mean(x, dim=0)
     elif callable(reduction):
         x = reduction(x, dim=0)
     return x
