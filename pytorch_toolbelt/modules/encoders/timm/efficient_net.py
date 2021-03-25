@@ -188,7 +188,14 @@ class TimmB3Encoder(EncoderModule):
 
 
 class TimmB4Encoder(EncoderModule):
-    def __init__(self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU, no_stride=False):
+    def __init__(
+        self,
+        pretrained=True,
+        layers=[1, 2, 3, 4],
+        activation: str = ACT_SILU,
+        no_stride_s32=False,
+        no_stride_s16=False,
+    ):
         from timm.models.efficientnet import tf_efficientnet_b4_ns
 
         act_layer = get_activation_block(activation)
@@ -196,14 +203,18 @@ class TimmB4Encoder(EncoderModule):
             pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.2
         )
         strides = [2, 4, 8, 16, 32]
-        if no_stride:
-            encoder.blocks[5][0].conv_dw.stride = (1, 1)
-            encoder.blocks[5][0].conv_dw.dilation = (2, 2)
 
+        if no_stride_s16:
             encoder.blocks[3][0].conv_dw.stride = (1, 1)
             encoder.blocks[3][0].conv_dw.dilation = (2, 2)
             strides[3] = 8
-            strides[4] = 8
+            strides[4] = 16
+
+        if no_stride_s32:
+            encoder.blocks[5][0].conv_dw.stride = (1, 1)
+            encoder.blocks[5][0].conv_dw.dilation = (2, 2)
+            strides[4] = strides[3]
+
         super().__init__([24, 32, 56, 160, 448], strides, layers)
         self.encoder = encoder
 
