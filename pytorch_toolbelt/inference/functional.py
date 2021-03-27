@@ -1,4 +1,4 @@
-from collections import Sized, Iterable
+from collections.abc import Sized, Iterable
 from typing import Union, Tuple
 
 import torch

@@ -139,7 +139,7 @@ class SegmentationDataset(Dataset):
                 sample[TARGET_MASK_WEIGHT_KEY] = image_to_tensor(compute_weight_mask(mask)).float()
 
             if self.need_supervision_masks:
-                for i in range(1, 5):
+                for i in range(1, 6):
                     stride = 2 ** i
                     mask = block_reduce(mask, (2, 2), partial(_block_reduce_dominant_label))
                     sample[name_for_stride(TARGET_MASK_KEY, stride)] = self.make_target(mask)
