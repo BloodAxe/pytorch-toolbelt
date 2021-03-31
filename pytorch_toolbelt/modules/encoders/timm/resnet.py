@@ -1,6 +1,7 @@
 from collections import OrderedDict
 from typing import List
 
+import torch
 from torch import nn
 
 from .common import GenericTimmEncoder
@@ -29,6 +30,7 @@ class TResNetMEncoder(EncoderModule):
         self.layer4 = encoder.body.layer4
 
     @property
+    @torch.jit.unused
     def encoder_layers(self) -> List[nn.Module]:
         return [self.stem, self.layer1, self.layer2, self.layer3, self.layer4]
 

@@ -102,32 +102,33 @@ class EncoderModule(nn.Module):
         return _take(output_features, self._layers)
 
     @property
+    @torch.jit.unused
     def channels(self) -> List[int]:
         return self._output_filters
 
     @property
+    @torch.jit.unused
     def strides(self) -> List[int]:
         return self._output_strides
 
     @property
+    @torch.jit.unused
     @pytorch_toolbelt_deprecated("This property is deprecated, please use .strides instead.")
     def output_strides(self) -> List[int]:
         return self.strides
 
     @property
+    @torch.jit.unused
     @pytorch_toolbelt_deprecated("This property is deprecated, please use .channels instead.")
     def output_filters(self) -> List[int]:
         return self.channels
 
-    @property
-    @pytorch_toolbelt_deprecated("This property is deprecated, please don't use it")
-    def encoder_layers(self) -> List[nn.Module]:
-        raise NotImplementedError
-
+    @torch.jit.unused
     def set_trainable(self, trainable):
         for param in self.parameters():
             param.requires_grad = bool(trainable)
 
+    @torch.jit.unused
     def change_input_channels(self, input_channels: int, mode="auto"):
         """
         Change number of channels expected in the input tensor. By default,
