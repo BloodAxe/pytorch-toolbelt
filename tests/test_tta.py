@@ -10,7 +10,7 @@ from torch import nn
 from pytorch_toolbelt.inference import tta
 from pytorch_toolbelt.modules import GlobalAvgPool2d
 from pytorch_toolbelt.utils.torch_utils import to_numpy
-from pytorch_toolbelt.zoo import resnet34_unet32
+from pytorch_toolbelt.zoo import resnet34_unet64_s4
 
 skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA is not available")
 
@@ -53,7 +53,7 @@ def test_d4_speed():
     df = defaultdict(list)
     n = 100
 
-    model = resnet34_unet32().cuda().eval()
+    model = resnet34_unet64_s4().cuda().eval()
     x = torch.rand((4, 3, 224, 224)).float().cuda()
     y1 = tta.d4_image2mask(model, x)
     y2 = tta.d4_image_deaugment(model(tta.d4_image_augment(x)))
@@ -66,7 +66,7 @@ def test_d4_speed():
                 torch.backends.cuda.deterministic = deterministic
                 torch.backends.cuda.benchmark = benchmark
 
-                model = resnet34_unet32().to(dtype).cuda().eval()
+                model = resnet34_unet64_s4().to(dtype).cuda().eval()
 
                 speed_v1 = 0
                 speed_v2 = 0

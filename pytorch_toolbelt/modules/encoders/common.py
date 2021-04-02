@@ -4,7 +4,7 @@ Encodes listed here provides easy way to swap backbone of classification/segment
 """
 import math
 import warnings
-from typing import List
+from typing import List, Union
 
 import torch
 from torch import nn, Tensor
@@ -18,7 +18,9 @@ def _take(elements, indexes):
     return list([elements[i] for i in indexes])
 
 
-def make_n_channel_input(conv: nn.Conv2d, in_channels: int, mode="auto", **kwargs):
+def make_n_channel_input_conv(
+    conv: Union[nn.Conv1d, nn.Conv2d, nn.Conv3d], in_channels: int, mode="auto", **kwargs
+) -> Union[nn.Conv1d, nn.Conv2d, nn.Conv3d]:
     """
 
     Args:
@@ -30,12 +32,13 @@ def make_n_channel_input(conv: nn.Conv2d, in_channels: int, mode="auto", **kwarg
     Returns:
 
     """
-    assert isinstance(conv, nn.Conv2d)
+    conv_cls = conv.__class__
+
     if conv.in_channels == in_channels:
         warnings.warn("make_n_channel_input call is spurious")
         return conv
 
-    new_conv = nn.Conv2d(
+    new_conv = conv_cls(
         in_channels,
         out_channels=conv.out_channels,
         kernel_size=kwargs.get("kernel_size", conv.kernel_size),
@@ -60,6 +63,24 @@ def make_n_channel_input(conv: nn.Conv2d, in_channels: int, mode="auto", **kwarg
     return new_conv
 
 
+def make_n_channel_input(conv: nn.Module, in_channels: int, mode="auto", **kwargs) -> nn.Module:
+    """
+
+    Args:
+        conv: Input nn.Conv2D object to copy settings/weights from
+        in_channels: Desired number of input channels
+        mode:
+        **kwargs: Optional overrides for Conv2D parameters
+
+    Returns:
+
+    """
+    if isinstance(conv, (nn.Conv1d, nn.Conv2d, nn.Conv3d)):
+        return make_n_channel_input_conv(conv, in_channels=in_channels, mode=mode, **kwargs)
+
+    raise ValueError(f"Unsupported class {conv.__class__.__name__}")
+
+
 class EncoderModule(nn.Module):
     def __init__(self, channels: List[int], strides: List[int], layers: List[int]):
         super().__init__()
@@ -81,32 +102,33 @@ class EncoderModule(nn.Module):
         return _take(output_features, self._layers)
 
     @property
+    @torch.jit.unused
     def channels(self) -> List[int]:
         return self._output_filters
 
     @property
+    @torch.jit.unused
     def strides(self) -> List[int]:
         return self._output_strides
 
     @property
+    @torch.jit.unused
     @pytorch_toolbelt_deprecated("This property is deprecated, please use .strides instead.")
     def output_strides(self) -> List[int]:
         return self.strides
 
     @property
+    @torch.jit.unused
     @pytorch_toolbelt_deprecated("This property is deprecated, please use .channels instead.")
     def output_filters(self) -> List[int]:
         return self.channels
 
-    @property
-    @pytorch_toolbelt_deprecated("This property is deprecated, please don't use it")
-    def encoder_layers(self) -> List[nn.Module]:
-        raise NotImplementedError
-
+    @torch.jit.unused
     def set_trainable(self, trainable):
         for param in self.parameters():
             param.requires_grad = bool(trainable)
 
+    @torch.jit.unused
     def change_input_channels(self, input_channels: int, mode="auto"):
         """
         Change number of channels expected in the input tensor. By default,

@@ -3,12 +3,20 @@ import warnings
 
 import torch
 from torch import nn
-from typing import Union
 
-from pytorch_toolbelt.modules import Swish, get_activation_block
 from ..common import EncoderModule, _take
+from ...activations import ACT_SILU, get_activation_block
 
 __all__ = [
+    "TimmB0Encoder",
+    "TimmB1Encoder",
+    "TimmB2Encoder",
+    "TimmB3Encoder",
+    "TimmB4Encoder",
+    "TimmB5Encoder",
+    "TimmB6Encoder",
+    "TimmB7Encoder",
+    "TimmMixNetXLEncoder",
     "B0Encoder",
     "B1Encoder",
     "B2Encoder",
@@ -53,14 +61,11 @@ def make_n_channel_input_conv2d_same(conv: nn.Conv2d, in_channels: int, mode="au
     return new_conv
 
 
-class B0Encoder(EncoderModule):
-    def __init__(
-        self, pretrained=True, layers=[1, 2, 3, 4], act_layer: Union[str, nn.Module] = Swish, no_stride=False
-    ):
+class TimmB0Encoder(EncoderModule):
+    def __init__(self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU, no_stride=False):
         from timm.models.efficientnet import tf_efficientnet_b0_ns
 
-        if isinstance(act_layer, str):
-            act_layer = get_activation_block(act_layer)
+        act_layer = get_activation_block(activation)
         encoder = tf_efficientnet_b0_ns(
             pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.05
         )
@@ -82,6 +87,7 @@ class B0Encoder(EncoderModule):
         features = self.encoder(x)
         return _take(features, self._layers)
 
+    @torch.jit.unused
     def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
         self.encoder.conv_stem = make_n_channel_input_conv2d_same(
             self.encoder.conv_stem, input_channels, mode, **kwargs
@@ -89,14 +95,11 @@ class B0Encoder(EncoderModule):
         return self
 
 
-class B1Encoder(EncoderModule):
-    def __init__(
-        self, pretrained=True, layers=[1, 2, 3, 4], act_layer: Union[str, nn.Module] = Swish, no_stride=False
-    ):
+class TimmB1Encoder(EncoderModule):
+    def __init__(self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU, no_stride=False):
         from timm.models.efficientnet import tf_efficientnet_b1_ns
 
-        if isinstance(act_layer, str):
-            act_layer = get_activation_block(act_layer)
+        act_layer = get_activation_block(activation)
         encoder = tf_efficientnet_b1_ns(
             pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.05
         )
@@ -123,14 +126,11 @@ class B1Encoder(EncoderModule):
         return self
 
 
-class B2Encoder(EncoderModule):
-    def __init__(
-        self, pretrained=True, layers=[1, 2, 3, 4], act_layer: Union[str, nn.Module] = Swish, no_stride=False
-    ):
+class TimmB2Encoder(EncoderModule):
+    def __init__(self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU, no_stride=False):
         from timm.models.efficientnet import tf_efficientnet_b2_ns
 
-        if isinstance(act_layer, str):
-            act_layer = get_activation_block(act_layer)
+        act_layer = get_activation_block(activation)
         encoder = tf_efficientnet_b2_ns(
             pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.1
         )
@@ -157,14 +157,11 @@ class B2Encoder(EncoderModule):
         return self
 
 
-class B3Encoder(EncoderModule):
-    def __init__(
-        self, pretrained=True, layers=[1, 2, 3, 4], act_layer: Union[str, nn.Module] = Swish, no_stride=False
-    ):
+class TimmB3Encoder(EncoderModule):
+    def __init__(self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU, no_stride=False):
         from timm.models.efficientnet import tf_efficientnet_b3_ns
 
-        if isinstance(act_layer, str):
-            act_layer = get_activation_block(act_layer)
+        act_layer = get_activation_block(activation)
         encoder = tf_efficientnet_b3_ns(
             pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.1
         )
@@ -191,26 +188,34 @@ class B3Encoder(EncoderModule):
         return self
 
 
-class B4Encoder(EncoderModule):
+class TimmB4Encoder(EncoderModule):
     def __init__(
-        self, pretrained=True, layers=[1, 2, 3, 4], act_layer: Union[str, nn.Module] = Swish, no_stride=False
+        self,
+        pretrained=True,
+        layers=[1, 2, 3, 4],
+        activation: str = ACT_SILU,
+        no_stride_s32=False,
+        no_stride_s16=False,
     ):
         from timm.models.efficientnet import tf_efficientnet_b4_ns
 
-        if isinstance(act_layer, str):
-            act_layer = get_activation_block(act_layer)
+        act_layer = get_activation_block(activation)
         encoder = tf_efficientnet_b4_ns(
             pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.2
         )
         strides = [2, 4, 8, 16, 32]
-        if no_stride:
-            encoder.blocks[5][0].conv_dw.stride = (1, 1)
-            encoder.blocks[5][0].conv_dw.dilation = (2, 2)
 
+        if no_stride_s16:
             encoder.blocks[3][0].conv_dw.stride = (1, 1)
             encoder.blocks[3][0].conv_dw.dilation = (2, 2)
             strides[3] = 8
-            strides[4] = 8
+            strides[4] = 16
+
+        if no_stride_s32:
+            encoder.blocks[5][0].conv_dw.stride = (1, 1)
+            encoder.blocks[5][0].conv_dw.dilation = (2, 2)
+            strides[4] = strides[3]
+
         super().__init__([24, 32, 56, 160, 448], strides, layers)
         self.encoder = encoder
 
@@ -225,14 +230,11 @@ class B4Encoder(EncoderModule):
         return self
 
 
-class B5Encoder(EncoderModule):
-    def __init__(
-        self, pretrained=True, layers=[1, 2, 3, 4], act_layer: Union[str, nn.Module] = Swish, no_stride=False
-    ):
+class TimmB5Encoder(EncoderModule):
+    def __init__(self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU, no_stride=False):
         from timm.models.efficientnet import tf_efficientnet_b5_ns
 
-        if isinstance(act_layer, str):
-            act_layer = get_activation_block(act_layer)
+        act_layer = get_activation_block(activation)
         encoder = tf_efficientnet_b5_ns(
             pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.2
         )
@@ -259,15 +261,11 @@ class B5Encoder(EncoderModule):
         return self
 
 
-class B6Encoder(EncoderModule):
-    def __init__(
-        self, pretrained=True, layers=[1, 2, 3, 4], act_layer: Union[str, nn.Module] = Swish, no_stride=False
-    ):
+class TimmB6Encoder(EncoderModule):
+    def __init__(self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU, no_stride=False):
         from timm.models.efficientnet import tf_efficientnet_b6_ns
 
-        if isinstance(act_layer, str):
-            act_layer = get_activation_block(act_layer)
-
+        act_layer = get_activation_block(activation)
         encoder = tf_efficientnet_b6_ns(
             pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.2
         )
@@ -294,14 +292,11 @@ class B6Encoder(EncoderModule):
         return self
 
 
-class B7Encoder(EncoderModule):
-    def __init__(
-        self, pretrained=True, layers=[1, 2, 3, 4], act_layer: Union[str, nn.Module] = Swish, no_stride=False
-    ):
+class TimmB7Encoder(EncoderModule):
+    def __init__(self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU, no_stride=False):
         from timm.models.efficientnet import tf_efficientnet_b7_ns
 
-        if isinstance(act_layer, str):
-            act_layer = get_activation_block(act_layer)
+        act_layer = get_activation_block(activation)
         encoder = tf_efficientnet_b7_ns(
             pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.2
         )
@@ -328,12 +323,11 @@ class B7Encoder(EncoderModule):
         return self
 
 
-class MixNetXLEncoder(EncoderModule):
-    def __init__(self, pretrained=True, layers=[1, 2, 3, 4], act_layer: Union[str, nn.Module] = Swish):
+class TimmMixNetXLEncoder(EncoderModule):
+    def __init__(self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU):
         from timm.models.efficientnet import mixnet_xl
 
-        if isinstance(act_layer, str):
-            act_layer = get_activation_block(act_layer)
+        act_layer = get_activation_block(activation)
         encoder = mixnet_xl(pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.2)
         super().__init__([40, 48, 64, 192, 320], [2, 4, 8, 16, 32], layers)
         self.encoder = encoder
@@ -347,3 +341,15 @@ class MixNetXLEncoder(EncoderModule):
             self.encoder.conv_stem, input_channels, mode, **kwargs
         )
         return self
+
+
+# Aliases to keep backward compatibility
+B0Encoder = TimmB0Encoder
+B1Encoder = TimmB1Encoder
+B2Encoder = TimmB2Encoder
+B3Encoder = TimmB3Encoder
+B4Encoder = TimmB4Encoder
+B5Encoder = TimmB5Encoder
+B6Encoder = TimmB6Encoder
+B7Encoder = TimmB7Encoder
+MixNetXLEncoder = TimmMixNetXLEncoder

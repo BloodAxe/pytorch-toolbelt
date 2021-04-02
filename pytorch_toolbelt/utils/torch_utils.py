@@ -184,7 +184,7 @@ def tensor_from_mask_image(mask: np.ndarray) -> torch.Tensor:
 
 
 def rgb_image_from_tensor(
-    image: torch.Tensor, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225), max_pixel_value=255.0, dtype=np.uint8
+    image: torch.Tensor, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225), min_pixel_value=0.0, max_pixel_value=255.0, dtype=np.uint8
 ) -> np.ndarray:
     """
     Convert numpy image (RGB, BGR, Grayscale, SAR, Mask image, etc.) to tensor
@@ -195,8 +195,9 @@ def rgb_image_from_tensor(
     image = np.moveaxis(to_numpy(image), 0, -1)
     mean = to_numpy(mean)
     std = to_numpy(std)
-    rgb_image = (max_pixel_value * (image * std + mean)).astype(dtype)
-    return rgb_image
+    rgb_image = (max_pixel_value * (image * std + mean))
+    rgb_image = np.clip(rgb_image, a_min=min_pixel_value, a_max=max_pixel_value)
+    return rgb_image.astype(dtype)
 
 
 def mask_from_tensor(mask: torch.Tensor, squeeze_single_channel=False, dtype=None) -> np.ndarray:

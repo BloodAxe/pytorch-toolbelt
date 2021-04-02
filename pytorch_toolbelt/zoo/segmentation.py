@@ -10,10 +10,7 @@ from torch import nn, Tensor
 from torch.nn import functional as F
 
 
-__all__ = [
-    "UnetSegmentationModel",
-    "resnet34_unet32",
-]
+__all__ = ["UnetSegmentationModel", "resnet34_unet32_s2", "resnet34_unet64_s4", "hrnet34_unet64"]
 
 
 class UnetSegmentationModel(nn.Module):
@@ -66,10 +63,35 @@ class UnetSegmentationModel(nn.Module):
         return mask
 
 
-def resnet34_unet32(input_channels=3, num_classes=1, dropout=0.2, pretrained=True):
+def resnet34_unet32_s2(input_channels=3, num_classes=1, dropout=0.2, pretrained=True):
     encoder = E.Resnet34Encoder(pretrained=pretrained, layers=[0, 1, 2, 3, 4])
     if input_channels != 3:
         encoder.change_input_channels(input_channels)
     return UnetSegmentationModel(
-        encoder, num_classes=num_classes, unet_channels=[32, 64, 128, 256], activation=ACT_SWISH, dropout=dropout,
+        encoder,
+        num_classes=num_classes,
+        unet_channels=[32, 64, 128, 256],
+        activation=ACT_SWISH,
+        dropout=dropout,
     )
+
+
+def resnet34_unet64_s4(input_channels=3, num_classes=1, dropout=0.2, pretrained=True):
+    encoder = E.Resnet34Encoder(pretrained=pretrained, layers=[1, 2, 3, 4])
+    if input_channels != 3:
+        encoder.change_input_channels(input_channels)
+    return UnetSegmentationModel(
+        encoder,
+        num_classes=num_classes,
+        unet_channels=[64, 128, 256],
+        activation=ACT_SWISH,
+        dropout=dropout,
+    )
+
+
+def hrnet34_unet64(input_channels=3, num_classes=1, dropout=0.2, pretrained=True):
+    encoder = E.HRNetV2Encoder34(pretrained=pretrained, layers=[1, 2, 3, 4])
+    if input_channels != 3:
+        encoder.change_input_channels(input_channels)
+
+    return UnetSegmentationModel(encoder, num_classes=num_classes, unet_channels=[64, 128, 256  ], dropout=dropout)

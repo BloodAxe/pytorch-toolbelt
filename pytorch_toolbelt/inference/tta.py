@@ -43,6 +43,35 @@ __all__ = [
 MaybeStrOrCallable = Optional[Union[str, Callable]]
 
 
+def _deaugment_averaging(x: Tensor, reduction: MaybeStrOrCallable) -> Tensor:
+    """
+    Helper method to average predictions of TTA-ed model.
+    This function assumes TTA dimension is 0, e.g [T, B, C, Ci, Cj, ..]
+    Args:
+        x: Input tensor of shape [T, B, ... ]
+        reduction: Reduction mode ("sum", "mean", "gmean", "hmean", function, None)
+
+    Returns:
+        Tensor of shape [B, C, Ci, Cj, ..]
+    """
+    if reduction == "mean":
+        x = x.mean(dim=0)
+    elif reduction == "sum":
+        x = x.sum(dim=0)
+    elif reduction in {"gmean", "geometric_mean"}:
+        x = F.geometric_mean(x, dim=0)
+    elif reduction in {"hmean", "harmonic_mean"}:
+        x = F.harmonic_mean(x, dim=0)
+    elif callable(reduction):
+        x = reduction(x, dim=0)
+    elif reduction in {None, "None", "none"}:
+        pass
+    else:
+        raise KeyError(f"Unsupported reduction mode {reduction}")
+
+    return x
+
+
 def fivecrop_image_augment(image: Tensor, crop_size: Tuple[int, int]) -> Tensor:
     """Test-time augmentation for image classification that takes five crops out of input tensor (4 on corners and central)
     and averages predictions from them.
@@ -70,24 +99,14 @@ def fivecrop_image_augment(image: Tensor, crop_size: Tuple[int, int]) -> Tensor:
     center_crop_x = (image_width - crop_width) // 2
     crop_cc = image[..., center_crop_y : center_crop_y + crop_height, center_crop_x : center_crop_x + crop_width]
 
-    return torch.cat(
-        [crop_tl, crop_tr, crop_bl, crop_br, crop_cc],
-        dim=0,
-    )
+    return torch.cat([crop_tl, crop_tr, crop_bl, crop_br, crop_cc], dim=0,)
 
 
-def fivecrop_label_deaugment(logits, reduction: MaybeStrOrCallable = "mean"):
+def fivecrop_label_deaugment(logits: Tensor, reduction: MaybeStrOrCallable = "mean") -> Tensor:
     crop_tl, crop_tr, crop_bl, crop_br, crop_cc = torch.chunk(logits, 5)
 
     logits: Tensor = torch.stack([crop_tl, crop_tr, crop_bl, crop_br, crop_cc])
-
-    if reduction == "mean":
-        logits = logits.mean(dim=0)
-    if reduction == "sum":
-        logits = logits.sum(dim=0)
-    if callable(reduction):
-        logits = reduction(logits, dim=0)
-    return logits
+    return _deaugment_averaging(logits, reduction=reduction)
 
 
 def fivecrop_image2label(model: nn.Module, image: Tensor, crop_size: Tuple) -> Tensor:
@@ -241,13 +260,7 @@ def fliplr_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean"
 
     image: Tensor = torch.stack([b1, F.torch_fliplr(b2)])
 
-    if reduction == "mean":
-        image = image.mean(dim=0)
-    if reduction == "sum":
-        image = image.sum(dim=0)
-    if callable(reduction):
-        image = reduction(image, dim=0)
-    return image
+    return _deaugment_averaging(image, reduction=reduction)
 
 
 def d2_image_augment(image: Tensor) -> Tensor:
@@ -264,15 +277,7 @@ def d2_image_augment(image: Tensor) -> Tensor:
             - Vertically-flipped tensor
 
     """
-    return torch.cat(
-        [
-            image,
-            F.torch_rot180(image),
-            F.torch_fliplr(image),
-            F.torch_flipud(image),
-        ],
-        dim=0,
-    )
+    return torch.cat([image, F.torch_rot180(image), F.torch_fliplr(image), F.torch_flipud(image),], dim=0,)
 
 
 def d2_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") -> Tensor:
@@ -291,46 +296,29 @@ def d2_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") ->
     b1, b2, b3, b4 = torch.chunk(image, 4)
 
     image: Tensor = torch.stack(
-        [
-            b1,
-            F.torch_rot180(b2),
-            F.torch_fliplr(b3),
-            F.torch_flipud(b4),
-        ]
+        [b1, F.torch_rot180(b2), F.torch_fliplr(b3), F.torch_flipud(b4),]
     )
 
-    if reduction == "mean":
-        image = image.mean(dim=0)
-    if reduction == "sum":
-        image = image.sum(dim=0)
-    if callable(reduction):
-        image = reduction(image, dim=0)
-    return image
+    return _deaugment_averaging(image, reduction=reduction)
 
 
-def d2_labels_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") -> Tensor:
+def d2_labels_deaugment(logits: Tensor, reduction: MaybeStrOrCallable = "mean") -> Tensor:
     """
     Deaugment input tensor (output of the model) assuming the is 2D tensor (See d2_augment).
     Args:
-        image: Tensor of [B * 4, C] shape
+        logits: Tensor of [B * 4, C] shape
         reduction: Reduction model for aggregating outputs. Default is taking mean.
 
     Returns:
         Tensor of [B, C] shape if reduction is not None or "none", otherwise returns de-augmented tensor of
         [4, B, C] shape
     """
-    assert image.size(0) % 4 == 0
+    assert logits.size(0) % 4 == 0
 
-    b1, b2, b3, b4 = torch.chunk(image, 4)
-    image: Tensor = torch.stack([b1, b2, b3, b4])
+    b1, b2, b3, b4 = torch.chunk(logits, 4)
+    logits: Tensor = torch.stack([b1, b2, b3, b4])
 
-    if reduction == "mean":
-        image = image.mean(dim=0)
-    if reduction == "sum":
-        image = image.sum(dim=0)
-    if callable(reduction):
-        image = reduction(image, dim=0)
-    return image
+    return _deaugment_averaging(logits, reduction=reduction)
 
 
 def d4_image_augment(image: Tensor) -> Tensor:
@@ -383,18 +371,13 @@ def d4_labels_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") -
         Tensor of [B, C] shape if reduction is not None or "none", otherwise returns de-augmented tensor of
         [8, B, C] shape
     """
-    assert image.size(0) % 8 == 0
+    if image.size(0) % 8 != 0:
+        raise RuntimeError("Batch size must be divisable by 8")
 
     b1, b2, b3, b4, b5, b6, b7, b8 = torch.chunk(image, 8)
     image: Tensor = torch.stack([b1, b2, b3, b4, b5, b7, b7, b8])
 
-    if reduction == "mean":
-        image = image.mean(dim=0)
-    if reduction == "sum":
-        image = image.sum(dim=0)
-    if callable(reduction):
-        image = reduction(image, dim=0)
-    return image
+    return _deaugment_averaging(image, reduction=reduction)
 
 
 def d4_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") -> Tensor:
@@ -409,7 +392,8 @@ def d4_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") ->
         [4, B, C, H, W] shape
 
     """
-    assert image.size(0) % 8 == 0
+    if image.size(0) % 8 != 0:
+        raise RuntimeError("Batch size must be divisable by 8")
 
     b1, b2, b3, b4, b5, b6, b7, b8 = torch.chunk(image, 8)
 
@@ -425,14 +409,7 @@ def d4_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") ->
             F.torch_rot90_cw_transpose(b8),
         ]
     )
-
-    if reduction == "mean":
-        image = image.mean(dim=0)
-    if reduction == "sum":
-        image = image.sum(dim=0)
-    if callable(reduction):
-        image = reduction(image, dim=0)
-    return image
+    return _deaugment_averaging(image, reduction=reduction)
 
 
 def flips_image_augment(image: Tensor) -> Tensor:
@@ -452,10 +429,7 @@ def flips_image_augment(image: Tensor) -> Tensor:
     return torch.cat([image, F.torch_fliplr(image), F.torch_flipud(image)], dim=0)
 
 
-def flips_image_deaugment(
-    image: Tensor,
-    reduction: MaybeStrOrCallable = "mean",
-) -> Tensor:
+def flips_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean",) -> Tensor:
     """
     Deaugment input tensor (output of the model) assuming the input was flip-augmented image (See flips_augment).
     Args:
@@ -473,20 +447,10 @@ def flips_image_deaugment(
             F.torch_flipud(image[batch_size * 2 : batch_size * 3]),
         ]
     )
-
-    if reduction == "mean":
-        image = image.mean(dim=0)
-    if reduction == "sum":
-        image = image.sum(dim=0)
-    if callable(reduction):
-        image = reduction(image, dim=0)
-    return image
+    return _deaugment_averaging(image, reduction=reduction)
 
 
-def fliplr_labels_deaugment(
-    logits: Tensor,
-    reduction: MaybeStrOrCallable = "mean",
-) -> Tensor:
+def fliplr_labels_deaugment(logits: Tensor, reduction: MaybeStrOrCallable = "mean",) -> Tensor:
     """
     Deaugment input tensor (output of the model) assuming the input was fliplr-augmented image (See fliplr_image_augment).
     Args:
@@ -496,24 +460,15 @@ def fliplr_labels_deaugment(
     Returns:
         Tensor of [B, C, H, W] shape.
     """
-    assert logits.size(0) % 2 == 0
+    if logits.size(0) % 2 != 0:
+        raise RuntimeError("Batch size must be divisable by 2")
 
     orig, flipped_lr = torch.chunk(logits, 2)
     logits: Tensor = torch.stack([orig, flipped_lr])
-
-    if reduction == "mean":
-        logits = logits.mean(dim=0)
-    if reduction == "sum":
-        logits = logits.sum(dim=0)
-    if callable(reduction):
-        logits = reduction(logits, dim=0)
-    return logits
+    return _deaugment_averaging(logits, reduction=reduction)
 
 
-def flips_labels_deaugment(
-    logits: Tensor,
-    reduction: MaybeStrOrCallable = "mean",
-) -> Tensor:
+def flips_labels_deaugment(logits: Tensor, reduction: MaybeStrOrCallable = "mean",) -> Tensor:
     """
     Deaugment input tensor (output of the model) assuming the input was flip-augmented image (See flips_image_augment).
     Args:
@@ -523,18 +478,12 @@ def flips_labels_deaugment(
     Returns:
         Tensor of [B, C, H, W] shape.
     """
-    assert logits.size(0) % 3 == 0
+    if logits.size(0) % 3 != 0:
+        raise RuntimeError("Batch size must be divisable by 3")
 
     orig, flipped_lr, flipped_ud = torch.chunk(logits, 3)
     logits: Tensor = torch.stack([orig, flipped_lr, flipped_ud])
-
-    if reduction == "mean":
-        logits = logits.mean(dim=0)
-    if reduction == "sum":
-        logits = logits.sum(dim=0)
-    if callable(reduction):
-        logits = reduction(logits, dim=0)
-    return logits
+    return _deaugment_averaging(logits, reduction=reduction)
 
 
 @pytorch_toolbelt_deprecated("This class is deprecated. Please use GeneralizedTTA instead")
@@ -574,9 +523,7 @@ def ms_image_augment(
 
 
 def ms_labels_deaugment(
-    logits: List[Tensor],
-    size_offsets: List[Union[int, Tuple[int, int]]],
-    reduction: MaybeStrOrCallable = "mean",
+    logits: List[Tensor], size_offsets: List[Union[int, Tuple[int, int]]], reduction: MaybeStrOrCallable = "mean",
 ):
     """
     Deaugment logits
@@ -592,17 +539,8 @@ def ms_labels_deaugment(
     if len(logits) != len(size_offsets):
         raise ValueError("Number of images must be equal to number of size offsets")
 
-    deaugmented_outputs = torch.stack(logits)
-
-    if reduction == "mean":
-        deaugmented_outputs = deaugmented_outputs.mean(dim=0)
-    elif reduction == "sum":
-        deaugmented_outputs = deaugmented_outputs.sum(dim=0)
-    elif callable(reduction):
-        deaugmented_outputs = reduction(deaugmented_outputs, dim=0)
-    else:
-        raise ValueError(f"Usupported reduction mode {mode}")
-    return deaugmented_outputs
+    logits = torch.stack(logits)
+    return _deaugment_averaging(logits, reduction=reduction)
 
 
 def ms_image_deaugment(
@@ -648,14 +586,7 @@ def ms_image_deaugment(
             deaugmented_outputs.append(scaled_image)
 
     deaugmented_outputs = torch.stack(deaugmented_outputs)
-    if reduction == "mean":
-        deaugmented_outputs = deaugmented_outputs.mean(dim=0)
-    if reduction == "sum":
-        deaugmented_outputs = deaugmented_outputs.sum(dim=0)
-    if callable(reduction):
-        deaugmented_outputs = reduction(deaugmented_outputs, dim=0)
-
-    return deaugmented_outputs
+    return _deaugment_averaging(deaugmented_outputs, reduction=reduction)
 
 
 class GeneralizedTTA(nn.Module):

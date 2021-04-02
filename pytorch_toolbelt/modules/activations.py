@@ -19,6 +19,7 @@ __all__ = [
     "ACT_RELU",
     "ACT_RELU6",
     "ACT_SELU",
+    "ACT_SIGMOID",
     "ACT_SILU",
     "ACT_SOFTPLUS",
     "ACT_SWISH",
@@ -56,6 +57,7 @@ ACT_PRELU = "prelu"
 ACT_RELU = "relu"
 ACT_RELU6 = "relu6"
 ACT_SELU = "selu"
+ACT_SIGMOID = "sigmoid"
 ACT_SILU = "silu"
 ACT_SOFTPLUS = "softplus"
 ACT_SWISH = "swish"
@@ -249,6 +251,7 @@ def get_activation_block(activation_name: str):
         ACT_SOFTPLUS: nn.Softplus,
         ACT_SWISH: Swish,
         ACT_SWISH_NAIVE: SwishNaive,
+        ACT_SIGMOID: nn.Sigmoid
     }
 
     return ACTIVATIONS[activation_name.lower()]
