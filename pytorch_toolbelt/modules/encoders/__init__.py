@@ -4,7 +4,6 @@ Encodes listed here provides easy way to swap backbone of classification/segment
 """
 from .common import *
 from .densenet import *
-from .efficientnet import *
 from .hrnet import *
 from .inception import *
 from .mobilenet import *

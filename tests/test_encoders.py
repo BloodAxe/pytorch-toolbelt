@@ -30,14 +30,6 @@ skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA
         [E.WiderResnet16A2Encoder, {}],
         [E.WiderResnet20A2Encoder, {}],
         [E.WiderResnet38A2Encoder, {}],
-        [E.EfficientNetB0Encoder, {}],
-        [E.EfficientNetB1Encoder, {}],
-        [E.EfficientNetB2Encoder, {}],
-        [E.EfficientNetB3Encoder, {}],
-        [E.EfficientNetB4Encoder, {}],
-        [E.EfficientNetB5Encoder, {}],
-        [E.EfficientNetB6Encoder, {}],
-        [E.EfficientNetB7Encoder, {}],
         [E.DenseNet121Encoder, {"pretrained": False}],
         [E.DenseNet161Encoder, {"pretrained": False}],
         [E.DenseNet169Encoder, {"pretrained": False}],
@@ -47,37 +39,6 @@ skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA
 @torch.no_grad()
 @skip_if_no_cuda
 def test_encoders(encoder: E.EncoderModule, encoder_params):
-    net = encoder(**encoder_params).eval()
-    print(net.__class__.__name__, count_parameters(net))
-    print(net.strides)
-    print(net.channels)
-    x = torch.rand((4, 3, 256, 256))
-    x = maybe_cuda(x)
-    net = maybe_cuda(net)
-    output = net(x)
-    assert len(output) == len(net.channels)
-    for feature_map, expected_stride, expected_channels in zip(output, net.strides, net.channels):
-        assert feature_map.size(1) == expected_channels
-        assert feature_map.size(2) * expected_stride == 256
-        assert feature_map.size(3) * expected_stride == 256
-
-
-@pytest.mark.parametrize(
-    ["encoder", "encoder_params"],
-    [
-        [E.EfficientNetB0Encoder, {}],
-        [E.EfficientNetB1Encoder, {}],
-        [E.EfficientNetB2Encoder, {}],
-        [E.EfficientNetB3Encoder, {}],
-        [E.EfficientNetB4Encoder, {}],
-        [E.EfficientNetB5Encoder, {}],
-        [E.EfficientNetB6Encoder, {}],
-        [E.EfficientNetB7Encoder, {}],
-    ],
-)
-@torch.no_grad()
-@skip_if_no_cuda
-def test_efficientnet(encoder: E.EncoderModule, encoder_params):
     net = encoder(**encoder_params).eval()
     print(net.__class__.__name__, count_parameters(net))
     print(net.strides)
@@ -203,54 +164,8 @@ def test_xresnet_encoder(encoder, encoder_params):
 @pytest.mark.parametrize(
     ["encoder", "encoder_params"],
     [
-        [timm.B0Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.B1Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.B2Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.B3Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.B4Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.B5Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.B6Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.B7Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.MixNetXLEncoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.SKResNet18Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.SKResNeXt50Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.SWSLResNeXt101Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.TimmResnet200D, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.HRNetW18Encoder, {"pretrained": False}],
-        [timm.HRNetW32Encoder, {"pretrained": False}],
-        [timm.HRNetW48Encoder, {"pretrained": False}],
-        [timm.DPN68Encoder, {"pretrained": False}],
-        [timm.DPN68BEncoder, {"pretrained": False}],
-        [timm.DPN92Encoder, {"pretrained": False}],
-        [timm.DPN107Encoder, {"pretrained": False}],
-        [timm.DPN131Encoder, {"pretrained": False}],
-        [timm.NFNetF0Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.NFNetF1Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.NFNetF2Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.NFNetF3Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.NFNetF4Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.NFNetF5Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.NFNetF6Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.NFNetF7Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        #
-        [timm.NFNetF0SEncoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.NFNetF1SEncoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.NFNetF2SEncoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.NFNetF3SEncoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.NFNetF4SEncoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.NFNetF5SEncoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.NFNetF6SEncoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.NFNetF7SEncoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        #
-        [timm.NFRegNetB0Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.NFRegNetB1Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.NFRegNetB2Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.NFRegNetB3Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.NFRegNetB4Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.NFRegNetB5Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        # Res2Net
-        [timm.TimmRes2Net101Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.TimmRes2Next50Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        # EfficientNetV2
+        [timm.TimmEfficientNetV2S, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
     ],
 )
 @torch.no_grad()
