@@ -54,8 +54,9 @@ class RocAucMetricCallback(Callback):
         pred_probas = self.outputs_to_probas(runner.output[self.output_key])
         true_labels = runner.input[self.input_key]
 
-        self.y_trues.extend(to_numpy(true_labels))
-        self.y_preds.extend(to_numpy(pred_probas))
+        # Aggregate flattened labels
+        self.y_trues.extend(to_numpy(true_labels).reshape(-1))
+        self.y_preds.extend(to_numpy(pred_probas).reshape(-1))
 
     def on_loader_end(self, runner):
         y_trues = np.concatenate(all_gather(self.y_trues))
