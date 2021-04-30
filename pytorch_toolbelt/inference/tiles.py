@@ -2,7 +2,8 @@
 in a sliding-window fashion and merging prediction mask back to full-resolution.
 """
 import math
-from typing import List, Iterable
+import typing
+from typing import List, Iterable, Tuple
 
 import cv2
 import numpy as np
@@ -51,6 +52,10 @@ def compute_pyramid_patch_weight_loss(width: int, height: int) -> np.ndarray:
 
 
 class ImageSlicer:
+    tile_size: Tuple[int, int]
+    tile_step: Tuple[int, int]
+    overlap: Tuple[int, int]
+
     """
     Helper class to slice image into tiles and merge them back
     """
@@ -67,14 +72,16 @@ class ImageSlicer:
         self.image_height = image_shape[0]
         self.image_width = image_shape[1]
 
-        if isinstance(tile_size, (tuple, list)):
-            assert len(tile_size) == 2
+        if isinstance(tile_size, (np.ndarray, typing.Sequence)):
+            if len(tile_size) != 2:
+                raise ValueError(f"Tile size must have exactly 2 elements. Got: tile_size={tile_size}")
             self.tile_size = int(tile_size[0]), int(tile_size[1])
         else:
             self.tile_size = int(tile_size), int(tile_size)
 
-        if isinstance(tile_step, (tuple, list)):
-            assert len(tile_step) == 2
+        if isinstance(tile_step, (np.ndarray, typing.Sequence)):
+            if len(tile_step) != 2:
+                raise ValueError(f"Tile size must have exactly 2 elements. Got: tile_step={tile_size}")
             self.tile_step = int(tile_step[0]), int(tile_step[1])
         else:
             self.tile_step = int(tile_step), int(tile_step)
@@ -88,7 +95,7 @@ class ImageSlicer:
         if self.tile_step[1] < 1 or self.tile_step[1] > self.tile_size[1]:
             raise ValueError()
 
-        overlap = [self.tile_size[0] - self.tile_step[0], self.tile_size[1] - self.tile_step[1]]
+        overlap = (self.tile_size[0] - self.tile_step[0], self.tile_size[1] - self.tile_step[1])
 
         self.margin_left = 0
         self.margin_right = 0
@@ -110,16 +117,21 @@ class ImageSlicer:
             self.margin_bottom = extra_h - self.margin_top
 
         else:
-            if (self.image_width - overlap[1] + 2 * image_margin) % self.tile_step[1] != 0:
+            if isinstance(image_margin, typing.Sequence):
+                margin_left, margin_right, margin_top, margin_bottom = image_margin
+            else:
+                margin_left = margin_right = margin_top = margin_bottom = image_margin
+
+            if (self.image_width + margin_left + margin_right) % self.tile_size[1] != 0:
                 raise ValueError()
 
-            if (self.image_height - overlap[0] + 2 * image_margin) % self.tile_step[0] != 0:
+            if (self.image_height + margin_top + margin_bottom) % self.tile_size[0] != 0:
                 raise ValueError()
 
-            self.margin_left = image_margin
-            self.margin_right = image_margin
-            self.margin_top = image_margin
-            self.margin_bottom = image_margin
+            self.margin_left = margin_left
+            self.margin_right = margin_right
+            self.margin_top = margin_top
+            self.margin_bottom = margin_bottom
 
         crops = []
         bbox_crops = []
@@ -136,7 +148,9 @@ class ImageSlicer:
         self.crops = np.array(crops)
         self.bbox_crops = np.array(bbox_crops)
 
-    def iter_split(self, image: np.ndarray, border_type=cv2.BORDER_CONSTANT, value=0) -> Iterable:
+    def iter_split(
+        self, image: np.ndarray, border_type=cv2.BORDER_CONSTANT, value=0
+    ) -> Iterable[Tuple[np.ndarray, Tuple[int, int, int, int]]]:
         if (image.shape[0] != self.image_height) or (image.shape[1] != self.image_width):
             raise ValueError()
 
@@ -153,10 +167,10 @@ class ImageSlicer:
             if x < 0 or y < 0 or (x + tile_width) > image.shape[1] or (y + tile_height) > image.shape[0]:
                 tile = cv2.copyMakeBorder(
                     tile,
-                    max(0, -y),
-                    max(0, y + tile_height - image.shape[0]),
-                    max(0, -x),
-                    max(0, x + tile_width - image.shape[1]),
+                    top=max(0, -y),
+                    bottom=max(0, y + tile_height - image.shape[0]),
+                    left=max(0, -x),
+                    right=max(0, x + tile_width - image.shape[1]),
                     borderType=border_type,
                     value=value,
                 )
