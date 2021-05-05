@@ -215,25 +215,29 @@ class ImageSlicer:
         assert image.shape[1] == self.image_width
 
         orig_shape_len = len(image.shape)
-        image = cv2.copyMakeBorder(
-            image,
-            self.margin_top,
-            self.margin_bottom,
-            self.margin_left,
-            self.margin_right,
-            borderType=border_type,
-            value=value,
-        )
+        x, y, tile_width, tile_height = self.bbox_crops[slice_index]
 
-        # This check recovers possible lack of last dummy dimension for single-channel images
-        if len(image.shape) != orig_shape_len:
-            image = np.expand_dims(image, axis=-1)
+        x1 = max(x, 0)
+        y1 = max(y, 0)
+        x2 = min(image.shape[1], x + tile_width)
+        y2 = min(image.shape[0], y + tile_height)
 
-        x, y, tile_width, tile_height = self.crops[slice_index]
+        tile = image[y1:y2, x1:x2]
+        if x < 0 or y < 0 or (x + tile_width) > image.shape[1] or (y + tile_height) > image.shape[0]:
+            tile = cv2.copyMakeBorder(
+                tile,
+                top=max(0, -y),
+                bottom=max(0, y + tile_height - image.shape[0]),
+                left=max(0, -x),
+                right=max(0, x + tile_width - image.shape[1]),
+                borderType=border_type,
+                value=value,
+            )
 
-        tile = image[y : y + tile_height, x : x + tile_width].copy()
-        assert tile.shape[0] == self.tile_size[0]
-        assert tile.shape[1] == self.tile_size[1]
+            # This check recovers possible lack of last dummy dimension for single-channel images
+            if len(tile.shape) != orig_shape_len:
+                tile = np.expand_dims(tile, axis=-1)
+
         return tile
 
     @property
