@@ -2,6 +2,7 @@ import math
 import warnings
 from typing import List, Union
 
+import timm.models.factory
 import torch
 from torch import Tensor, nn
 
@@ -11,10 +12,12 @@ __all__ = ["GenericTimmEncoder", "make_n_channel_input_std_conv"]
 
 
 class GenericTimmEncoder(EncoderModule):
-    def __init__(self, timm_encoder: nn.Module, layers: List[int] = None):
+    def __init__(self, timm_encoder: Union[nn.Module, str], layers: List[int] = None):
         strides = []
         channels = []
         default_layers = []
+        if isinstance(timm_encoder, str):
+            timm_encoder = timm.models.factory.create_model(timm_encoder, pretrained=True)
 
         for i, oi in enumerate(timm_encoder.feature_info.out_indices):
             fi = timm_encoder.feature_info.info[i]

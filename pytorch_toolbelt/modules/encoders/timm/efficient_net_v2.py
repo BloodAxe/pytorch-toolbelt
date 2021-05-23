@@ -47,10 +47,10 @@ def make_n_channel_input_conv2d_same(conv: nn.Conv2d, in_channels: int, mode="au
 
 class TimmEfficientNetV2S(GenericTimmEncoder):
     def __init__(self, pretrained=True, layers=None, activation: str = ACT_SILU, no_stride=False):
-        from timm.models.efficientnet import efficientnet_v2s
+        from timm.models.efficientnet import efficientnetv2_s
 
         act_layer = get_activation_block(activation)
-        encoder = efficientnet_v2s(pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.05)
+        encoder = efficientnetv2_s(pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.05)
         super().__init__(encoder, layers)
 
     @torch.jit.unused
