@@ -1,9 +1,8 @@
 import math
 import warnings
-from typing import List, Union
-
-import timm.models.factory
 import torch
+
+from typing import List, Union
 from torch import Tensor, nn
 
 from ..common import EncoderModule, _take
@@ -17,6 +16,8 @@ class GenericTimmEncoder(EncoderModule):
         channels = []
         default_layers = []
         if isinstance(timm_encoder, str):
+            import timm.models.factory
+
             timm_encoder = timm.models.factory.create_model(timm_encoder, pretrained=True)
 
         for i, oi in enumerate(timm_encoder.feature_info.out_indices):
