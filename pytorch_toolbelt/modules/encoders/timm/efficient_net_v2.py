@@ -9,7 +9,7 @@ from ..common import make_n_channel_input
 from ...activations import ACT_SILU, get_activation_block
 
 __all__ = [
-    "TimmEfficientNetV2S",
+    "TimmEfficientNetV2",
 ]
 
 
