@@ -213,7 +213,7 @@ def test_xresnet_encoder(encoder, encoder_params):
         [timm.TimmRes2Net101Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
         [timm.TimmRes2Next50Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
         # EfficientNet V2
-        [timm.TimmEfficientNetV2S, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.TimmEfficientNetV2, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
     ],
 )
 @torch.no_grad()
