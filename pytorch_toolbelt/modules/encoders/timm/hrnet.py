@@ -68,9 +68,7 @@ class TimmHRNetW18SmallV2Encoder(GenericTimmEncoder):
     def __init__(self, pretrained=True, layers=None, activation=ACT_RELU):
         from timm.models import hrnet
 
-        encoder = hrnet.hrnet_w18(
-            pretrained=pretrained, features_only=True, out_indices=(0, 1, 2, 3, 4)
-        )
+        encoder = hrnet.hrnet_w18(pretrained=pretrained, features_only=True, out_indices=(0, 1, 2, 3, 4))
         super().__init__(encoder, layers)
 
     def change_input_channels(self, input_channels: int, mode="auto", **kwargs):

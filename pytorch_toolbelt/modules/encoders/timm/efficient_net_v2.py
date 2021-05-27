@@ -47,11 +47,7 @@ def make_n_channel_input_conv2d_same(conv: nn.Conv2d, in_channels: int, mode="au
 
 class TimmEfficientNetV2(GenericTimmEncoder):
     def __init__(
-        self,
-        model_name: str = "efficientnetv2_rw_s",
-        pretrained=True,
-        layers=None,
-        activation: str = ACT_SILU,
+        self, model_name: str = "efficientnetv2_rw_s", pretrained=True, layers=None, activation: str = ACT_SILU,
     ):
         from timm.models.factory import create_model
 
@@ -65,4 +61,3 @@ class TimmEfficientNetV2(GenericTimmEncoder):
     def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
         self.encoder.conv_stem = make_n_channel_input(self.encoder.conv_stem, input_channels, mode, **kwargs)
         return self
-

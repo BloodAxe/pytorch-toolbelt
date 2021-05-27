@@ -51,8 +51,8 @@ class RocAucMetricCallback(Callback):
 
     @torch.no_grad()
     def on_batch_end(self, runner):
-        pred_probas = self.outputs_to_probas(runner.output[self.output_key])
-        true_labels = runner.input[self.input_key]
+        pred_probas = self.outputs_to_probas(runner.output[self.output_key].float())
+        true_labels = runner.input[self.input_key].float()
 
         # Aggregate flattened labels
         self.y_trues.extend(to_numpy(true_labels).reshape(-1))

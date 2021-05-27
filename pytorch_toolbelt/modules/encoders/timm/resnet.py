@@ -102,13 +102,7 @@ class SWSLResNeXt101Encoder(EncoderModule):
         encoder = swsl_resnext101_32x8d(pretrained=pretrained, act_layer=act_layer)
         super().__init__([64, 256, 512, 1024, 2048], [2, 4, 8, 16, 32], layers)
         self.stem = nn.Sequential(
-            OrderedDict(
-                [
-                    ("conv1", encoder.conv1),
-                    ("bn1", encoder.bn1),
-                    ("act1", encoder.act1),
-                ]
-            )
+            OrderedDict([("conv1", encoder.conv1), ("bn1", encoder.bn1), ("act1", encoder.act1),])
         )
 
         self.layer1 = nn.Sequential(encoder.maxpool, encoder.layer1)

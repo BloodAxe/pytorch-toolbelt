@@ -251,7 +251,7 @@ def get_activation_block(activation_name: str):
         ACT_SOFTPLUS: nn.Softplus,
         ACT_SWISH: Swish,
         ACT_SWISH_NAIVE: SwishNaive,
-        ACT_SIGMOID: nn.Sigmoid
+        ACT_SIGMOID: nn.Sigmoid,
     }
 
     return ACTIVATIONS[activation_name.lower()]

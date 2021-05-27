@@ -26,7 +26,7 @@ class ClassificationDataset(Dataset):
         labels: Optional[Union[List[int], np.ndarray]],
         transform: A.Compose,
         read_image_fn: Callable = read_image_rgb,
-        make_target_fn: Callable = label_to_tensor
+        make_target_fn: Callable = label_to_tensor,
     ):
         if labels is not None and len(image_filenames) != len(labels):
             raise ValueError("Number of images does not corresponds to number of targets")
