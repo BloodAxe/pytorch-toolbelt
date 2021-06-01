@@ -25,7 +25,18 @@ EMAIL = "ekhvedchenya@gmail.com"
 AUTHOR = "Eugene Khvedchenya"
 REQUIRES_PYTHON = ">=3.6.0"
 
-DEPENDENCIES = ["torch>=1.8.1", "torchvision>=0.9.1", "opencv-python>=4.1"]
+DEPENDENCIES = [
+    # We rely on particular activation functions that were added in 1.8.1
+    "torch>=1.8.1",
+    # We use some pretrained models from torchvision
+    "torchvision>=0.9.1",
+    # We use OpenCV for loading images and some visualization stuff.
+    # Particular version is mostly irrelevant
+    "opencv-python>=4.1",
+    # Library uses scipy for linear_sum_assignment for match_bboxes.
+    # 1.4.0 is the first release where `maximize` argument gets introduced to this function
+    "scipy>=1.4.0",
+]
 EXCLUDE_FROM_PACKAGES = ["contrib", "docs", "tests", "examples"]
 CURDIR = os.path.abspath(os.path.dirname(__file__))
 

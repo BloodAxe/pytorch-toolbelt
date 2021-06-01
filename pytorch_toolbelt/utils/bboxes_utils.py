@@ -3,7 +3,6 @@ from typing import List, Tuple, Optional
 import numpy as np
 import torch
 from pytorch_toolbelt.utils import to_numpy
-from scipy.optimize import linear_sum_assignment
 from torchvision.ops import box_iou
 
 __all__ = ["match_bboxes"]
@@ -39,6 +38,8 @@ def match_bboxes(
         Tuple of [num_classes], [num_classes], [num_classes] corresponding to
         true positives, false positive and false negative counts per class
     """
+    from scipy.optimize import linear_sum_assignment
+
     if len(pred_labels) != len(pred_boxes) or len(pred_labels) != len(pred_scores):
         raise ValueError(
             f"Inconsistent lengths of predicted bboxes:{len(pred_boxes)} labels:{len(pred_labels)} and their scores: {len(pred_scores)}"
