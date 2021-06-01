@@ -11,9 +11,30 @@ skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA
 
 @pytest.mark.parametrize(
     ["encoder", "encoder_params"],
+    [[E.MobileNetV3Large, {"layers": [0, 1, 2, 3, 4]}], [E.MobileNetV3Small, {"layers": [0, 1, 2, 3, 4]}]],
+)
+@torch.no_grad()
+@skip_if_no_cuda
+def test_mobilenetv3_encoders(encoder: E.EncoderModule, encoder_params):
+    net = encoder(**encoder_params).eval().change_input_channels(1)
+    print(net.__class__.__name__, count_parameters(net))
+    print(net.strides)
+    print(net.channels)
+    x = torch.rand((4, 1, 384, 256))
+    x = maybe_cuda(x)
+    net = maybe_cuda(net)
+    output = net(x)
+    assert len(output) == len(net.channels)
+    for feature_map, expected_stride, expected_channels in zip(output, net.strides, net.channels):
+        assert feature_map.size(1) == expected_channels
+        assert feature_map.size(2) * expected_stride == 384
+        assert feature_map.size(3) * expected_stride == 256
+
+
+@pytest.mark.parametrize(
+    ["encoder", "encoder_params"],
     [
         [E.MobilenetV2Encoder, {}],
-        [E.MobilenetV3Encoder, {}],
         [E.Resnet34Encoder, {"pretrained": False}],
         [E.Resnet50Encoder, {"pretrained": False}],
         [E.SEResNeXt50Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
