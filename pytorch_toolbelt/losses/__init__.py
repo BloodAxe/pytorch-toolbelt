@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+from .functional import *
 from .bitempered_loss import *
 from .dice import *
 from .focal import *
