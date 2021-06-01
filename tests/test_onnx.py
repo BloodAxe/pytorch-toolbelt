@@ -13,7 +13,7 @@ skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="Cuda
     ["encoder", "encoder_params"],
     [
         # [timm.B0Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        #[timm.MixNetXLEncoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        # [timm.MixNetXLEncoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
         [timm.SKResNet18Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
         [timm.SWSLResNeXt101Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
         [timm.TimmResnet200D, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],

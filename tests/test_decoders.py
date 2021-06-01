@@ -23,7 +23,7 @@ skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA
 )
 def test_decoders(decoder_cls, decoder_params):
     channels = [64, 128, 256, 512, 1024]
-    input = [torch.randn((4, channels[i], 512 // (2 ** i), 512 // (2 ** i))).cuda() for i in range(len(channels))]
+    input = [torch.randn((4, channels[i], 256 // (2 ** i), 384 // (2 ** i))).cuda() for i in range(len(channels))]
     decoder = decoder_cls(channels, **decoder_params).cuda().eval()
     output = decoder(input)
 
