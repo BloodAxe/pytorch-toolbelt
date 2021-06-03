@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import List, Tuple
+from typing import List, Tuple, Union, Type
 
 import torch
 import torch.nn.functional as F
@@ -79,13 +79,10 @@ class SeparableASPPModule(nn.Module):
 
 
 class ASPPPooling(nn.Sequential):
-    def __init__(self, in_channels, out_channels, norm_layer=nn.BatchNorm2d, activation=ACT_RELU):
+    def __init__(self, in_channels: int, out_channels: int, norm_layer=nn.BatchNorm2d, activation: str = ACT_RELU):
         super().__init__()
-
         self.pooling = nn.AdaptiveAvgPool2d(1)
         self.conv = nn.Conv2d(in_channels, out_channels, 1, bias=False)
-        self.norm = nn.BatchNorm2d(out_channels)
-        self.act = instantiate_activation_block(activation, inplace=True)
         self.abn = nn.Sequential(
             OrderedDict(
                 [("norm", norm_layer(out_channels)), ("act", instantiate_activation_block(activation, inplace=True))]
@@ -108,7 +105,7 @@ class ASPP(nn.Module):
         atrous_rates=(12, 24, 36),
         dropout: float = 0.5,
         activation: str = ACT_RELU,
-        aspp_module=ASPPModule,
+        aspp_module=Union[Type[ASPPModule], Type[SeparableASPPModule]],
     ):
         super(ASPP, self).__init__()
         aspp_modules = [
@@ -157,7 +154,7 @@ class DeeplabV3Decoder(DecoderModule):
             dropout=dropout,
             activation=activation,
         )
-        self.project = nn.Sequential(
+        self.final = nn.Sequential(
             nn.Conv2d(aspp_channels, aspp_channels, 3, padding=1, bias=False),
             nn.BatchNorm2d(aspp_channels),
             instantiate_activation_block(activation, inplace=True),
@@ -178,7 +175,7 @@ class DeeplabV3Decoder(DecoderModule):
     def forward(self, feature_maps: List[Tensor]) -> List[Tensor]:
         high_level_features = feature_maps[-1]
         high_level_features = self.aspp(high_level_features)
-        return self.project(high_level_features)
+        return self.final(high_level_features)
 
     @property
     def channels(self) -> Tuple[int]:
