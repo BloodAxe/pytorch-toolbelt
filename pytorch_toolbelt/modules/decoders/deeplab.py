@@ -165,6 +165,15 @@ class DeeplabV3Decoder(DecoderModule):
         )
 
         self._channels = [out_channels]
+        self._init_weight()
+
+    def _init_weight(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight)
+            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
 
     def forward(self, feature_maps: List[Tensor]) -> List[Tensor]:
         high_level_features = feature_maps[-1]
@@ -217,6 +226,15 @@ class DeeplabV3PlusDecoder(DecoderModule):
             instantiate_activation_block(activation, inplace=True),
         )
         self._channels = [out_channels]
+        self._init_weight()
+
+    def _init_weight(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight)
+            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
 
     def forward(self, feature_maps: List[Tensor]) -> List[Tensor]:
         low_level_features = self.project(feature_maps[0])
