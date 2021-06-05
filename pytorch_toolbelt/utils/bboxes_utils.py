@@ -1,4 +1,5 @@
-from typing import List, Tuple, Optional
+from collections import namedtuple
+from typing import Optional
 
 import numpy as np
 import torch
@@ -6,6 +7,21 @@ from pytorch_toolbelt.utils import to_numpy
 from torchvision.ops import box_iou
 
 __all__ = ["match_bboxes"]
+
+BBoxesMatchResult = namedtuple(
+    "BBoxesMatchResult",
+    [
+        # Array of shape [num_classes]
+        "true_positives",
+        # Array of shape [num_classes]
+        "false_positives",
+        # Array of shape [num_classes]
+        "false_negatives",
+        # Matrix of shape [num_classes+1, num_classes+1], where last class corresponds to None,
+        # in other words - no detection.
+        "confusion_matrix",
+    ],
+)
 
 
 @torch.no_grad()
@@ -18,7 +34,7 @@ def match_bboxes(
     num_classes: int,
     iou_threshold: float = 0.5,
     min_size: Optional[int] = None,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> BBoxesMatchResult:
     """
     Match predictect and ground-truth bounding boxes with following matching rules:
         - Matches are assigned by Hungarian algorithm to maximize IoU between predicted and ground-truth box
@@ -55,9 +71,13 @@ def match_bboxes(
     pred_boxes = pred_boxes[order]
     pred_labels = pred_labels[order]
 
-    tp = np.zeros(num_classes, dtype=int)
-    fp = np.zeros(num_classes, dtype=int)
-    fn = np.zeros(num_classes, dtype=int)
+    true_positives = np.zeros(num_classes, dtype=int)
+    false_positives = np.zeros(num_classes, dtype=int)
+    false_negatives = np.zeros(num_classes, dtype=int)
+
+    # Confusion matrix [gt, pred]
+    confusion_matrix = np.zeros((num_classes + 1, num_classes + 1), dtype=int)
+    none_class = num_classes
 
     if min_size is not None:
         raise NotImplementedError("Min size is not supported")
@@ -66,15 +86,32 @@ def match_bboxes(
     num_true_objects = len(true_boxes)
 
     if num_pred_objects == 0 and num_true_objects == 0:
-        return tp, fp, fn
+        return BBoxesMatchResult(
+            true_positives=true_positives,
+            false_positives=false_positives,
+            false_negatives=false_negatives,
+            confusion_matrix=confusion_matrix,
+        )
     elif num_pred_objects == 0:
-        for label in true_labels:
-            fn[label] += 1
-        return tp, fp, fn
+        for true_class in true_labels:
+            false_negatives[true_class] += 1
+            confusion_matrix[true_class, none_class] += 1
+        return BBoxesMatchResult(
+            true_positives=true_positives,
+            false_positives=false_positives,
+            false_negatives=false_negatives,
+            confusion_matrix=confusion_matrix,
+        )
     elif num_true_objects == 0:
-        for label in pred_labels:
-            fp[label] += 1
-        return tp, fp, fn
+        for pred_class in pred_labels:
+            false_positives[pred_class] += 1
+            confusion_matrix[none_class, pred_class] += 1
+        return BBoxesMatchResult(
+            true_positives=true_positives,
+            false_positives=false_positives,
+            false_negatives=false_negatives,
+            confusion_matrix=confusion_matrix,
+        )
 
     iou_matrix = to_numpy(box_iou(torch.from_numpy(pred_boxes).float(), torch.from_numpy(true_boxes).float()))
     row_ind, col_ind = linear_sum_assignment(iou_matrix, maximize=True)
@@ -90,22 +127,28 @@ def match_bboxes(
             remainig_trues[ci] = False
             if pred_class == true_class:
                 # If there is a matching polygon found above, increase the count of true positives by one (TP).
-                tp[true_class] += 1
+                true_positives[true_class] += 1
             else:
                 # If classes does not match, then we add false-positive for predicted class and
                 # false-negative to target class
-                fp[pred_class] += 1
-                fn[true_class] += 1
-        else:
-            fp[pred_class] += 1
-            remainig_preds[ri] = False
+                false_positives[pred_class] += 1
+                false_negatives[true_class] += 1
+
+            confusion_matrix[true_class, pred_class] += 1
 
     if remainig_preds.any():
-        for label in pred_labels[remainig_preds]:
-            fp[label] += 1
+        for pred_class in pred_labels[remainig_preds]:
+            false_positives[pred_class] += 1
+            confusion_matrix[none_class, pred_class] += 1
 
     if remainig_trues.any():
-        for label in true_labels[remainig_trues]:
-            fn[label] += 1
+        for true_class in true_labels[remainig_trues]:
+            false_negatives[true_class] += 1
+            confusion_matrix[true_class, none_class] += 1
 
-    return tp, fp, fn
+    return BBoxesMatchResult(
+        true_positives=true_positives,
+        false_positives=false_positives,
+        false_negatives=false_negatives,
+        confusion_matrix=confusion_matrix,
+    )
