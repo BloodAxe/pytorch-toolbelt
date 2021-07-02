@@ -23,6 +23,12 @@ class RandomSubsetDataset(Dataset):
         index = random.randrange(len(self.dataset))
         return self.dataset[index]
 
+    def get_collate_fn(self):
+        get_collate_fn = getattr(self.dataset, "get_collate_fn", None)
+        if callable(get_collate_fn):
+            return get_collate_fn()
+        return default_collate()
+
 
 class RandomSubsetWithMaskDataset(Dataset):
     """
@@ -31,12 +37,7 @@ class RandomSubsetWithMaskDataset(Dataset):
     """
 
     def __init__(self, dataset: Dataset, mask: np.ndarray, num_samples: int):
-        if (
-            not isinstance(mask, np.ndarray)
-            or mask.dtype != np.bool
-            or len(mask.shape) != 1
-            or len(mask) != len(dataset)
-        ):
+        if not isinstance(mask, np.ndarray) or mask.dtype != np.bool or len(mask.shape) != 1 or len(mask) != len(dataset):
             raise ValueError("Mask must be boolean 1-D numpy array")
 
         if not mask.any():
@@ -53,3 +54,9 @@ class RandomSubsetWithMaskDataset(Dataset):
     def __getitem__(self, _) -> Any:
         index = random.choice(self.indexes)
         return self.dataset[index]
+
+    def get_collate_fn(self):
+        get_collate_fn = getattr(self.dataset, "get_collate_fn", None)
+        if callable(get_collate_fn):
+            return get_collate_fn()
+        return default_collate()
