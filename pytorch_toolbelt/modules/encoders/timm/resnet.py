@@ -14,6 +14,8 @@ __all__ = [
     "TResNetMEncoder",
     "TimmResnet152D",
     "TimmSEResnet152D",
+    "TimmResnet50D",
+    "TimmResnet101D",
     "TimmResnet200D",
 ]
 
@@ -110,13 +112,7 @@ class SWSLResNeXt101Encoder(EncoderModule):
         encoder = swsl_resnext101_32x8d(pretrained=pretrained, act_layer=act_layer)
         super().__init__([64, 256, 512, 1024, 2048], [2, 4, 8, 16, 32], layers)
         self.stem = nn.Sequential(
-            OrderedDict(
-                [
-                    ("conv1", encoder.conv1),
-                    ("bn1", encoder.bn1),
-                    ("act1", encoder.act1),
-                ]
-            )
+            OrderedDict([("conv1", encoder.conv1), ("bn1", encoder.bn1), ("act1", encoder.act1),])
         )
 
         self.layer1 = nn.Sequential(encoder.maxpool, encoder.layer1)
@@ -152,6 +148,32 @@ class TimmSEResnet152D(GenericTimmEncoder):
 
         act_layer = get_activation_block(activation)
         encoder = seresnet152d(features_only=True, pretrained=pretrained, act_layer=act_layer)
+        super().__init__(encoder, layers)
+
+    def change_input_channels(self, input_channels: int, mode="auto"):
+        self.encoder.conv1[0] = make_n_channel_input(self.encoder.conv1[0], input_channels, mode=mode)
+        return self
+
+
+class TimmResnet50D(GenericTimmEncoder):
+    def __init__(self, pretrained=True, layers=None, activation=ACT_RELU):
+        from timm.models.resnet import resnet50d
+
+        act_layer = get_activation_block(activation)
+        encoder = resnet50d(features_only=True, pretrained=pretrained, act_layer=act_layer)
+        super().__init__(encoder, layers)
+
+    def change_input_channels(self, input_channels: int, mode="auto"):
+        self.encoder.conv1[0] = make_n_channel_input(self.encoder.conv1[0], input_channels, mode=mode)
+        return self
+
+
+class TimmResnet101D(GenericTimmEncoder):
+    def __init__(self, pretrained=True, layers=None, activation=ACT_RELU):
+        from timm.models.resnet import resnet101d
+
+        act_layer = get_activation_block(activation)
+        encoder = resnet101d(features_only=True, pretrained=pretrained, act_layer=act_layer)
         super().__init__(encoder, layers)
 
     def change_input_channels(self, input_channels: int, mode="auto"):
