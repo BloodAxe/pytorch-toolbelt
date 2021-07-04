@@ -406,7 +406,7 @@ def d4_labels_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") -
         [8, B, C] shape
     """
     if image.size(0) % 8 != 0:
-        raise RuntimeError("Batch size must be divisable by 8")
+        raise RuntimeError("Batch size must be divisible by 8")
 
     b1, b2, b3, b4, b5, b6, b7, b8 = torch.chunk(image, 8)
     image: Tensor = torch.stack([b1, b2, b3, b4, b5, b7, b7, b8])
@@ -419,7 +419,7 @@ def d4_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") ->
     Deaugment input tensor (output of the model) assuming the input was D4-augmented image (See d4_augment).
     Args:
         image: Tensor of [B * 8, C, H, W] shape
-        average: If True performs averaging of 8 outputs, otherwise - summation.
+        reduction: Reduction model for aggregating outputs. Default is taking mean.
 
     Returns:
         Tensor of [B, C, H, W] shape if reduction is not None or "none", otherwise returns de-augmented tensor of
@@ -427,7 +427,7 @@ def d4_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") ->
 
     """
     if image.size(0) % 8 != 0:
-        raise RuntimeError("Batch size must be divisable by 8")
+        raise RuntimeError("Batch size must be divisible by 8")
 
     b1, b2, b3, b4, b5, b6, b7, b8 = torch.chunk(image, 8)
 
@@ -495,7 +495,7 @@ def fliplr_labels_deaugment(logits: Tensor, reduction: MaybeStrOrCallable = "mea
         Tensor of [B, C, H, W] shape.
     """
     if logits.size(0) % 2 != 0:
-        raise RuntimeError("Batch size must be divisable by 2")
+        raise RuntimeError("Batch size must be divisible by 2")
 
     orig, flipped_lr = torch.chunk(logits, 2)
     logits: Tensor = torch.stack([orig, flipped_lr])
@@ -513,7 +513,7 @@ def flipud_labels_deaugment(logits: Tensor, reduction: MaybeStrOrCallable = "mea
         Tensor of [B, C, H, W] shape.
     """
     if logits.size(0) % 2 != 0:
-        raise RuntimeError("Batch size must be divisable by 2")
+        raise RuntimeError("Batch size must be divisible by 2")
 
     orig, flipped_ud = torch.chunk(logits, 2)
     logits: Tensor = torch.stack([orig, flipped_ud])
@@ -531,7 +531,7 @@ def flips_labels_deaugment(logits: Tensor, reduction: MaybeStrOrCallable = "mean
         Tensor of [B, C, H, W] shape.
     """
     if logits.size(0) % 3 != 0:
-        raise RuntimeError("Batch size must be divisable by 3")
+        raise RuntimeError("Batch size must be divisible by 3")
 
     orig, flipped_lr, flipped_ud = torch.chunk(logits, 3)
     logits: Tensor = torch.stack([orig, flipped_lr, flipped_ud])
