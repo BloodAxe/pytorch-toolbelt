@@ -107,12 +107,6 @@ class BilinearAdditiveUpsample2d(nn.Module):
         self.upsample = nn.UpsamplingBilinear2d(scale_factor=scale_factor)
         self.n = n
 
-        self.init_weights()
-
-    def init_weights(self):
-        torch.nn.init.kaiming_normal_(net.conv.weight, nonlinearity="linear")
-        torch.nn.init.zeros_(net.conv.bias)
-
     def forward(self, x: Tensor) -> Tensor:  # skipcq: PYL-W0221
         x = self.upsample(x)
         n, c, h, w = x.size()
@@ -142,7 +136,12 @@ class ResidualDeconvolutionUpsample2d(nn.Module):
             in_channels, in_channels // n, kernel_size=3, padding=1, stride=scale_factor, output_padding=1
         )
         self.residual = BilinearAdditiveUpsample2d(in_channels, scale_factor=scale_factor, n=n)
+        self.init_weights()
 
     def forward(self, x: Tensor) -> Tensor:  # skipcq: PYL-W0221
         residual_up = self.residual(x)
         return self.conv(x, output_size=residual_up.size()) + residual_up
+
+    def init_weights(self):
+        torch.nn.init.kaiming_normal_(self.conv.weight, nonlinearity="linear")
+        torch.nn.init.zeros_(self.conv.bias)
