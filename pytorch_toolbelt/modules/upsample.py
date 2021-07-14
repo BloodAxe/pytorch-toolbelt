@@ -107,6 +107,12 @@ class BilinearAdditiveUpsample2d(nn.Module):
         self.upsample = nn.UpsamplingBilinear2d(scale_factor=scale_factor)
         self.n = n
 
+        self.init_weights()
+
+    def init_weights(self):
+        torch.nn.init.kaiming_normal_(net.conv.weight, nonlinearity="linear")
+        torch.nn.init.zeros_(net.conv.bias)
+
     def forward(self, x: Tensor) -> Tensor:  # skipcq: PYL-W0221
         x = self.upsample(x)
         n, c, h, w = x.size()
