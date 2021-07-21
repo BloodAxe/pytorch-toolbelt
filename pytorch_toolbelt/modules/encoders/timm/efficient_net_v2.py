@@ -8,9 +8,7 @@ from .common import GenericTimmEncoder
 from ..common import make_n_channel_input
 from ...activations import ACT_SILU, get_activation_block
 
-__all__ = [
-    "TimmEfficientNetV2",
-]
+__all__ = ["TimmEfficientNetV2"]
 
 
 def make_n_channel_input_conv2d_same(conv: nn.Conv2d, in_channels: int, mode="auto", **kwargs):
@@ -47,13 +45,22 @@ def make_n_channel_input_conv2d_same(conv: nn.Conv2d, in_channels: int, mode="au
 
 class TimmEfficientNetV2(GenericTimmEncoder):
     def __init__(
-        self, model_name: str = "efficientnetv2_rw_s", pretrained=True, layers=None, activation: str = ACT_SILU,
+        self,
+        model_name: str = "efficientnetv2_rw_s",
+        pretrained=True,
+        layers=None,
+        activation: str = ACT_SILU,
+        drop_path_rate=0.05,
     ):
         from timm.models.factory import create_model
 
         act_layer = get_activation_block(activation)
         encoder = create_model(
-            model_name=model_name, pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.05
+            model_name=model_name,
+            pretrained=pretrained,
+            features_only=True,
+            act_layer=act_layer,
+            drop_path_rate=drop_path_rate,
         )
         super().__init__(encoder, layers)
 
