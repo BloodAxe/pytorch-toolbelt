@@ -81,6 +81,7 @@ class UNetDecoder(DecoderModule):
         self.output_filters = decoder_features
 
     @property
+    @torch.jit.unused
     def channels(self) -> List[int]:
         return self.output_filters
 
