@@ -141,11 +141,21 @@ class DeeplabV3Decoder(DecoderModule):
         self,
         feature_maps: List[int],
         aspp_channels: int,
-        out_channels: int,
+        channels: int,
         atrous_rates=(12, 24, 36),
         dropout: float = 0.5,
         activation=ACT_RELU,
     ):
+        """
+
+        Args:
+            feature_maps: List of input channels
+            aspp_channels:
+            channels: Output channels
+            atrous_rates:
+            dropout:
+            activation:
+        """
         super().__init__()
         self.aspp = ASPP(
             in_channels=feature_maps[-1],
@@ -158,10 +168,10 @@ class DeeplabV3Decoder(DecoderModule):
             nn.Conv2d(aspp_channels, aspp_channels, 3, padding=1, bias=False),
             nn.BatchNorm2d(aspp_channels),
             instantiate_activation_block(activation, inplace=True),
-            nn.Conv2d(aspp_channels, out_channels, kernel_size=1),
+            nn.Conv2d(aspp_channels, channels, kernel_size=1),
         )
 
-        self._channels = [out_channels]
+        self._channels = [channels]
         self._init_weight()
 
     def _init_weight(self):
@@ -194,12 +204,23 @@ class DeeplabV3PlusDecoder(DecoderModule):
         self,
         feature_maps: List[int],
         aspp_channels: int,
-        out_channels: int,
+        channels: int,
         atrous_rates=(12, 24, 36),
         dropout: float = 0.5,
         activation: str = ACT_RELU,
         low_level_channels: int = 48,
     ):
+        """
+
+        Args:
+            feature_maps: Input feature maps
+            aspp_channels:
+            channels: Number of output channels
+            atrous_rates:
+            dropout:
+            activation:
+            low_level_channels:
+        """
         super().__init__()
 
         self.project = nn.Sequential(
@@ -218,11 +239,17 @@ class DeeplabV3PlusDecoder(DecoderModule):
         )
 
         self.final = nn.Sequential(
-            nn.Conv2d(aspp_channels + low_level_channels, out_channels, kernel_size=3, padding=1, bias=False,),
-            nn.BatchNorm2d(out_channels),
+            nn.Conv2d(
+                aspp_channels + low_level_channels,
+                channels,
+                kernel_size=3,
+                padding=1,
+                bias=False,
+            ),
+            nn.BatchNorm2d(channels),
             instantiate_activation_block(activation, inplace=True),
         )
-        self._channels = [out_channels]
+        self._channels = [channels]
         self._init_weight()
 
     def _init_weight(self):
