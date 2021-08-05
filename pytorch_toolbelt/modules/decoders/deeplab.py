@@ -203,12 +203,12 @@ class DeeplabV3PlusDecoder(DecoderModule):
     def __init__(
         self,
         feature_maps: List[int],
-        aspp_channels: int,
         channels: int,
+        aspp_channels: int,
+        low_level_channels: int = 48,
         atrous_rates=(12, 24, 36),
         dropout: float = 0.5,
         activation: str = ACT_RELU,
-        low_level_channels: int = 48,
     ):
         """
 
