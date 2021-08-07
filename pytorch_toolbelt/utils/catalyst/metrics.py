@@ -504,6 +504,7 @@ class IoUMetricsCallback(Callback):
         score_per_image = []
         for image_index in range(batch_size):
             score_per_class = self.score_fn(y_pred=outputs[image_index], y_true=targets[image_index])
+            score_per_class = to_numpy(score_per_class).reshape(-1)
             score_per_image.append(score_per_class)
 
         mean_score = np.nanmean(score_per_image)
