@@ -107,7 +107,10 @@ def fivecrop_image_augment(image: Tensor, crop_size: Tuple[int, int]) -> Tensor:
     center_crop_x = (image_width - crop_width) // 2
     crop_cc = image[..., center_crop_y : center_crop_y + crop_height, center_crop_x : center_crop_x + crop_width]
 
-    return torch.cat([crop_tl, crop_tr, crop_bl, crop_br, crop_cc], dim=0,)
+    return torch.cat(
+        [crop_tl, crop_tr, crop_bl, crop_br, crop_cc],
+        dim=0,
+    )
 
 
 def fivecrop_label_deaugment(logits: Tensor, reduction: MaybeStrOrCallable = "mean") -> Tensor:
@@ -316,7 +319,15 @@ def d2_image_augment(image: Tensor) -> Tensor:
             - Vertically-flipped tensor
 
     """
-    return torch.cat([image, F.torch_rot180(image), F.torch_fliplr(image), F.torch_flipud(image),], dim=0,)
+    return torch.cat(
+        [
+            image,
+            F.torch_rot180(image),
+            F.torch_fliplr(image),
+            F.torch_flipud(image),
+        ],
+        dim=0,
+    )
 
 
 def d2_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") -> Tensor:
@@ -335,7 +346,12 @@ def d2_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") ->
     b1, b2, b3, b4 = torch.chunk(image, 4)
 
     image: Tensor = torch.stack(
-        [b1, F.torch_rot180(b2), F.torch_fliplr(b3), F.torch_flipud(b4),]
+        [
+            b1,
+            F.torch_rot180(b2),
+            F.torch_fliplr(b3),
+            F.torch_flipud(b4),
+        ]
     )
 
     return _deaugment_averaging(image, reduction=reduction)
@@ -378,10 +394,12 @@ def d4_image_augment(image: Tensor) -> Tensor:
             - Transposed tensor rotated by 180 degrees
 
     """
-    if image.size(2) != image.size(3):
-        raise ValueError(
-            f"Input tensor must have number of rows equal to number of cols. " f"Got input tensor of shape {image.size()}"
-        )
+    if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+        if image.size(2) != image.size(3):
+            raise ValueError(
+                f"Input tensor must have number of rows equal to number of cols. Got input tensor of shape {image.size()}"
+            )
+
     image_t = F.torch_transpose(image)
     return torch.cat(
         [
@@ -483,7 +501,10 @@ def d4_labels_augment(labels: Tensor) -> Tensor:
     return torch.cat([labels, labels, labels, labels, labels, labels, labels, labels], dim=0)
 
 
-def flips_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean",) -> Tensor:
+def flips_image_deaugment(
+    image: Tensor,
+    reduction: MaybeStrOrCallable = "mean",
+) -> Tensor:
     """
     Deaugment input tensor (output of the model) assuming the input was flip-augmented image (See flips_augment).
     Args:
@@ -504,7 +525,10 @@ def flips_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean",
     return _deaugment_averaging(image, reduction=reduction)
 
 
-def fliplr_labels_deaugment(logits: Tensor, reduction: MaybeStrOrCallable = "mean",) -> Tensor:
+def fliplr_labels_deaugment(
+    logits: Tensor,
+    reduction: MaybeStrOrCallable = "mean",
+) -> Tensor:
     """
     Deaugment input tensor (output of the model) assuming the input was fliplr-augmented image (See fliplr_image_augment).
     Args:
@@ -522,7 +546,10 @@ def fliplr_labels_deaugment(logits: Tensor, reduction: MaybeStrOrCallable = "mea
     return _deaugment_averaging(logits, reduction=reduction)
 
 
-def flipud_labels_deaugment(logits: Tensor, reduction: MaybeStrOrCallable = "mean",) -> Tensor:
+def flipud_labels_deaugment(
+    logits: Tensor,
+    reduction: MaybeStrOrCallable = "mean",
+) -> Tensor:
     """
     Deaugment input tensor (output of the model) assuming the input was flipud-augmented image (See flipud_image_augment).
     Args:
@@ -540,7 +567,10 @@ def flipud_labels_deaugment(logits: Tensor, reduction: MaybeStrOrCallable = "mea
     return _deaugment_averaging(logits, reduction=reduction)
 
 
-def flips_labels_deaugment(logits: Tensor, reduction: MaybeStrOrCallable = "mean",) -> Tensor:
+def flips_labels_deaugment(
+    logits: Tensor,
+    reduction: MaybeStrOrCallable = "mean",
+) -> Tensor:
     """
     Deaugment input tensor (output of the model) assuming the input was flip-augmented image (See flips_image_augment).
     Args:
@@ -597,7 +627,9 @@ def ms_image_augment(
 
 
 def ms_labels_deaugment(
-    logits: List[Tensor], size_offsets: List[Union[int, Tuple[int, int]]], reduction: MaybeStrOrCallable = "mean",
+    logits: List[Tensor],
+    size_offsets: List[Union[int, Tuple[int, int]]],
+    reduction: MaybeStrOrCallable = "mean",
 ):
     """
     Deaugment logits

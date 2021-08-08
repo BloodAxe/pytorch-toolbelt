@@ -111,18 +111,6 @@ class EncoderModule(nn.Module):
     def strides(self) -> List[int]:
         return self._output_strides
 
-    @property
-    @torch.jit.unused
-    @pytorch_toolbelt_deprecated("This property is deprecated, please use .strides instead.")
-    def output_strides(self) -> List[int]:
-        return self.strides
-
-    @property
-    @torch.jit.unused
-    @pytorch_toolbelt_deprecated("This property is deprecated, please use .channels instead.")
-    def output_filters(self) -> List[int]:
-        return self.channels
-
     @torch.jit.unused
     def set_trainable(self, trainable):
         for param in self.parameters():

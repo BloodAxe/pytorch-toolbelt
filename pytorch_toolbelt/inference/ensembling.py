@@ -54,6 +54,8 @@ class ApplySigmoidTo(nn.Module):
 
 
 class Ensembler(nn.Module):
+    __slots__ = ["outputs", "reduction"]
+
     """
     Compute sum (or average) of outputs of several models.
     """
@@ -76,15 +78,24 @@ class Ensembler(nn.Module):
 
         if self.outputs:
             keys = self.outputs
-        else:
+        elif isinstance(outputs[0], dict):
             keys = outputs[0].keys()
+        elif torch.is_tensor(outputs[0]):
+            keys = None
+        else:
+            raise RuntimeError()
 
-        averaged_output = {}
-        for key in keys:
-            predictions = [output[key] for output in outputs]
-            predictions = torch.stack(predictions)
+        if keys is None:
+            predictions = torch.stack(outputs)
             predictions = _deaugment_averaging(predictions, self.reduction)
-            averaged_output[key] = predictions
+            averaged_output = predictions
+        else:
+            averaged_output = {}
+            for key in keys:
+                predictions = [output[key] for output in outputs]
+                predictions = torch.stack(predictions)
+                predictions = _deaugment_averaging(predictions, self.reduction)
+                averaged_output[key] = predictions
 
         return averaged_output
 
