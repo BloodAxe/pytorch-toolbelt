@@ -1,4 +1,10 @@
+from typing import Union, Tuple, List, Iterable, Any
+
 __all__ = ["VolumeSlicer", "VolumeMerger"]
+import numpy as np
+import torch
+
+from pytorch_toolbelt.inference import compute_pyramid_patch_weight_loss
 
 
 class VolumeSlicer:

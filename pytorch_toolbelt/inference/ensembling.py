@@ -1,8 +1,8 @@
 import torch
 from torch import nn, Tensor
-from typing import List, Union, Iterable, Optional
+from typing import List, Union, Iterable, Optional, Dict
 
-__all__ = ["ApplySoftmaxTo", "ApplySigmoidTo", "Ensembler", "PickModelOutput"]
+__all__ = ["ApplySoftmaxTo", "ApplySigmoidTo", "Ensembler", "PickModelOutput", "SelectByIndex"]
 
 from pytorch_toolbelt.inference.tta import _deaugment_averaging
 
@@ -91,10 +91,16 @@ class Ensembler(nn.Module):
 
 class PickModelOutput(nn.Module):
     """
-    Assuming you have a model that outputs a dictionary, this module returns only a given element by it's key
+    Wraps a model that returns dict or list and returns only a specific element.
+
+    Usage example:
+        >>> model = MyAwesomeSegmentationModel() # Returns dict {"OUTPUT_MASK": Tensor, ...}
+        >>> net  = nn.Sequential(PickModelOutput(model, "OUTPUT_MASK")), nn.Sigmoid())
     """
 
-    def __init__(self, model: nn.Module, key: str):
+    __slots__ = ["target_key"]
+
+    def __init__(self, model: nn.Module, key: Union[str, int]):
         super().__init__()
         self.model = model
         self.target_key = key
@@ -102,3 +108,22 @@ class PickModelOutput(nn.Module):
     def forward(self, *input, **kwargs) -> Tensor:
         output = self.model(*input, **kwargs)
         return output[self.target_key]
+
+
+class SelectByIndex(nn.Module):
+    """
+    Select a single Tensor from the dict or list of output tensors.
+
+    Usage example:
+        >>> model = MyAwesomeSegmentationModel() # Returns dict {"OUTPUT_MASK": Tensor, ...}
+        >>> net  = nn.Sequential(model, SelectByIndex("OUTPUT_MASK"), nn.Sigmoid())
+    """
+
+    __slots__ = ["target_key"]
+
+    def __init__(self, key: Union[str, int]):
+        super().__init__()
+        self.target_key = key
+
+    def forward(self, outputs: Dict[str, Tensor]) -> Tensor:
+        return outputs[self.target_key]
