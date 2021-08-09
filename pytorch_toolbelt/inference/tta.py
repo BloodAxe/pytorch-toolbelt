@@ -448,8 +448,9 @@ def d4_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") ->
         [4, B, C, H, W] shape
 
     """
-    if image.size(0) % 8 != 0:
-        raise RuntimeError("Batch size must be divisible by 8")
+    if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+        if image.size(0) % 8 != 0:
+            raise RuntimeError("Batch size must be divisible by 8")
 
     b1, b2, b3, b4, b5, b6, b7, b8 = torch.chunk(image, 8)
 
