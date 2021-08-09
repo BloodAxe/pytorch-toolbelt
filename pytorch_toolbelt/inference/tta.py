@@ -622,7 +622,9 @@ def ms_image_augment(
             augmented_inputs.append(image)
         else:
             scale_size = rows + rows_offset, cols + cols_offset
-            scaled_input = torch.nn.functional.interpolate(image, size=scale_size, mode=mode, align_corners=align_corners)
+            scaled_input = torch.nn.functional.interpolate(
+                image, size=scale_size, mode=mode, align_corners=align_corners
+            )
             augmented_inputs.append(scaled_input)
     return augmented_inputs
 
@@ -697,6 +699,8 @@ def ms_image_deaugment(
 
 
 class GeneralizedTTA(nn.Module):
+    __slots__ = ["augment_fn", "deaugment_fn"]
+
     """
     Example:
         tta_model = GeneralizedTTA(model,
@@ -726,7 +730,9 @@ class GeneralizedTTA(nn.Module):
         # Augment & forward
         if isinstance(self.augment_fn, dict):
             if len(input) != 0:
-                raise ValueError("Input for GeneralizedTTA must not have positional arguments when augment_fn is dictionary")
+                raise ValueError(
+                    "Input for GeneralizedTTA must not have positional arguments when augment_fn is dictionary"
+                )
             augmented_inputs = dict((key, augment(kwargs[key])) for (key, augment) in self.augment_fn.items())
             outputs = self.model(**augmented_inputs)
         elif isinstance(self.augment_fn, (list, tuple)):

@@ -54,13 +54,15 @@ class ApplySigmoidTo(nn.Module):
 
 
 class Ensembler(nn.Module):
-    __slots__ = ["outputs", "reduction"]
+    __slots__ = ["outputs", "reduction", "return_some_outputs"]
 
     """
     Compute sum (or average) of outputs of several models.
     """
 
-    def __init__(self, models: List[nn.Module], reduction: str = "mean", outputs: Optional[Iterable[str]] = None):
+    def __init__(self, models: List[nn.Module],
+                 reduction: str = "mean",
+                 outputs: Optional[Iterable[str]] = None):
         """
 
         :param models:
@@ -69,14 +71,15 @@ class Ensembler(nn.Module):
             If None, all outputs from the first model will be used.
         """
         super().__init__()
-        self.outputs = outputs
+        self.return_some_outputs = outputs is not None
+        self.outputs = tuple(outputs) if outputs else tuple()
         self.models = nn.ModuleList(models)
         self.reduction = reduction
 
     def forward(self, *input, **kwargs):  # skipcq: PYL-W0221
         outputs = [model(*input, **kwargs) for model in self.models]
 
-        if self.outputs:
+        if self.return_some_outputs:
             keys = self.outputs
         elif isinstance(outputs[0], dict):
             keys = outputs[0].keys()
