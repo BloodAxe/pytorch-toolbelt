@@ -102,10 +102,10 @@ class ASPP(nn.Module):
         self,
         in_channels: int,
         out_channels: int,
+        aspp_module: Union[Type[ASPPModule], Type[SeparableASPPModule]],
         atrous_rates=(12, 24, 36),
         dropout: float = 0.5,
         activation: str = ACT_RELU,
-        aspp_module=Union[Type[ASPPModule], Type[SeparableASPPModule]],
     ):
         super(ASPP, self).__init__()
         aspp_modules = [
@@ -160,6 +160,7 @@ class DeeplabV3Decoder(DecoderModule):
         self.aspp = ASPP(
             in_channels=feature_maps[-1],
             out_channels=aspp_channels,
+            aspp_module=ASPPModule,
             atrous_rates=atrous_rates,
             dropout=dropout,
             activation=activation,
