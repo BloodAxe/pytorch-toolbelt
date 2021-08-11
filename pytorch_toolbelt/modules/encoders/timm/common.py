@@ -36,19 +36,15 @@ class GenericTimmEncoder(EncoderModule):
         return _take(self.encoder(x), self._layers)
 
 
-def make_n_channel_input_std_conv(
-    conv: Union["ScaledStdConv2d", "ScaledStdConv2dSame"], in_channels: int, mode="auto", **kwargs
-) -> Union["ScaledStdConv2d", "ScaledStdConv2dSame"]:
+def make_n_channel_input_std_conv(conv: nn.Module, in_channels: int, mode="auto", **kwargs) -> nn.Module:
     """
+    Return the same convolution class but with desired number of channels
 
     Args:
         conv: Input nn.Conv2D object to copy settings/weights from
         in_channels: Desired number of input channels
         mode:
         **kwargs: Optional overrides for Conv2D parameters
-
-    Returns:
-
     """
     conv_cls = conv.__class__
 

@@ -2,10 +2,10 @@ import math
 import warnings
 import numpy as np
 from torch import nn
-from torch.optim.lr_scheduler import _LRScheduler, LambdaLR
 from torch.optim.optimizer import Optimizer
 from torch.optim.lr_scheduler import (
     _LRScheduler,
+    LambdaLR,
     ExponentialLR,
     CyclicLR,
     MultiStepLR,

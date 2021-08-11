@@ -223,16 +223,6 @@ class F1ScoreCallback(Callback):
     ):
         """
         Code borrowed from sklear.metrics
-
-        Args:
-            MCM:
-            average:
-            beta:
-            warn_for:
-            zero_division:
-
-        Returns:
-
         """
         tp_sum = MCM[:, 1, 1]
         pred_sum = tp_sum + MCM[:, 0, 1]
@@ -605,7 +595,6 @@ class AccuracyCallback(Callback):
             num_classes: number of classes to calculate ``topk_args``
                 if ``accuracy_args`` is None
         """
-
         super().__init__(CallbackOrder.Metric)
         self.prefix = prefix
         self.output_key = output_key
@@ -672,7 +661,6 @@ class MultilabelAccuracyCallback(Callback):
             num_classes: number of classes to calculate ``topk_args``
                 if ``accuracy_args`` is None
         """
-
         super().__init__(CallbackOrder.Metric)
         self.prefix = prefix
         self.output_key = output_key

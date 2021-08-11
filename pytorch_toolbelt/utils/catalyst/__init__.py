@@ -14,9 +14,9 @@ def _register_modules(r):
 
 
 def _register_criterions(r):
-    from pytorch_toolbelt import losses as l
+    from pytorch_toolbelt import losses
 
-    r.add_from_module(l, prefix="tbt.")
+    r.add_from_module(losses, prefix="tbt.")
 
 
 def _register_callbacks(r):

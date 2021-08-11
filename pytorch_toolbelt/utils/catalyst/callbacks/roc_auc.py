@@ -34,7 +34,6 @@ class RocAucMetricCallback(Callback):
                 specifies our `y_pred`
             prefix: key for the metric's name
         """
-
         super().__init__(CallbackOrder.Metric)
         self.prefix = prefix
         self.output_key = output_key

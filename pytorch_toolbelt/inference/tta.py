@@ -53,8 +53,9 @@ MaybeStrOrCallable = Optional[Union[str, Callable]]
 
 def _deaugment_averaging(x: Tensor, reduction: MaybeStrOrCallable) -> Tensor:
     """
-    Helper method to average predictions of TTA-ed model.
+    Average predictions of TTA-ed model.
     This function assumes TTA dimension is 0, e.g [T, B, C, Ci, Cj, ..]
+
     Args:
         x: Input tensor of shape [T, B, ... ]
         reduction: Reduction mode ("sum", "mean", "gmean", "hmean", function, None)
@@ -635,15 +636,13 @@ def ms_labels_deaugment(
     reduction: MaybeStrOrCallable = "mean",
 ):
     """
-    Deaugment logits
+    Deaugment multi-scale label predictions.
+    This function does not apply interpolation, since the outputs are expected to be scalar or 1d vector.
 
     Args:
         logits: List of tensors of shape [B, C]
-        size_offsets:
+        size_offsets: Not used
         reduction:
-
-    Returns:
-
     """
     if len(logits) != len(size_offsets):
         raise ValueError("Number of images must be equal to number of size offsets")
@@ -661,6 +660,7 @@ def ms_image_deaugment(
     stride: int = 1,
 ) -> Tensor:
     """
+    Perform multi-scale deaugmentation of predicted feature maps.
 
     Args:
         images: List of tensors of shape [B, C, Hi, Wi], [B, C, Hj, Wj], [B, C, Hk, Wk]
@@ -672,7 +672,7 @@ def ms_image_deaugment(
         Used to correctly scale size_offsets to match with size of output feature maps
 
     Returns:
-
+        Averaged feature-map of the original size
     """
     if len(images) != len(size_offsets):
         raise ValueError("Number of images must be equal to number of size offsets")

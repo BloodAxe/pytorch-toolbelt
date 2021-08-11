@@ -6,6 +6,8 @@ import numpy as np
 
 __all__ = ["RandomSubsetDataset", "RandomSubsetWithMaskDataset"]
 
+from torch.utils.data.dataloader import default_collate
+
 
 class RandomSubsetDataset(Dataset):
     """

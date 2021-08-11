@@ -82,7 +82,6 @@ def get_optimizer(
     Returns:
         Optimizer instance
     """
-
     # Optimizer parameter groups
     default_pg, biases_pg = [], []
 

@@ -69,7 +69,6 @@ def read_binary_mask(mask_fname: str) -> np.ndarray:
     Returns:
         Numpy array with {0,1} values
     """
-
     mask = cv2.imread(mask_fname, cv2.IMREAD_GRAYSCALE)
     if mask is None:
         raise FileNotFoundError(f"Cannot find {mask_fname}")

@@ -242,17 +242,18 @@ def transfer_weights(model: nn.Module, model_state_dict: collections.OrderedDict
             print(e)
 
 
-def resize_like(x: Tensor, target: Tensor, mode="bilinear", align_corners=True) -> Tensor:
+def resize_like(x: Tensor, target: Tensor, mode: str = "bilinear", align_corners: bool = True) -> Tensor:
     """
-    Resize input tensor to have the same spatial dimensions as target
+    Resize input tensor to have the same spatial dimensions as target.
+
     Args:
-        x:
-        target:
+        x: Input tensor of [B,C,H,W]
+        target: [Bt,Ct,Ht,Wt]
         mode:
         align_corners:
 
     Returns:
-
+        Resized tensor [B,C,Ht,Wt]
     """
     return torch.nn.functional.interpolate(x, target.size()[2:], mode=mode, align_corners=align_corners)
 

@@ -6,14 +6,12 @@ __all__ = ["get_lr_decay_parameters", "get_optimizable_parameters", "freeze_mode
 
 def get_lr_decay_parameters(model: nn.Module, learning_rate: float, lr_multipliers: Dict[str, float]):
     """
-    Create different parameter groups with different settings
+    Create different parameter groups with different settings.
+
     Args:
         parameters:
         learning_rate:
         groups: {"encoder": 0.1 ,"encoder.layer2": 0.2}
-
-    Returns:
-
     """
     custom_lr_parameters = dict(
         (group_name, {"params": [], "lr": learning_rate * lr_factor})

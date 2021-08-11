@@ -1,4 +1,5 @@
 from typing import Any, Dict
+from .support import pytorch_toolbelt_deprecated
 
 __all__ = ["maybe_eval", "without", "load_yaml"]
 
@@ -16,7 +17,7 @@ def maybe_eval(x: str) -> Any:
 
 def without(dictionary: Dict, key: str) -> Dict:
     """
-    Returns copy of dictionary without given key.
+    Return copy of dictionary without given key.
 
     Args:
         dictionary: Input dictionary
@@ -30,6 +31,7 @@ def without(dictionary: Dict, key: str) -> Dict:
     return dict((k, v) for (k, v) in dictionary.items() if k not in key)
 
 
+@pytorch_toolbelt_deprecated("This method is deprecated. Please use OmegaConf")
 def load_yaml(stream: Any):
     """
     Parse the first YAML document in a stream and produce the corresponding Python object.
@@ -39,9 +41,6 @@ def load_yaml(stream: Any):
 
     Args:
         stream:
-
-    Returns:
-
     """
     import yaml
     import re

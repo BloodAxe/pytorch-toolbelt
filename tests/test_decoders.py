@@ -4,7 +4,6 @@ import pytorch_toolbelt.modules.encoders as E
 import torch
 from pytorch_toolbelt.modules import FPNFuse
 from pytorch_toolbelt.modules.decoders import FPNSumDecoder, FPNCatDecoder
-from pytorch_toolbelt.modules import decoders as D
 from pytorch_toolbelt.utils.torch_utils import count_parameters
 from torch import nn
 
