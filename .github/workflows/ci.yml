@@ -1,0 +1,62 @@
+name: CI
+on: [push, pull_request]
+
+jobs:
+  test_and_lint:
+    name: Test and lint
+    runs-on: ${{ matrix.operating-system }}
+    strategy:
+      matrix:
+        operating-system: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: [3.6, 3.7, 3.8, 3.9]
+        pytorch-toolbelt-version: [tests, develop]
+      fail-fast: false
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Update pip
+      run: python -m pip install --upgrade pip
+    - name: Install PyTorch on Linux and Windows
+      if: >
+        matrix.operating-system == 'ubuntu-latest' ||
+        matrix.operating-system == 'windows-latest'
+      run: >
+        pip install torch==1.8.1+cpu torchvision==0.9.1+cpu
+        -f https://download.pytorch.org/whl/torch_stable.html
+    - name: Install PyTorch on MacOS
+      if: matrix.operating-system == 'macos-latest'
+      run: pip install torch==1.8.1 torchvision==0.9.1
+    - name: Install dependencies
+      run: pip install .[${{ matrix.pytorch-toolbelt-version }}]
+    - name: Install linters
+      run: pip install flake8==3.8.4 flake8-docstrings==1.5.0 mypy==0.800
+    - name: Run PyTest
+      run: pytest
+    - name: Run Flake8
+      run: flake8
+    - name: Run mypy
+      run: mypy .
+
+  check_code_formatting:
+    name: Check code formatting with Black
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.8]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Update pip
+      run: python -m pip install --upgrade pip
+    - name: Install Black
+      run: pip install black==20.8b1
+    - name: Run Black
+      run: black --config=black.toml --check .
