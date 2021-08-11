@@ -15,10 +15,10 @@ skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA
 @pytest.mark.parametrize(
     ("decoder_cls", "decoder_params"),
     [
-        (D.FPNSumDecoder, {"fpn_channels": 128}),
-        (D.FPNCatDecoder, {"fpn_channels": 128}),
-        (D.DeeplabV3PlusDecoder, {"aspp_channels": 256, "out_channels": 256}),
-        (D.DeeplabV3Decoder, {"aspp_channels": 256, "out_channels": 256}),
+        (D.FPNSumDecoder, {"channels": 128}),
+        (D.FPNCatDecoder, {"channels": 128}),
+        (D.DeeplabV3PlusDecoder, {"aspp_channels": 256, "channels": 256}),
+        (D.DeeplabV3Decoder, {"aspp_channels": 256, "channels": 256}),
     ],
 )
 def test_decoders(decoder_cls, decoder_params):
