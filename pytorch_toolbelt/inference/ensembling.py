@@ -60,9 +60,7 @@ class Ensembler(nn.Module):
     Compute sum (or average) of outputs of several models.
     """
 
-    def __init__(self, models: List[nn.Module],
-                 reduction: str = "mean",
-                 outputs: Optional[Iterable[str]] = None):
+    def __init__(self, models: List[nn.Module], reduction: str = "mean", outputs: Optional[Iterable[str]] = None):
         """
 
         :param models:

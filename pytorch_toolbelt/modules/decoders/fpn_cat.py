@@ -77,18 +77,14 @@ class FPNCatDecoder(SegmentationDecoderModule):
             [bottleneck_block(in_channels, channels) for in_channels in reversed(feature_maps)]
         )
 
-        self.predicts = nn.ModuleList(
-            [predict_block(channels + channels, channels) for _ in reversed(feature_maps)]
-        )
+        self.predicts = nn.ModuleList([predict_block(channels + channels, channels) for _ in reversed(feature_maps)])
 
         if issubclass(output_block, nn.Identity):
             self.channels = [channels] * len(feature_maps)
             self.outputs = nn.ModuleList([output_block() for _ in reversed(feature_maps)])
         else:
             self.channels = [prediction_channels] * len(feature_maps)
-            self.outputs = nn.ModuleList(
-                [output_block(channels, prediction_channels) for _ in reversed(feature_maps)]
-            )
+            self.outputs = nn.ModuleList([output_block(channels, prediction_channels) for _ in reversed(feature_maps)])
 
         if issubclass(upsample_block, nn.Upsample):
             self.upsamples = nn.ModuleList([upsample_block(scale_factor=2) for _ in reversed(feature_maps)])

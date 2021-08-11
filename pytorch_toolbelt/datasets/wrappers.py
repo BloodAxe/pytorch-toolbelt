@@ -37,7 +37,12 @@ class RandomSubsetWithMaskDataset(Dataset):
     """
 
     def __init__(self, dataset: Dataset, mask: np.ndarray, num_samples: int):
-        if not isinstance(mask, np.ndarray) or mask.dtype != np.bool or len(mask.shape) != 1 or len(mask) != len(dataset):
+        if (
+            not isinstance(mask, np.ndarray)
+            or mask.dtype != np.bool
+            or len(mask.shape) != 1
+            or len(mask) != len(dataset)
+        ):
             raise ValueError("Mask must be boolean 1-D numpy array")
 
         if not mask.any():

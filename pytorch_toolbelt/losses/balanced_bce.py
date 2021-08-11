@@ -35,7 +35,9 @@ class BalancedBCEWithLogitsLoss(nn.Module):
     __constants__ = ["gamma", "reduction"]
 
     def __init__(
-        self, gamma: float = 1.0, reduction="mean",
+        self,
+        gamma: float = 1.0,
+        reduction="mean",
     ):
         """
 
