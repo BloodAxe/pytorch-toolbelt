@@ -65,6 +65,8 @@ ACT_SWISH_NAIVE = "swish_naive"
 
 # This version reduces memory overhead of Swish during training by
 # recomputing torch.sigmoid(x) in backward instead of saving it.
+
+
 @torch.jit.script
 def swish_jit_fwd(x):
     return x.mul(torch.sigmoid(x))

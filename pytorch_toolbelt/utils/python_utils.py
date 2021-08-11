@@ -43,7 +43,8 @@ def load_yaml(stream: Any):
     Returns:
 
     """
-    import yaml, re
+    import yaml
+    import re
 
     loader = yaml.SafeLoader
     loader.add_implicit_resolver(
