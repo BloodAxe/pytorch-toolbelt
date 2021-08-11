@@ -574,7 +574,7 @@ right = [
 
 def get_random_name(sep="_"):
     r = random.SystemRandom()
-    while 1:
+    while True:
         name = "%s%s%s" % (r.choice(left), sep, r.choice(right))
         if name == "boring" + sep + "wozniak":  # Steve Wozniak is not boring
             continue
