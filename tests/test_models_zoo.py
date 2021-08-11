@@ -11,7 +11,7 @@ def test_segmentation_models(model_cls):
 
     num_classes = 7
     net = model_cls(num_classes=num_classes, pretrained=False).to(device).eval()
-    input = torch.randn((4, 3, 512, 512)).cuda()
+    input = torch.randn((4, 3, 512, 512)).to(device)
 
     with torch.cuda.amp.autocast(True):
         output = net(input)
