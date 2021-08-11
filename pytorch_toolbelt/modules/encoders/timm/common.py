@@ -65,9 +65,7 @@ def make_n_channel_input_std_conv(
         dilation=kwargs.get("dilation", conv.dilation),
         groups=kwargs.get("groups", conv.groups),
         bias=kwargs.get("bias", conv.bias is not None),
-        # gamma=kwargs.get("gamma", conv.gamma),
         eps=kwargs.get("eps", conv.eps),
-        use_layernorm=kwargs.get("use_layernorm", conv.use_layernorm),
     )
 
     w = conv.weight
