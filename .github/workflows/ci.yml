@@ -33,13 +33,15 @@ jobs:
     - name: Install dependencies
       run: pip install .[${{ matrix.pytorch-toolbelt-version }}]
     - name: Install linters
-      run: pip install flake8==3.8.4 flake8-docstrings==1.5.0 mypy==0.800
+      run: pip install flake8==3.8.4 flake8-docstrings==1.5.0
     - name: Run PyTest
       run: pytest
     - name: Run Flake8
       run: flake8
-    - name: Run mypy
-      run: mypy .
+#    - name: Install MyPy
+#      run: pip install mypy==0.800
+#    - name: Run mypy
+#      run: mypy .
 
   check_code_formatting:
     name: Check code formatting with Black
