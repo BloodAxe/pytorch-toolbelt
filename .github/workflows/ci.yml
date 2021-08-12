@@ -9,7 +9,7 @@ jobs:
       matrix:
         operating-system: [ubuntu-latest, windows-latest, macos-latest]
         python-version: [3.6, 3.7, 3.8, 3.9]
-        pytorch-toolbelt-version: [tests, develop]
+        pytorch-toolbelt-version: [tests]
       fail-fast: false
     steps:
     - name: Checkout
