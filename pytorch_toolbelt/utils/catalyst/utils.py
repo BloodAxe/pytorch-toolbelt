@@ -1,7 +1,7 @@
 import os
 from collections import OrderedDict
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Union
 import math
 import torch
 from catalyst import utils
@@ -271,9 +271,12 @@ class HyperParametersCallback(Callback):
     Useful for evaluation of several runs in Tensorboard.
     """
 
-    def __init__(self, hparam_dict: Dict):
+    def __init__(self, hparam_dict: Dict[str, Union[str, bool, int, float]]):
         if "stage" in hparam_dict:
             raise KeyError("Key 'stage' is reserved")
+        for key, value in hparam_dict.items():
+            if not isinstance(value, (str, float, int, bool)):
+                raise ValueError(f"Value of key {key} must be either str,float,int,bool. Got {value}")
 
         super().__init__(CallbackOrder.Metric)
         self.hparam_dict = hparam_dict
@@ -285,5 +288,6 @@ class HyperParametersCallback(Callback):
         hparam_dict["stage"] = state.stage_name
 
         logger.add_hparams(
-            hparam_dict=self.hparam_dict, metric_dict=state.best_valid_metrics,
+            hparam_dict=self.hparam_dict,
+            metric_dict=state.best_valid_metrics,
         )

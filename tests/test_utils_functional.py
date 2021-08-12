@@ -1,7 +1,9 @@
+import numpy as np
 import pytest
 import torch
 from pytorch_toolbelt.inference.functional import unpad_xyxy_bboxes, pad_image_tensor, unpad_image_tensor
 from pytorch_toolbelt.modules.encoders import make_n_channel_input
+from pytorch_toolbelt.utils import match_bboxes
 from torch import nn
 
 
@@ -63,3 +65,69 @@ def test_pad_unpad_nonsymmetric(shape, padding):
 
     y = unpad_image_tensor(x_padded, pad_params)
     assert (x == y).all()
+
+
+@pytest.mark.parametrize(
+    (
+        "gt_bboxes",
+        "pred_bboxes",
+        "num_classes",
+        "true_positives",
+        "false_positives",
+        "false_negatives",
+        "confusion_matrix",
+    ),
+    [
+        # Perfect match
+        (
+            ([[10, 10, 20, 20]], [0]),
+            ([[10, 10, 20, 20]], [0]),
+            1,
+            np.array([1]),
+            np.array([0]),
+            np.array([0]),
+            np.array([[1, 0], [0, 0]]),
+        ),
+        # Class mistmatch
+        (
+            ([[10, 10, 20, 20]], [0]),
+            ([[10, 10, 20, 20]], [1]),
+            2,
+            np.array([0, 0]),
+            np.array([0, 1]),
+            np.array([1, 0]),
+            np.array([[0, 1, 0], [0, 0, 0], [0, 0, 0]]),
+        ),
+        # Full mismatch
+        (
+            ([[10, 10, 20, 20]], [0]),
+            ([[30, 30, 50, 50]], [0]),
+            1,
+            np.array([0]),
+            np.array([1]),
+            np.array([1]),
+            np.array([[0, 1], [1, 0]]),
+        ),
+    ],
+)
+def test_match_bboxes(
+    gt_bboxes, pred_bboxes, num_classes, true_positives, false_positives, false_negatives, confusion_matrix
+):
+    gt_bboxes, gt_labels = gt_bboxes
+    pred_bboxes, pred_labels = pred_bboxes
+
+    gt_bboxes = np.asarray(gt_bboxes)
+    gt_labels = np.asarray(gt_labels)
+
+    pred_bboxes = np.asarray(pred_bboxes)
+    pred_labels = np.asarray(pred_labels)
+
+    pred_scores = np.ones((len(pred_bboxes)))
+    result = match_bboxes(
+        pred_bboxes, pred_labels, pred_scores, gt_bboxes, gt_labels, num_classes=num_classes, iou_threshold=0.5
+    )
+
+    np.testing.assert_equal(result.true_positives, true_positives)
+    np.testing.assert_equal(result.false_positives, false_positives)
+    np.testing.assert_equal(result.false_negatives, false_negatives)
+    np.testing.assert_equal(result.confusion_matrix, confusion_matrix)

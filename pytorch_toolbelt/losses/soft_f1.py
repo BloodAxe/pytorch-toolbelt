@@ -20,7 +20,6 @@ def soft_micro_f1(preds: Tensor, targets: Tensor, eps=1e-6) -> Tensor:
     References:
         https://towardsdatascience.com/the-unknown-benefits-of-using-a-soft-f1-loss-in-classification-systems-753902c0105d
     """
-
     tp = torch.sum(preds * targets, dim=0)
     fp = torch.sum(preds * (1 - targets), dim=0)
     fn = torch.sum((1 - preds) * targets, dim=0)

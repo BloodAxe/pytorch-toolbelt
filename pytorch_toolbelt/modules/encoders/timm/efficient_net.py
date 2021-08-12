@@ -119,6 +119,7 @@ class TimmB1Encoder(EncoderModule):
         features = self.encoder(x)
         return _take(features, self._layers)
 
+    @torch.jit.unused
     def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
         self.encoder.conv_stem = make_n_channel_input_conv2d_same(
             self.encoder.conv_stem, input_channels, mode, **kwargs
@@ -150,6 +151,7 @@ class TimmB2Encoder(EncoderModule):
         features = self.encoder(x)
         return _take(features, self._layers)
 
+    @torch.jit.unused
     def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
         self.encoder.conv_stem = make_n_channel_input_conv2d_same(
             self.encoder.conv_stem, input_channels, mode, **kwargs
@@ -181,6 +183,7 @@ class TimmB3Encoder(EncoderModule):
         features = self.encoder(x)
         return _take(features, self._layers)
 
+    @torch.jit.unused
     def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
         self.encoder.conv_stem = make_n_channel_input_conv2d_same(
             self.encoder.conv_stem, input_channels, mode, **kwargs
@@ -223,6 +226,7 @@ class TimmB4Encoder(EncoderModule):
         features = self.encoder(x)
         return _take(features, self._layers)
 
+    @torch.jit.unused
     def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
         self.encoder.conv_stem = make_n_channel_input_conv2d_same(
             self.encoder.conv_stem, input_channels, mode, **kwargs
@@ -254,6 +258,7 @@ class TimmB5Encoder(EncoderModule):
         features = self.encoder(x)
         return _take(features, self._layers)
 
+    @torch.jit.unused
     def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
         self.encoder.conv_stem = make_n_channel_input_conv2d_same(
             self.encoder.conv_stem, input_channels, mode, **kwargs
@@ -285,6 +290,7 @@ class TimmB6Encoder(EncoderModule):
         features = self.encoder(x)
         return _take(features, self._layers)
 
+    @torch.jit.unused
     def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
         self.encoder.conv_stem = make_n_channel_input_conv2d_same(
             self.encoder.conv_stem, input_channels, mode, **kwargs
@@ -316,6 +322,7 @@ class TimmB7Encoder(EncoderModule):
         features = self.encoder(x)
         return _take(features, self._layers)
 
+    @torch.jit.unused
     def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
         self.encoder.conv_stem = make_n_channel_input_conv2d_same(
             self.encoder.conv_stem, input_channels, mode, **kwargs
@@ -336,6 +343,7 @@ class TimmMixNetXLEncoder(EncoderModule):
         features = self.encoder(x)
         return _take(features, self._layers)
 
+    @torch.jit.unused
     def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
         self.encoder.conv_stem = make_n_channel_input_conv2d_same(
             self.encoder.conv_stem, input_channels, mode, **kwargs

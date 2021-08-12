@@ -1,6 +1,7 @@
-from typing import Optional, List
+from typing import Optional, List, Union, Callable
 
 import albumentations as A
+import numpy as np
 import torch
 from torch.utils.data import Dataset
 
@@ -22,10 +23,10 @@ class ClassificationDataset(Dataset):
     def __init__(
         self,
         image_filenames: List[str],
-        labels: Optional[List[str]],
+        labels: Optional[Union[List[int], np.ndarray]],
         transform: A.Compose,
-        read_image_fn=read_image_rgb,
-        make_target_fn=label_to_tensor,
+        read_image_fn: Callable = read_image_rgb,
+        make_target_fn: Callable = label_to_tensor,
     ):
         if labels is not None and len(image_filenames) != len(labels):
             raise ValueError("Number of images does not corresponds to number of targets")

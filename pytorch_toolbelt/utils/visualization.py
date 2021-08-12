@@ -3,7 +3,7 @@ from __future__ import absolute_import
 import itertools
 import math
 import warnings
-from typing import List
+from typing import List, Iterable, Tuple
 
 import cv2
 import numpy as np
@@ -22,15 +22,15 @@ __all__ = [
 
 def plot_confusion_matrix(
     cm: np.ndarray,
-    class_names,
-    figsize=(16, 16),
-    fontsize=12,
-    normalize=False,
-    title="Confusion matrix",
+    class_names: List[str],
+    figsize: Tuple[int, int] = (16, 16),
+    fontsize: int = 12,
+    normalize: bool = False,
+    title: str = "Confusion matrix",
     cmap=None,
     fname=None,
-    noshow=False,
-    backend="Agg",
+    noshow: bool = False,
+    backend: str = "Agg",
 ):
     """Render the confusion matrix and return matplotlib's figure with it.
     Normalization can be applied by setting `normalize=True`.
@@ -104,7 +104,7 @@ def render_figure_to_tensor(figure):
     return image
 
 
-def hstack_autopad(images: List[np.ndarray], pad_value=0) -> np.ndarray:
+def hstack_autopad(images: Iterable[np.ndarray], pad_value: int = 0) -> np.ndarray:
     """
     Stack images horizontally with automatic padding
 
@@ -132,7 +132,7 @@ def hstack_autopad(images: List[np.ndarray], pad_value=0) -> np.ndarray:
     return np.hstack(padded_images)
 
 
-def vstack_autopad(images: List[np.ndarray], pad_value=0) -> np.ndarray:
+def vstack_autopad(images: Iterable[np.ndarray], pad_value: int = 0) -> np.ndarray:
     """
     Stack images vertically with automatic padding
 

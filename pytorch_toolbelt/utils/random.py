@@ -10,8 +10,7 @@ __all__ = ["set_manual_seed", "get_rng_state", "set_rng_state", "get_random_name
 
 
 def set_manual_seed(seed):
-    """Set random seed for Python and PyTorch random generators.
-    """
+    """Set random seed for Python and PyTorch random generators."""
     random.seed(seed)
     torch.manual_seed(seed)
 

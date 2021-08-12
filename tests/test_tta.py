@@ -105,14 +105,6 @@ def test_d4_speed():
     df.to_csv("tta_eval.csv", index=False)
 
 
-def test_fliplr_image2label():
-    x = torch.rand((4, 3, 224, 224))
-    model = GlobalAvgPool2d(flatten=True)
-
-    output = tta.fliplr_image2label(model, x)
-    np.testing.assert_allclose(to_numpy(output), to_numpy(x.mean(dim=(2, 3))), atol=1e-6, rtol=1e-6)
-
-
 def test_fliplr_image2mask():
     x = torch.rand((4, 3, 224, 224))
     model = NoOp()

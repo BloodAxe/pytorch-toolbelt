@@ -1,3 +1,5 @@
+import torch
+
 from ..common import EncoderModule, make_n_channel_input
 
 __all__ = [
@@ -24,6 +26,7 @@ class DPN68Encoder(EncoderModule):
         y = self.encoder.forward(x)
         return y
 
+    @torch.jit.unused
     def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
         self.encoder.features_conv1_1.conv = make_n_channel_input(
             self.encoder.features_conv1_1.conv, input_channels, mode, **kwargs
@@ -46,6 +49,7 @@ class DPN68BEncoder(EncoderModule):
         y = self.encoder.forward(x)
         return y
 
+    @torch.jit.unused
     def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
         self.encoder.features_conv1_1.conv = make_n_channel_input(
             self.encoder.features_conv1_1.conv, input_channels, mode, **kwargs
@@ -68,6 +72,7 @@ class DPN92Encoder(EncoderModule):
         y = self.encoder.forward(x)
         return y
 
+    @torch.jit.unused
     def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
         self.encoder.features_conv1_1.conv = make_n_channel_input(
             self.encoder.features_conv1_1.conv, input_channels, mode, **kwargs
@@ -90,6 +95,7 @@ class DPN107Encoder(EncoderModule):
         y = self.encoder.forward(x)
         return y
 
+    @torch.jit.unused
     def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
         self.encoder.features_conv1_1.conv = make_n_channel_input(
             self.encoder.features_conv1_1.conv, input_channels, mode, **kwargs
@@ -111,6 +117,7 @@ class DPN131Encoder(EncoderModule):
         y = self.encoder.forward(x)
         return y
 
+    @torch.jit.unused
     def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
         self.encoder.features_conv1_1.conv = make_n_channel_input(
             self.encoder.features_conv1_1.conv, input_channels, mode, **kwargs

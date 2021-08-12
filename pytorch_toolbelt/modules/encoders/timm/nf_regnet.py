@@ -19,9 +19,7 @@ class NFRegNetB0Encoder(GenericTimmEncoder):
         super().__init__(encoder, layers)
 
     def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
-        self.encoder.stem_conv = make_n_channel_input_std_conv(
-            self.encoder.stem_conv, input_channels, mode, **kwargs
-        )
+        self.encoder.stem_conv = make_n_channel_input_std_conv(self.encoder.stem_conv, input_channels, mode, **kwargs)
         return self
 
 
@@ -33,9 +31,7 @@ class NFRegNetB1Encoder(GenericTimmEncoder):
         super().__init__(encoder, layers)
 
     def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
-        self.encoder.stem_conv = make_n_channel_input_std_conv(
-            self.encoder.stem_conv, input_channels, mode, **kwargs
-        )
+        self.encoder.stem_conv = make_n_channel_input_std_conv(self.encoder.stem_conv, input_channels, mode, **kwargs)
         return self
 
 
@@ -47,9 +43,7 @@ class NFRegNetB2Encoder(GenericTimmEncoder):
         super().__init__(encoder, layers)
 
     def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
-        self.encoder.stem_conv = make_n_channel_input_std_conv(
-            self.encoder.stem_conv, input_channels, mode, **kwargs
-        )
+        self.encoder.stem_conv = make_n_channel_input_std_conv(self.encoder.stem_conv, input_channels, mode, **kwargs)
         return self
 
 
@@ -61,9 +55,7 @@ class NFRegNetB3Encoder(GenericTimmEncoder):
         super().__init__(encoder, layers)
 
     def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
-        self.encoder.stem_conv = make_n_channel_input_std_conv(
-            self.encoder.stem_conv, input_channels, mode, **kwargs
-        )
+        self.encoder.stem_conv = make_n_channel_input_std_conv(self.encoder.stem_conv, input_channels, mode, **kwargs)
         return self
 
 
@@ -75,9 +67,7 @@ class NFRegNetB4Encoder(GenericTimmEncoder):
         super().__init__(encoder, layers)
 
     def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
-        self.encoder.stem_conv = make_n_channel_input_std_conv(
-            self.encoder.stem_conv, input_channels, mode, **kwargs
-        )
+        self.encoder.stem_conv = make_n_channel_input_std_conv(self.encoder.stem_conv, input_channels, mode, **kwargs)
         return self
 
 
@@ -89,7 +79,5 @@ class NFRegNetB5Encoder(GenericTimmEncoder):
         super().__init__(encoder, layers)
 
     def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
-        self.encoder.stem_conv = make_n_channel_input_std_conv(
-            self.encoder.stem_conv, input_channels, mode, **kwargs
-        )
+        self.encoder.stem_conv = make_n_channel_input_std_conv(self.encoder.stem_conv, input_channels, mode, **kwargs)
         return self

@@ -5,6 +5,8 @@ Maxim Berman 2018 ESAT-PSI KU Leuven (MIT License)
 
 from __future__ import print_function, division
 
+from typing import Optional, Union
+
 import torch
 import torch.nn.functional as F
 from torch.autograd import Variable
@@ -32,7 +34,7 @@ def _lovasz_grad(gt_sorted):
     return jaccard
 
 
-def _lovasz_hinge(logits, labels, per_image=True, ignore=None):
+def _lovasz_hinge(logits, labels, per_image=True, ignore_index=None):
     """
     Binary Lovasz hinge loss
         logits: [B, H, W] Variable, logits at each pixel (between -infinity and +infinity)
@@ -42,11 +44,11 @@ def _lovasz_hinge(logits, labels, per_image=True, ignore=None):
     """
     if per_image:
         loss = mean(
-            _lovasz_hinge_flat(*_flatten_binary_scores(log.unsqueeze(0), lab.unsqueeze(0), ignore))
+            _lovasz_hinge_flat(*_flatten_binary_scores(log.unsqueeze(0), lab.unsqueeze(0), ignore_index))
             for log, lab in zip(logits, labels)
         )
     else:
-        loss = _lovasz_hinge_flat(*_flatten_binary_scores(logits, labels, ignore))
+        loss = _lovasz_hinge_flat(*_flatten_binary_scores(logits, labels, ignore_index))
     return loss
 
 
@@ -70,15 +72,15 @@ def _lovasz_hinge_flat(logits, labels):
     return loss
 
 
-def _flatten_binary_scores(scores, labels, ignore=None):
+def _flatten_binary_scores(scores, labels, ignore_index=None):
     """Flattens predictions in the batch (binary case)
     Remove labels equal to 'ignore'
     """
     scores = scores.view(-1)
     labels = labels.view(-1)
-    if ignore is None:
+    if ignore_index is None:
         return scores, labels
-    valid = labels != ignore
+    valid = labels != ignore_index
     vscores = scores[valid]
     vlabels = labels[valid]
     return vscores, vlabels
@@ -87,7 +89,7 @@ def _flatten_binary_scores(scores, labels, ignore=None):
 # --------------------------- MULTICLASS LOSSES ---------------------------
 
 
-def _lovasz_softmax(probas, labels, classes="present", per_image=False, ignore=None):
+def _lovasz_softmax(probas, labels, classes="present", per_image=False, ignore_index=None):
     """Multi-class Lovasz-Softmax loss
     Args:
         @param probas: [B, C, H, W] Variable, class probabilities at each prediction (between 0 and 1).
@@ -95,15 +97,15 @@ def _lovasz_softmax(probas, labels, classes="present", per_image=False, ignore=N
         @param labels: [B, H, W] Tensor, ground truth labels (between 0 and C - 1)
         @param classes: 'all' for all, 'present' for classes present in labels, or a list of classes to average.
         @param per_image: compute the loss per image instead of per batch
-        @param ignore: void class labels
+        @param ignore_index: void class labels
     """
     if per_image:
         loss = mean(
-            _lovasz_softmax_flat(*_flatten_probas(prob.unsqueeze(0), lab.unsqueeze(0), ignore), classes=classes)
+            _lovasz_softmax_flat(*_flatten_probas(prob.unsqueeze(0), lab.unsqueeze(0), ignore_index), classes=classes)
             for prob, lab in zip(probas, labels)
         )
     else:
-        loss = _lovasz_softmax_flat(*_flatten_probas(probas, labels, ignore), classes=classes)
+        loss = _lovasz_softmax_flat(*_flatten_probas(probas, labels, ignore_index), classes=classes)
     return loss
 
 
@@ -139,15 +141,14 @@ def _lovasz_softmax_flat(probas, labels, classes="present"):
 
 
 def _flatten_probas(probas, labels, ignore=None):
-    """Flattens predictions in the batch
-    """
+    """Flattens predictions in the batch"""
     if probas.dim() == 3:
         # assumes output of a sigmoid layer
         B, H, W = probas.size()
         probas = probas.view(B, 1, H, W)
 
     C = probas.size(1)
-    probas = torch.movedim(probas, 0, -1)  # [B, C, Di, Dj, Dk...] -> [B, C, Di...Dk, C]
+    probas = torch.movedim(probas, 1, -1)  # [B, C, Di, Dj, ...] -> [B, Di, Dj, ..., C]
     probas = probas.contiguous().view(-1, C)  # [P, C]
 
     labels = labels.view(-1)
@@ -165,8 +166,7 @@ def isnan(x):
 
 
 def mean(values, ignore_nan=False, empty=0):
-    """Nanmean compatible with generators.
-    """
+    """Nanmean compatible with generators."""
     values = iter(values)
     if ignore_nan:
         values = ifilterfalse(isnan, values)
@@ -185,13 +185,13 @@ def mean(values, ignore_nan=False, empty=0):
 
 
 class BinaryLovaszLoss(_Loss):
-    def __init__(self, per_image=False, ignore=None):
+    def __init__(self, per_image: bool = False, ignore_index: Optional[Union[int, float]] = None):
         super().__init__()
-        self.ignore = ignore
+        self.ignore_index = ignore_index
         self.per_image = per_image
 
     def forward(self, logits, target):
-        return _lovasz_hinge(logits, target, per_image=self.per_image, ignore=self.ignore)
+        return _lovasz_hinge(logits, target, per_image=self.per_image, ignore_index=self.ignore_index)
 
 
 class LovaszLoss(_Loss):
@@ -201,4 +201,4 @@ class LovaszLoss(_Loss):
         self.per_image = per_image
 
     def forward(self, logits, target):
-        return _lovasz_softmax(logits, target, per_image=self.per_image, ignore=self.ignore)
+        return _lovasz_softmax(logits, target, per_image=self.per_image, ignore_index=self.ignore)

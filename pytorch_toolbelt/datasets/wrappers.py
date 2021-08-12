@@ -6,6 +6,8 @@ import numpy as np
 
 __all__ = ["RandomSubsetDataset", "RandomSubsetWithMaskDataset"]
 
+from torch.utils.data.dataloader import default_collate
+
 
 class RandomSubsetDataset(Dataset):
     """
@@ -22,6 +24,12 @@ class RandomSubsetDataset(Dataset):
     def __getitem__(self, _) -> Any:
         index = random.randrange(len(self.dataset))
         return self.dataset[index]
+
+    def get_collate_fn(self):
+        get_collate_fn = getattr(self.dataset, "get_collate_fn", None)
+        if callable(get_collate_fn):
+            return get_collate_fn()
+        return default_collate()
 
 
 class RandomSubsetWithMaskDataset(Dataset):
@@ -53,3 +61,9 @@ class RandomSubsetWithMaskDataset(Dataset):
     def __getitem__(self, _) -> Any:
         index = random.choice(self.indexes)
         return self.dataset[index]
+
+    def get_collate_fn(self):
+        get_collate_fn = getattr(self.dataset, "get_collate_fn", None)
+        if callable(get_collate_fn):
+            return get_collate_fn()
+        return default_collate()

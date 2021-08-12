@@ -22,15 +22,13 @@ def make_n_channel_input_conv(
     conv: Union[nn.Conv1d, nn.Conv2d, nn.Conv3d], in_channels: int, mode="auto", **kwargs
 ) -> Union[nn.Conv1d, nn.Conv2d, nn.Conv3d]:
     """
+    Create convolution block with same parameters and desired number of channels.
 
     Args:
         conv: Input nn.Conv2D object to copy settings/weights from
         in_channels: Desired number of input channels
         mode:
         **kwargs: Optional overrides for Conv2D parameters
-
-    Returns:
-
     """
     conv_cls = conv.__class__
 
@@ -65,15 +63,13 @@ def make_n_channel_input_conv(
 
 def make_n_channel_input(conv: nn.Module, in_channels: int, mode="auto", **kwargs) -> nn.Module:
     """
+    Create convolution block with same parameters and desired number of channels.
 
     Args:
         conv: Input nn.Conv2D object to copy settings/weights from
         in_channels: Desired number of input channels
         mode:
         **kwargs: Optional overrides for Conv2D parameters
-
-    Returns:
-
     """
     if isinstance(conv, (nn.Conv1d, nn.Conv2d, nn.Conv3d)):
         return make_n_channel_input_conv(conv, in_channels=in_channels, mode=mode, **kwargs)
@@ -110,18 +106,6 @@ class EncoderModule(nn.Module):
     @torch.jit.unused
     def strides(self) -> List[int]:
         return self._output_strides
-
-    @property
-    @torch.jit.unused
-    @pytorch_toolbelt_deprecated("This property is deprecated, please use .strides instead.")
-    def output_strides(self) -> List[int]:
-        return self.strides
-
-    @property
-    @torch.jit.unused
-    @pytorch_toolbelt_deprecated("This property is deprecated, please use .channels instead.")
-    def output_filters(self) -> List[int]:
-        return self.channels
 
     @torch.jit.unused
     def set_trainable(self, trainable):

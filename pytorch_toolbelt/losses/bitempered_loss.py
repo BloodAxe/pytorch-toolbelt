@@ -23,7 +23,7 @@ def exp_t(u, t):
 
 
 def compute_normalization_fixed_point(activations, t, num_iters):
-    """Returns the normalization value for each example (t > 1.0).
+    """Return the normalization value for each example (t > 1.0).
     Args:
       activations: A multi-dimensional tensor with last dimension `num_classes`.
       t: Temperature 2 (> 1.0 for tail heaviness).
@@ -46,14 +46,13 @@ def compute_normalization_fixed_point(activations, t, num_iters):
 
 
 def compute_normalization_binary_search(activations, t, num_iters):
-    """Returns the normalization value for each example (t < 1.0).
+    """Compute normalization value for each example (t < 1.0).
     Args:
       activations: A multi-dimensional tensor with last dimension `num_classes`.
       t: Temperature 2 (< 1.0 for finite support).
       num_iters: Number of iterations to run the method.
     Return: A tensor of same rank as activation with the last dimension being 1.
     """
-
     mu, _ = torch.max(activations, -1, keepdim=True)
     normalized_activations = activations - mu
 
@@ -106,7 +105,7 @@ class ComputeNormalization(torch.autograd.Function):
 
 
 def compute_normalization(activations, t, num_iters=5):
-    """Returns the normalization value for each example.
+    """Compute normalization value for each example.
     Backward pass is implemented.
     Args:
       activations: A multi-dimensional tensor with last dimension `num_classes`.
@@ -151,7 +150,6 @@ def bi_tempered_logistic_loss(activations, labels, t1, t2, label_smoothing=0.0, 
     Returns:
       A loss tensor.
     """
-
     if len(labels.shape) < len(activations.shape):  # not one-hot
         labels_onehot = torch.zeros_like(activations)
         labels_onehot.scatter_(1, labels[..., None], 1)

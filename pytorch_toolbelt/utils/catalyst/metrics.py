@@ -223,16 +223,6 @@ class F1ScoreCallback(Callback):
     ):
         """
         Code borrowed from sklear.metrics
-
-        Args:
-            MCM:
-            average:
-            beta:
-            warn_for:
-            zero_division:
-
-        Returns:
-
         """
         tp_sum = MCM[:, 1, 1]
         pred_sum = tp_sum + MCM[:, 0, 1]
@@ -504,6 +494,7 @@ class IoUMetricsCallback(Callback):
         score_per_image = []
         for image_index in range(batch_size):
             score_per_class = self.score_fn(y_pred=outputs[image_index], y_true=targets[image_index])
+            score_per_class = to_numpy(score_per_class).reshape(-1)
             score_per_image.append(score_per_class)
 
         mean_score = np.nanmean(score_per_image)
@@ -604,7 +595,6 @@ class AccuracyCallback(Callback):
             num_classes: number of classes to calculate ``topk_args``
                 if ``accuracy_args`` is None
         """
-
         super().__init__(CallbackOrder.Metric)
         self.prefix = prefix
         self.output_key = output_key
@@ -671,7 +661,6 @@ class MultilabelAccuracyCallback(Callback):
             num_classes: number of classes to calculate ``topk_args``
                 if ``accuracy_args`` is None
         """
-
         super().__init__(CallbackOrder.Metric)
         self.prefix = prefix
         self.output_key = output_key

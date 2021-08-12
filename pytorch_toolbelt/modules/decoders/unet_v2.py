@@ -35,8 +35,7 @@ class UnetCentralBlockV2(nn.Module):
 
 
 class UnetDecoderBlockV2(nn.Module):
-    """
-    """
+    """"""
 
     def __init__(
         self,

@@ -14,7 +14,7 @@ class HRNetSegmentationDecoder(SegmentationDecoderModule):
     def __init__(
         self,
         feature_maps: List[int],
-        output_channels: int,
+        channels: int,
         dropout=0.0,
         interpolation_mode="nearest",
         align_corners=None,
@@ -41,7 +41,7 @@ class HRNetSegmentationDecoder(SegmentationDecoderModule):
             OrderedDict(
                 [
                     ("drop", nn.Dropout2d(dropout)),
-                    ("final", nn.Conv2d(in_channels=features, out_channels=output_channels, kernel_size=1)),
+                    ("final", nn.Conv2d(in_channels=features, out_channels=channels, kernel_size=1)),
                 ]
             )
         )

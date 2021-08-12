@@ -1,8 +1,8 @@
 import math
 import warnings
-from typing import List, Union
-
 import torch
+
+from typing import List, Union
 from torch import Tensor, nn
 
 from ..common import EncoderModule, _take
@@ -11,10 +11,14 @@ __all__ = ["GenericTimmEncoder", "make_n_channel_input_std_conv"]
 
 
 class GenericTimmEncoder(EncoderModule):
-    def __init__(self, timm_encoder: nn.Module, layers: List[int] = None):
+    def __init__(self, timm_encoder: Union[nn.Module, str], layers: List[int] = None):
         strides = []
         channels = []
         default_layers = []
+        if isinstance(timm_encoder, str):
+            import timm.models.factory
+
+            timm_encoder = timm.models.factory.create_model(timm_encoder, pretrained=True)
 
         for i, oi in enumerate(timm_encoder.feature_info.out_indices):
             fi = timm_encoder.feature_info.info[i]
@@ -32,19 +36,15 @@ class GenericTimmEncoder(EncoderModule):
         return _take(self.encoder(x), self._layers)
 
 
-def make_n_channel_input_std_conv(
-    conv: Union["ScaledStdConv2d", "ScaledStdConv2dSame"], in_channels: int, mode="auto", **kwargs
-) -> Union["ScaledStdConv2d", "ScaledStdConv2dSame"]:
+def make_n_channel_input_std_conv(conv: nn.Module, in_channels: int, mode="auto", **kwargs) -> nn.Module:
     """
+    Return the same convolution class but with desired number of channels
 
     Args:
         conv: Input nn.Conv2D object to copy settings/weights from
         in_channels: Desired number of input channels
         mode:
         **kwargs: Optional overrides for Conv2D parameters
-
-    Returns:
-
     """
     conv_cls = conv.__class__
 
@@ -61,9 +61,7 @@ def make_n_channel_input_std_conv(
         dilation=kwargs.get("dilation", conv.dilation),
         groups=kwargs.get("groups", conv.groups),
         bias=kwargs.get("bias", conv.bias is not None),
-        # gamma=kwargs.get("gamma", conv.gamma),
         eps=kwargs.get("eps", conv.eps),
-        use_layernorm=kwargs.get("use_layernorm", conv.use_layernorm),
     )
 
     w = conv.weight

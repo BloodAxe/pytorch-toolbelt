@@ -11,6 +11,28 @@ skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA
 
 
 @torch.no_grad()
+@pytest.mark.parametrize(
+    ("decoder_cls", "decoder_params"),
+    [
+        (D.FPNSumDecoder, {"channels": 128}),
+        (D.FPNCatDecoder, {"channels": 128}),
+        (D.DeeplabV3PlusDecoder, {"aspp_channels": 256, "channels": 256}),
+        (D.DeeplabV3Decoder, {"aspp_channels": 256, "channels": 256}),
+    ],
+)
+def test_decoders(decoder_cls, decoder_params):
+    channels = [64, 128, 256, 512, 1024]
+    input = [torch.randn((4, channels[i], 256 // (2 ** i), 384 // (2 ** i))) for i in range(len(channels))]
+    decoder = decoder_cls(channels, **decoder_params).eval()
+    output = decoder(input)
+
+    print(decoder.__class__.__name__)
+    print(count_parameters(decoder))
+    for o in output:
+        print(o.size())
+
+
+@torch.no_grad()
 def test_unet_encoder_decoder():
     encoder = E.UnetEncoder(3, 32, 5)
     decoder = D.UNetDecoder(encoder.channels)

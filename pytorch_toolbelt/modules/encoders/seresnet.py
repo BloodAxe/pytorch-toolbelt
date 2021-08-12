@@ -4,6 +4,7 @@ Encodes listed here provides easy way to swap backbone of classification/segment
 """
 from typing import List
 
+import torch
 from torch import Tensor
 
 from .common import EncoderModule, _take, make_n_channel_input
@@ -51,15 +52,18 @@ class SEResnetEncoder(EncoderModule):
         self._output_filters = _take(channels, layers)
 
     @property
+    @torch.jit.unused
     def encoder_layers(self):
         return [self.layer0, self.layer1, self.layer2, self.layer3, self.layer4]
 
     @property
-    def output_strides(self):
+    @torch.jit.unused
+    def strides(self):
         return self._output_strides
 
     @property
-    def output_filters(self):
+    @torch.jit.unused
+    def channels(self):
         return self._output_filters
 
     def forward(self, x: Tensor) -> List[Tensor]:

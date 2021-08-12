@@ -1,3 +1,5 @@
+import torch
+
 from .common import GenericTimmEncoder
 from ..common import make_n_channel_input
 from ...activations import ACT_RELU, get_activation_block
@@ -13,6 +15,7 @@ class TimmRes2Net101Encoder(GenericTimmEncoder):
         encoder = res2net101_26w_4s(pretrained=pretrained, act_layer=act_layer, features_only=True)
         super().__init__(encoder, layers)
 
+    @torch.jit.unused
     def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
         self.encoder.conv1 = make_n_channel_input(self.encoder.conv1, input_channels, mode, **kwargs)
         return self
@@ -26,6 +29,7 @@ class TimmRes2Next50Encoder(GenericTimmEncoder):
         encoder = res2next50(pretrained=pretrained, act_layer=act_layer, features_only=True)
         super().__init__(encoder, layers)
 
+    @torch.jit.unused
     def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
         self.encoder.conv1 = make_n_channel_input(self.encoder.conv1, input_channels, mode, **kwargs)
         return self

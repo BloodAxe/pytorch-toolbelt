@@ -1,6 +1,7 @@
 from collections import OrderedDict
 from typing import List
 
+import torch
 from torch import nn
 from torchvision.models import densenet121, densenet161, densenet169, densenet201, DenseNet
 
@@ -51,11 +52,13 @@ class DenseNetEncoder(EncoderModule):
         return [self.layer0, self.layer1, self.layer2, self.layer3, self.layer4]
 
     @property
-    def output_strides(self):
+    @torch.jit.unused
+    def strides(self):
         return self._output_strides
 
     @property
-    def output_filters(self):
+    @torch.jit.unused
+    def channels(self):
         return self._output_filters
 
     def forward(self, x):
@@ -75,6 +78,7 @@ class DenseNetEncoder(EncoderModule):
         # Return only features that were requested
         return _take(output_features, self._layers)
 
+    @torch.jit.unused
     def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
         self.layer0.conv0 = make_n_channel_input(self.layer0.conv0, input_channels, mode=mode, **kwargs)
         return self

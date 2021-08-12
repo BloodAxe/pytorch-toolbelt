@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import List, Union, Type
 
 import torch
 from torch import nn
@@ -16,7 +16,7 @@ class UNetDecoder(DecoderModule):
         feature_maps: List[int],
         decoder_features: Union[int, List[int]] = None,
         unet_block=UnetBlock,
-        upsample_block: Union[nn.Upsample, nn.ConvTranspose2d] = None,
+        upsample_block: Union[nn.Upsample, nn.ConvTranspose2d, Type[nn.PixelShuffle]] = None,
     ):
         super().__init__()
 
@@ -51,6 +51,9 @@ class UNetDecoder(DecoderModule):
             elif issubclass(upsample_block, nn.Upsample):
                 upsamples.append(upsample_block(scale_factor=2))
                 out_channels_from_upsample_block = in_channels_for_upsample_block
+            elif issubclass(upsample_block, nn.PixelShuffle):
+                upsamples.append(upsample_block(upscale_factor=2))
+                out_channels_from_upsample_block = in_channels_for_upsample_block // 4
             elif issubclass(upsample_block, nn.ConvTranspose2d):
                 up = upsample_block(
                     in_channels_for_upsample_block,
@@ -78,6 +81,7 @@ class UNetDecoder(DecoderModule):
         self.output_filters = decoder_features
 
     @property
+    @torch.jit.unused
     def channels(self) -> List[int]:
         return self.output_filters
 

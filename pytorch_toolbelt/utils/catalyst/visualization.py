@@ -81,7 +81,7 @@ class ShowPolarBatchesCallback(Callback):
         if isinstance(data, dict):
             return dict((key, self.to_cpu(value)) for (key, value) in data.items())
         if isinstance(data, torch.Tensor):
-            return data.detach().cpu()
+            return data.detach().clone().cpu()
         if isinstance(data, (list, tuple)):
             return [self.to_cpu(value) for value in data]
         return data

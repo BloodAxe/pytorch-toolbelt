@@ -49,7 +49,7 @@ class FPNCatDecoder(SegmentationDecoderModule):
     def __init__(
         self,
         feature_maps: List[int],
-        fpn_channels: int,
+        channels: int,
         context_block=FPNContextBlock,
         bottleneck_block=FPNBottleneckBlock,
         predict_block: Union[nn.Identity, conv1x1, nn.Module] = conv1x1,
@@ -61,7 +61,7 @@ class FPNCatDecoder(SegmentationDecoderModule):
         Create a new instance of FPN decoder with concatenation of consecutive feature maps.
         :param feature_maps: Number of channels in input feature maps (fine to coarse).
             For instance - [64, 256, 512, 2048]
-        :param fpn_channels: FPN channels
+        :param channels: Output FPN channels
         :param context_block:
         :param bottleneck_block:
         :param predict_block:
@@ -71,30 +71,26 @@ class FPNCatDecoder(SegmentationDecoderModule):
         """
         super().__init__()
 
-        self.context = context_block(feature_maps[-1], fpn_channels)
+        self.context = context_block(feature_maps[-1], channels)
 
         self.bottlenecks = nn.ModuleList(
-            [bottleneck_block(in_channels, fpn_channels) for in_channels in reversed(feature_maps)]
+            [bottleneck_block(in_channels, channels) for in_channels in reversed(feature_maps)]
         )
 
-        self.predicts = nn.ModuleList(
-            [predict_block(fpn_channels + fpn_channels, fpn_channels) for _ in reversed(feature_maps)]
-        )
+        self.predicts = nn.ModuleList([predict_block(channels + channels, channels) for _ in reversed(feature_maps)])
 
         if issubclass(output_block, nn.Identity):
-            self.channels = [fpn_channels] * len(feature_maps)
+            self.channels = [channels] * len(feature_maps)
             self.outputs = nn.ModuleList([output_block() for _ in reversed(feature_maps)])
         else:
             self.channels = [prediction_channels] * len(feature_maps)
-            self.outputs = nn.ModuleList(
-                [output_block(fpn_channels, prediction_channels) for _ in reversed(feature_maps)]
-            )
+            self.outputs = nn.ModuleList([output_block(channels, prediction_channels) for _ in reversed(feature_maps)])
 
         if issubclass(upsample_block, nn.Upsample):
             self.upsamples = nn.ModuleList([upsample_block(scale_factor=2) for _ in reversed(feature_maps)])
         else:
             self.upsamples = nn.ModuleList(
-                [upsample_block(fpn_channels, fpn_channels) for in_channels in reversed(feature_maps)]
+                [upsample_block(channels, channels) for in_channels in reversed(feature_maps)]
             )
 
     def forward(self, feature_maps: List[Tensor]) -> List[Tensor]:
