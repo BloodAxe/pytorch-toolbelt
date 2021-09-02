@@ -13,7 +13,7 @@ class DatasetMeanStdCalculator:
 
     def __init__(self, num_channels: int = 3):
         """
-        Creates a new instance of DatasetMeanStdCalculator
+        Create a new instance of DatasetMeanStdCalculator
 
         Args:
             num_channels: Number of channels in the image. Default value is 3
