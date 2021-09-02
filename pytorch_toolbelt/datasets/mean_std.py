@@ -13,6 +13,7 @@ class DatasetMeanStdCalculator:
 
     def __init__(self, num_channels: int = 3):
         """
+        Creates a new instance of DatasetMeanStdCalculator
 
         Args:
             num_channels: Number of channels in the image. Default value is 3
@@ -40,9 +41,6 @@ class DatasetMeanStdCalculator:
             image: Input image (Must be HWC, with number of channels C equal to self.num_channels)
             mask: Optional mask to include only certain parts of image from statistics computation.
             Only non-zero elements will be included,
-
-        Returns:
-
         """
         if len(image.shape) == 2:
             image = np.expand_dims(image, axis=-1)
