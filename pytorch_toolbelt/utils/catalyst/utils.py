@@ -288,6 +288,5 @@ class HyperParametersCallback(Callback):
         hparam_dict["stage"] = state.stage_name
 
         logger.add_hparams(
-            hparam_dict=self.hparam_dict,
-            metric_dict=state.best_valid_metrics,
+            hparam_dict=self.hparam_dict, metric_dict=state.best_valid_metrics,
         )

@@ -1,11 +1,20 @@
 import pickle
+from typing import Any, Dict, List
+
 import torch
 import torch.distributed as dist
 
-__all__ = ["is_dist_avail_and_initialized", "get_world_size", "get_rank", "is_main_process", "all_gather"]
+__all__ = [
+    "is_dist_avail_and_initialized",
+    "get_world_size",
+    "get_rank",
+    "is_main_process",
+    "all_gather",
+    "reduce_dict_sum",
+]
 
 
-def is_dist_avail_and_initialized():
+def is_dist_avail_and_initialized() -> bool:
     if not dist.is_available():
         return False
     if not dist.is_initialized():
@@ -13,23 +22,23 @@ def is_dist_avail_and_initialized():
     return True
 
 
-def get_world_size():
+def get_world_size() -> int:
     if not is_dist_avail_and_initialized():
         return 1
     return dist.get_world_size()
 
 
-def get_rank():
+def get_rank() -> int:
     if not is_dist_avail_and_initialized():
         return 0
     return dist.get_rank()
 
 
-def is_main_process():
+def is_main_process() -> bool:
     return get_rank() == 0
 
 
-def all_gather(data):
+def all_gather(data: Any) -> List[Any]:
     """
     Run all_gather on arbitrary picklable data (not necessarily tensors)
     Args:
@@ -70,3 +79,27 @@ def all_gather(data):
         data_list.append(pickle.loads(buffer))
 
     return data_list
+
+
+def reduce_dict_sum(input_dict: Dict[Any, Any]) -> Dict[Any, Any]:
+    """
+    Reduce the values in the dictionary from all processes so that all processes
+    have the sum of the all values. Returns a dict with the same fields as
+    input_dict, after reduction.
+
+    Args:
+        input_dict (dict): all the values will be reduced
+    """
+    world_size = get_world_size()
+    if world_size < 2:
+        return input_dict
+
+    with torch.no_grad():
+        reduced_dict = {}
+        for x in all_gather(input_dict):
+            for key, value in x.items():
+                if key in reduced_dict:
+                    reduced_dict[key] += value
+                else:
+                    reduced_dict[key] = value
+    return reduced_dict
