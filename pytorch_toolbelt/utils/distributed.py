@@ -87,6 +87,9 @@ def reduce_dict_sum(input_dict: Dict[Any, Any]) -> Dict[Any, Any]:
     have the sum of the all values. Returns a dict with the same fields as
     input_dict, after reduction.
 
+    Note: This function can work on defaultdict(list) and will effectively
+    concatenate multiple dictionaries into single one, thanks to that summation
+    of lists works as a concatenation.
     Args:
         input_dict (dict): all the values will be reduced
     """
