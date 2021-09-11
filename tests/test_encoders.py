@@ -186,7 +186,9 @@ def test_xresnet_encoder(encoder, encoder_params):
     ["encoder", "encoder_params"],
     [
         [timm.B0Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.B0Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4], "first_conv_stride_one": True}],
         [timm.B1Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.B1Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4], "first_conv_stride_one": True}],
         [timm.B2Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
         [timm.B3Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
         [timm.B4Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
