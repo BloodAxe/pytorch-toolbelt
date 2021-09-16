@@ -342,7 +342,9 @@ def d2_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") ->
         Tensor of [B, C, H, W] shape if reduction is not None or "none", otherwise returns de-augmented tensor of
         [4, B, C, H, W] shape
     """
-    assert image.size(0) % 4 == 0
+    if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+        if image.size(0) % 4 != 0:
+            raise RuntimeError(f"Batch size must be divisible by 4")
 
     b1, b2, b3, b4 = torch.chunk(image, 4)
 
@@ -428,8 +430,9 @@ def d4_labels_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") -
         Tensor of [B, C] shape if reduction is not None or "none", otherwise returns de-augmented tensor of
         [8, B, C] shape
     """
-    if image.size(0) % 8 != 0:
-        raise RuntimeError("Batch size must be divisible by 8")
+    if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+        if image.size(0) % 8 != 0:
+            raise RuntimeError("Batch size must be divisible by 8")
 
     b1, b2, b3, b4, b5, b6, b7, b8 = torch.chunk(image, 8)
     image: Tensor = torch.stack([b1, b2, b3, b4, b5, b7, b7, b8])
