@@ -69,7 +69,7 @@ class TimmBaseEfficientNetEncoder(EncoderModule):
 
         if first_conv_stride_one:
             strides = [1, 2, 4, 8, 16]
-            encoder.conv_stem.stride = 1
+            encoder.conv_stem.stride = (1, 1)
 
         # if no_stride_s16:
         #     encoder.blocks[3][0].conv_dw.stride = (1, 1)
@@ -168,11 +168,7 @@ class TimmB4Encoder(TimmBaseEfficientNetEncoder):
 
 class TimmB5Encoder(TimmBaseEfficientNetEncoder):
     def __init__(
-        self,
-        pretrained=True,
-        layers=[1, 2, 3, 4],
-        activation: str = ACT_SILU,
-        first_conv_stride_one: bool = False,
+        self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU, first_conv_stride_one: bool = False,
     ):
         from timm.models.efficientnet import tf_efficientnet_b5_ns
 
