@@ -629,7 +629,7 @@ class AccuracyCallback(Callback):
             self.totals += batch_totals
 
         batch_accuracy = float(batch_correct) / float(batch_totals)
-        runner.batch_metrics[self.prefix] = batch_accuracy
+        runner.batch_metrics[self.prefix + "_batch"] = batch_accuracy
 
     def on_loader_end(self, runner: IRunner):
         correct = np.sum(all_gather(self.correct))
