@@ -63,7 +63,6 @@ def make_n_channel_input_conv2d_same(conv: nn.Conv2d, in_channels: int, mode="au
 
 class TimmBaseEfficientNetEncoder(EncoderModule):
     def __init__(self, encoder, features, layers=[1, 2, 3, 4], first_conv_stride_one: bool = False):
-        from timm.models.efficientnet import tf_efficientnet_b0_ns
 
         strides = [2, 4, 8, 16, 32]
 
@@ -99,14 +98,19 @@ class TimmBaseEfficientNetEncoder(EncoderModule):
 
 class TimmB0Encoder(TimmBaseEfficientNetEncoder):
     def __init__(
-        self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU, first_conv_stride_one: bool = False
+        self,
+        pretrained=True,
+        layers=[1, 2, 3, 4],
+        activation: str = ACT_SILU,
+        first_conv_stride_one: bool = False,
+        use_tf=True,
     ):
-        from timm.models.efficientnet import tf_efficientnet_b0_ns
+        from timm.models.efficientnet import tf_efficientnet_b0_ns, efficientnet_b0
+
+        model_cls = tf_efficientnet_b0_ns if use_tf else efficientnet_b0
 
         act_layer = get_activation_block(activation)
-        encoder = tf_efficientnet_b0_ns(
-            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.05
-        )
+        encoder = model_cls(pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.05)
 
         super().__init__(
             encoder, features=[16, 24, 40, 112, 320], layers=layers, first_conv_stride_one=first_conv_stride_one
