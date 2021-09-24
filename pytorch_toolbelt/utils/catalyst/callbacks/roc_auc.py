@@ -9,7 +9,8 @@ from torch import Tensor
 __all__ = ["RocAucMetricCallback"]
 
 from pytorch_toolbelt.utils import to_numpy
-from pytorch_toolbelt.utils.distributed import all_gather
+from pytorch_toolbelt.utils.distributed import all_gather, is_main_process
+from pytorch_toolbelt.utils.catalyst.visualization import get_tensorboard_logger
 
 
 class RocAucMetricCallback(Callback):
@@ -25,6 +26,7 @@ class RocAucMetricCallback(Callback):
         prefix: str = "roc_auc",
         average="macro",
         ignore_index: Optional[int] = None,
+        log_pr_curve:bool=True
     ):
         """
         Args:
@@ -43,6 +45,7 @@ class RocAucMetricCallback(Callback):
         self.y_trues = []
         self.y_preds = []
         self.average = average
+        self.log_pr_curve=log_pr_curve
 
     def on_loader_start(self, state):
         self.y_trues = []
@@ -62,3 +65,9 @@ class RocAucMetricCallback(Callback):
         y_preds = np.concatenate(all_gather(self.y_preds))
         score = roc_auc_score(y_true=y_trues, y_score=y_preds, average=self.average)
         runner.loader_metrics[self.prefix] = float(score)
+
+        if self.log_pr_curve and is_main_process():
+            logger = get_tensorboard_logger(runner)
+            logger.add_pr_curve(
+                self.prefix, predictions=y_preds, labels=y_trues, global_step=runner.global_epoch, num_thresholds=255
+            )
