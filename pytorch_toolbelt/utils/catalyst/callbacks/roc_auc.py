@@ -26,7 +26,8 @@ class RocAucMetricCallback(Callback):
         prefix: str = "roc_auc",
         average="macro",
         ignore_index: Optional[int] = None,
-        log_pr_curve:bool=True
+        log_pr_curve: bool = True,
+        fix_nans=False,
     ):
         """
         Args:
@@ -45,7 +46,8 @@ class RocAucMetricCallback(Callback):
         self.y_trues = []
         self.y_preds = []
         self.average = average
-        self.log_pr_curve=log_pr_curve
+        self.log_pr_curve = log_pr_curve
+        self.fix_nans = fix_nans
 
     def on_loader_start(self, state):
         self.y_trues = []
@@ -63,6 +65,10 @@ class RocAucMetricCallback(Callback):
     def on_loader_end(self, runner):
         y_trues = np.concatenate(all_gather(self.y_trues))
         y_preds = np.concatenate(all_gather(self.y_preds))
+
+        if fix_nans:
+            y_preds[~np.isfinite(y_preds)] = 0.5
+
         score = roc_auc_score(y_true=y_trues, y_score=y_preds, average=self.average)
         runner.loader_metrics[self.prefix] = float(score)
 
