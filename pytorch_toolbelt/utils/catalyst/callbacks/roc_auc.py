@@ -66,7 +66,7 @@ class RocAucMetricCallback(Callback):
         y_trues = np.concatenate(all_gather(self.y_trues))
         y_preds = np.concatenate(all_gather(self.y_preds))
 
-        if fix_nans:
+        if self.fix_nans:
             y_preds[~np.isfinite(y_preds)] = 0.5
 
         score = roc_auc_score(y_true=y_trues, y_score=y_preds, average=self.average)
