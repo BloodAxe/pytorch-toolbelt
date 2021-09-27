@@ -29,7 +29,9 @@ def balanced_binary_cross_entropy_with_logits(
 
 class BalancedBCEWithLogitsLoss(nn.Module):
     """
-    Balanced binary cross-entropy loss
+    Balanced binary cross-entropy loss.
+
+    https://arxiv.org/pdf/1504.06375.pdf (Formula 2)
     """
 
     __constants__ = ["gamma", "reduction"]
