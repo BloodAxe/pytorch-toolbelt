@@ -68,11 +68,7 @@ def resnet34_unet32_s2(input_channels=3, num_classes=1, dropout=0.2, pretrained=
     if input_channels != 3:
         encoder.change_input_channels(input_channels)
     return UnetSegmentationModel(
-        encoder,
-        num_classes=num_classes,
-        unet_channels=[32, 64, 128, 256],
-        activation=ACT_SWISH,
-        dropout=dropout,
+        encoder, num_classes=num_classes, unet_channels=[32, 64, 128, 256], activation=ACT_SWISH, dropout=dropout,
     )
 
 
@@ -81,11 +77,7 @@ def resnet34_unet64_s4(input_channels=3, num_classes=1, dropout=0.2, pretrained=
     if input_channels != 3:
         encoder.change_input_channels(input_channels)
     return UnetSegmentationModel(
-        encoder,
-        num_classes=num_classes,
-        unet_channels=[64, 128, 256],
-        activation=ACT_SWISH,
-        dropout=dropout,
+        encoder, num_classes=num_classes, unet_channels=[64, 128, 256], activation=ACT_SWISH, dropout=dropout,
     )
 
 
