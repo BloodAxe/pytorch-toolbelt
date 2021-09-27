@@ -20,7 +20,7 @@ class RocAucMetricCallback(Callback):
 
     def __init__(
         self,
-        outputs_to_probas: Callable[[Tensor], Tensor] = torch.sigmoid,
+        outputs_to_probas: Optional[Callable[[Tensor], Tensor]] = torch.sigmoid,
         input_key: str = "targets",
         output_key: str = "logits",
         prefix: str = "roc_auc",
@@ -55,8 +55,10 @@ class RocAucMetricCallback(Callback):
 
     @torch.no_grad()
     def on_batch_end(self, runner):
-        pred_probas = self.outputs_to_probas(runner.output[self.output_key].float())
+        pred_probas = runner.output[self.output_key].float()
         true_labels = runner.input[self.input_key].float()
+        if self.outputs_to_probas:
+            pred_probas = self.outputs_to_probas(pred_probas)
 
         # Aggregate flattened labels
         self.y_trues.extend(to_numpy(true_labels).reshape(-1))

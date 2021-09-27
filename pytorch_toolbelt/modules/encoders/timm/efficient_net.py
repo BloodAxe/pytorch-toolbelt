@@ -172,7 +172,11 @@ class TimmB4Encoder(TimmBaseEfficientNetEncoder):
 
 class TimmB5Encoder(TimmBaseEfficientNetEncoder):
     def __init__(
-        self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU, first_conv_stride_one: bool = False,
+        self,
+        pretrained=True,
+        layers=[1, 2, 3, 4],
+        activation: str = ACT_SILU,
+        first_conv_stride_one: bool = False,
     ):
         from timm.models.efficientnet import tf_efficientnet_b5_ns
 
