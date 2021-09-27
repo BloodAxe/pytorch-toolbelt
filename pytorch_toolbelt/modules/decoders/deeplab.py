@@ -240,7 +240,13 @@ class DeeplabV3PlusDecoder(DecoderModule):
         )
 
         self.final = nn.Sequential(
-            nn.Conv2d(aspp_channels + low_level_channels, channels, kernel_size=3, padding=1, bias=False,),
+            nn.Conv2d(
+                aspp_channels + low_level_channels,
+                channels,
+                kernel_size=3,
+                padding=1,
+                bias=False,
+            ),
             nn.BatchNorm2d(channels),
             instantiate_activation_block(activation, inplace=True),
         )

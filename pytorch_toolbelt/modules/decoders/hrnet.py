@@ -12,7 +12,12 @@ __all__ = ["HRNetSegmentationDecoder"]
 
 class HRNetSegmentationDecoder(SegmentationDecoderModule):
     def __init__(
-        self, feature_maps: List[int], channels: int, dropout=0.0, interpolation_mode="nearest", align_corners=None,
+        self,
+        feature_maps: List[int],
+        channels: int,
+        dropout=0.0,
+        interpolation_mode="nearest",
+        align_corners=None,
     ):
         super().__init__()
         self.interpolation_mode = interpolation_mode

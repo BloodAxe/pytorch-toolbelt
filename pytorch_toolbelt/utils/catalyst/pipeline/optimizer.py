@@ -66,7 +66,10 @@ def scale_learning_rate_for_ddp(optimizer_params: Dict[str, Any]) -> Dict[str, A
 
 
 def get_optimizer(
-    model: nn.Module, optimizer_name: str, optimizer_params: Dict[str, Any], apply_weight_decay_to_bias: bool = True,
+    model: nn.Module,
+    optimizer_name: str,
+    optimizer_params: Dict[str, Any],
+    apply_weight_decay_to_bias: bool = True,
 ) -> Optimizer:
     """
     Construct an Optimizer for given model
@@ -97,7 +100,8 @@ def get_optimizer(
     optimizer_cls = get_optimizer_cls(optimizer_name)
 
     optimizer: Optimizer = optimizer_cls(
-        parameters, **optimizer_params,
+        parameters,
+        **optimizer_params,
     )
 
     if not apply_weight_decay_to_bias:
