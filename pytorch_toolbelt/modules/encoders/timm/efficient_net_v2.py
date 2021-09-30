@@ -50,8 +50,10 @@ class TimmEfficientNetV2(GenericTimmEncoder):
         pretrained=True,
         layers=None,
         activation: str = ACT_SILU,
-        drop_path_rate=0.05,
+        drop_rate=0.0,
+        drop_path_rate=0.0,
     ):
+        from timm.models.efficientnet import efficientnetv2_rw_s
         from timm.models.factory import create_model
 
         act_layer = get_activation_block(activation)
@@ -60,6 +62,7 @@ class TimmEfficientNetV2(GenericTimmEncoder):
             pretrained=pretrained,
             features_only=True,
             act_layer=act_layer,
+            drop_rate=drop_rate,
             drop_path_rate=drop_path_rate,
         )
         super().__init__(encoder, layers)
