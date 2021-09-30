@@ -53,7 +53,6 @@ class TimmEfficientNetV2(GenericTimmEncoder):
         drop_rate=0.0,
         drop_path_rate=0.0,
     ):
-        from timm.models.efficientnet import efficientnetv2_rw_s
         from timm.models.factory import create_model
 
         act_layer = get_activation_block(activation)
