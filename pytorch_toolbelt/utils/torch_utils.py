@@ -10,28 +10,29 @@ from torch import nn, Tensor
 from .support import pytorch_toolbelt_deprecated
 
 __all__ = [
-    "count_parameters",
-    "image_to_tensor",
-    "logit",
-    "mask_from_tensor",
-    "maybe_cuda",
-    "rgb_image_from_tensor",
-    "tensor_from_mask_image",
-    "tensor_from_rgb_image",
-    "to_numpy",
-    "to_tensor",
-    "resize_like",
-    "resize_as",
-    "transfer_weights",
-    "softmax_over_dim_0",
-    "softmax_over_dim_1",
-    "softmax_over_dim_2",
-    "softmax_over_dim_3",
     "argmax_over_dim_0",
     "argmax_over_dim_1",
     "argmax_over_dim_2",
     "argmax_over_dim_3",
+    "count_parameters",
+    "image_to_tensor",
+    "int_to_string_human_friendly",
+    "logit",
+    "mask_from_tensor",
+    "maybe_cuda",
+    "resize_as",
+    "resize_like",
+    "rgb_image_from_tensor",
     "sigmoid_with_threshold",
+    "softmax_over_dim_0",
+    "softmax_over_dim_1",
+    "softmax_over_dim_2",
+    "softmax_over_dim_3",
+    "tensor_from_mask_image",
+    "tensor_from_rgb_image",
+    "to_numpy",
+    "to_tensor",
+    "transfer_weights",
 ]
 
 
@@ -83,11 +84,14 @@ def logit(x: torch.Tensor, eps=1e-5) -> torch.Tensor:
     return torch.log(x / (1.0 - x))
 
 
-def count_parameters(model: nn.Module, keys: Optional[Sequence[str]] = None) -> Dict[str, int]:
+def count_parameters(
+    model: nn.Module, keys: Optional[Sequence[str]] = None, human_friendly: bool = False
+) -> Dict[str, int]:
     """
     Count number of total and trainable parameters of a model
     :param model: A model
     :param keys: Optional list of top-level blocks
+    :param human_friendly: If True, outputs human-friendly number of paramters: 13.3M, 124K
     :return: Tuple (total, trainable)
     """
     if keys is None:
@@ -100,7 +104,24 @@ def count_parameters(model: nn.Module, keys: Optional[Sequence[str]] = None) -> 
         if hasattr(model, key) and model.__getattr__(key) is not None:
             parameters[key] = int(sum(p.numel() for p in model.__getattr__(key).parameters()))
 
+    if human_friendly:
+        for key in parameters.keys():
+            parameters[key] = int_to_string_human_friendly(parameters[key])
     return parameters
+
+
+def int_to_string_human_friendly(value: int) -> str:
+    if value < 1000:
+        return str(value)
+    if value < 1000000:
+        return f"{value / 1000.:.2f}K"
+    if value < 10000000:
+        return f"{value / 1000000.:.2f}M"
+    if value < 100000000:
+        return f"{value / 1000000.:.1f}M"
+    if value < 1000000000:
+        return f"{value / 1000000.:.1f}M"
+    return f"{value / 1000000000.:.2f}B"
 
 
 def to_numpy(x: Union[torch.Tensor, np.ndarray, Any]) -> np.ndarray:
