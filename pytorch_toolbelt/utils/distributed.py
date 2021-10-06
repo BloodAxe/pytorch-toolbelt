@@ -43,13 +43,22 @@ def is_main_process() -> bool:
 
 def broadcast_from_master(data: Any) -> Any:
     """
-    Broadcast data from master node to all other nodes.
+    Broadcast data from master node to all other nodes. This may be required when you
+    want to compute something only on master node (e.g computational-heavy metric) and
+    don't want to vaste CPU of other nodes doing same work simultaneously.
+
+    >>> if is_main_process():
+    >>>    result = some_code_to_run(...)
+    >>> else:
+    >>>    result = None
+    >>> # 'result' propagated to all nodes from master
+    >>> result = broadcast_from_master(result)
 
     Args:
-        data:
+        data: Data to be broadcasted from master node (rank 0)
 
     Returns:
-
+        Data from rank 0 node
     """
     world_size = get_world_size()
     if world_size == 1:
