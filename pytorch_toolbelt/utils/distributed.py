@@ -11,7 +11,10 @@ __all__ = [
     "is_main_process",
     "all_gather",
     "reduce_dict_sum",
+    "broadcast_from_master",
 ]
+
+from torch import Tensor
 
 
 def is_dist_avail_and_initialized() -> bool:
@@ -36,6 +39,41 @@ def get_rank() -> int:
 
 def is_main_process() -> bool:
     return get_rank() == 0
+
+
+def broadcast_from_master(data: Any) -> Any:
+    """
+    Broadcast data from master node to all other nodes.
+
+    Args:
+        data:
+
+    Returns:
+
+    """
+    world_size = get_world_size()
+    if world_size == 1:
+        return data
+
+    local_rank = get_rank()
+    storage: Tensor
+
+    if local_rank == 0:
+        buffer = pickle.dumps(data)
+        storage = torch.ByteStorage.from_buffer(buffer)
+        tensor = torch.ByteTensor(storage).to("cuda")
+        local_size = tensor.numel()
+    else:
+        local_size = 0
+
+    # Propagate target tensor size to all nodes
+    local_size = max(all_gather(local_size))
+    if local_size != 0:
+        storage = torch.empty((local_size,), dtype=torch.uint8, device="cuda")
+
+    dist.broadcast(storage, 0)
+    buffer = storage.cpu().numpy().tobytes()
+    return pickle.loads(buffer)
 
 
 def all_gather(data: Any) -> List[Any]:
