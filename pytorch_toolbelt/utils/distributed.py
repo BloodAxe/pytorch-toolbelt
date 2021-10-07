@@ -70,18 +70,19 @@ def broadcast_from_master(data: Any) -> Any:
     if local_rank == 0:
         buffer = pickle.dumps(data)
         storage = torch.ByteStorage.from_buffer(buffer)
-        tensor = torch.ByteTensor(storage).to("cuda")
-        local_size = tensor.numel()
+        payload = torch.ByteTensor(storage).to("cuda")
+        local_size = payload.numel()
     else:
         local_size = 0
 
     # Propagate target tensor size to all nodes
     local_size = max(all_gather(local_size))
+    print("local_rank", local_rank, "size", local_size)
     if local_size != 0:
-        storage = torch.empty((local_size,), dtype=torch.uint8, device="cuda")
+        payload = torch.empty((local_size,), dtype=torch.uint8, device="cuda")
 
-    dist.broadcast(storage, 0)
-    buffer = storage.cpu().numpy().tobytes()
+    dist.broadcast(payload, 0)
+    buffer = payload.cpu().numpy().tobytes()
     return pickle.loads(buffer)
 
 
