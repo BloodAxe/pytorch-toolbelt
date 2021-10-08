@@ -10,7 +10,13 @@ __all__ = ["BinaryFocalLoss", "FocalLoss"]
 
 class BinaryFocalLoss(_Loss):
     def __init__(
-        self, alpha=None, gamma=2, ignore_index=None, reduction="mean", normalized=False, reduced_threshold=None
+        self,
+        alpha=None,
+        gamma: float = 2.0,
+        ignore_index=None,
+        reduction="mean",
+        normalized=False,
+        reduced_threshold=None,
     ):
         """
 
@@ -34,18 +40,13 @@ class BinaryFocalLoss(_Loss):
 
     def forward(self, label_input, label_target):
         """Compute focal loss for binary classification problem."""
-        label_target = label_target.view(-1)
-        label_input = label_input.view(-1)
 
         if self.ignore_index is not None:
             # Filter predictions with ignore label from loss computation
-            not_ignored = label_target != self.ignore_index
-            label_input = label_input[not_ignored]
-            label_target = label_target[not_ignored]
-
-            # This check is to prevent NaNs in the loss, when all targets are equal to ignore_index.
-            if label_target.numel() == 0:
-                return torch.tensor(0, dtype=label_input.dtype, device=label_input.device)
+            ignored = label_target.eq(self.ignore_index)
+            mask = ~ignored
+            label_input = label_input * mask
+            label_target = label_target * mask
 
         loss = self.focal_loss_fn(label_input, label_target)
         return loss
