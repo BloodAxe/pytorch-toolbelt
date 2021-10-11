@@ -5,7 +5,7 @@ transformation written in PyTorch and respect gradients flow.
 """
 from collections import defaultdict
 from functools import partial
-from typing import Tuple, List, Optional, Union, Callable, Dict
+from typing import Tuple, List, Optional, Union, Callable, Dict, Mapping
 
 import torch
 from torch import Tensor, nn
@@ -323,9 +323,9 @@ def d2_image_augment(image: Tensor) -> Tensor:
     return torch.cat(
         [
             image,
-            F.torch_rot180(image),
             F.torch_fliplr(image),
             F.torch_flipud(image),
+            F.torch_fliplr(F.torch_flipud(image)),
         ],
         dim=0,
     )
@@ -351,9 +351,9 @@ def d2_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") ->
     image: Tensor = torch.stack(
         [
             b1,
-            F.torch_rot180(b2),
-            F.torch_fliplr(b3),
-            F.torch_flipud(b4),
+            F.torch_fliplr(b2),
+            F.torch_flipud(b3),
+            F.torch_flipud(F.torch_fliplr(b4)),
         ]
     )
 
@@ -769,12 +769,16 @@ class GeneralizedTTA(nn.Module):
 
 
 class MultiscaleTTA(nn.Module):
-    def __init__(self, model: nn.Module, size_offsets: List[int], deaugment_fn: Optional[Dict[str, Callable]] = None):
-        if deaugment_fn is None:
-            deaugment_fn = defaultdict(lambda: ms_image_deaugment)
-            self.keys = None
-        else:
+    def __init__(
+        self,
+        model: nn.Module,
+        size_offsets: List[int],
+        deaugment_fn: Union[Callable, Dict[str, Callable]] = ms_image_deaugment,
+    ):
+        if isinstance(deaugment_fn, Mapping):
             self.keys = set(deaugment_fn.keys())
+        else:
+            self.keys = None
 
         super().__init__()
         self.model = model
@@ -787,13 +791,13 @@ class MultiscaleTTA(nn.Module):
 
         outputs = {}
         if self.keys is None:
-            keys = ms_outputs[0].keys()
+            outputs = self.deaugment_fn(ms_outputs, self.size_offsets)
         else:
             keys = self.keys
 
-        for key in keys:
-            deaugment_fn: Callable = self.deaugment_fn[key]
-            values = [x[key] for x in ms_outputs]
-            outputs[key] = deaugment_fn(values, self.size_offsets)
+            for key in keys:
+                deaugment_fn: Callable = self.deaugment_fn[key]
+                values = [x[key] for x in ms_outputs]
+                outputs[key] = deaugment_fn(values, self.size_offsets)
 
         return outputs

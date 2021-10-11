@@ -39,6 +39,22 @@ def test_d4_image2mask():
     np.testing.assert_allclose(to_numpy(output), to_numpy(x), atol=1e-6, rtol=1e-6)
 
 
+def test_flips_image2mask_v2():
+    x = torch.rand((4, 3, 224, 224))
+    x_a = tta.flips_image_augment(x)
+    y = tta.flips_image_deaugment(x_a)
+
+    np.testing.assert_allclose(to_numpy(y), to_numpy(x), atol=1e-6, rtol=1e-6)
+
+
+def test_d2_image2mask_v2():
+    x = torch.rand((4, 3, 224, 224))
+    x_a = tta.d2_image_augment(x)
+    y = tta.d2_image_deaugment(x_a)
+
+    np.testing.assert_allclose(to_numpy(y), to_numpy(x), atol=1e-6, rtol=1e-6)
+
+
 def test_d4_image2mask_v2():
     x = torch.rand((4, 3, 224, 224))
     x_a = tta.d4_image_augment(x)
