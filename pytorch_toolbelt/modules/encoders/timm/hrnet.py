@@ -6,13 +6,20 @@ __all__ = ["HRNetW18Encoder", "HRNetW32Encoder", "HRNetW48Encoder", "TimmHRNetW1
 
 
 class HRNetW18Encoder(EncoderModule):
-    def __init__(self, pretrained=True, layers=None):
+    def __init__(self, pretrained=True, use_incre_features: bool = True, layers=None):
         from timm.models import hrnet
 
         if layers is None:
             layers = [1, 2, 3, 4]
-        encoder = hrnet.hrnet_w18(pretrained=pretrained, features_only=True, out_indices=(0, 1, 2, 3, 4))
-        super().__init__([64, 128, 256, 512, 1024], [2, 4, 8, 16, 32], layers)
+        encoder = hrnet.hrnet_w18(
+            pretrained=pretrained,
+            feature_location="incre" if use_incre_features else "",
+            features_only=True,
+            out_indices=(0, 1, 2, 3, 4),
+        )
+        super().__init__(
+            [64, 128, 256, 512, 1024] if use_incre_features else [64, 18, 36, 72, 144], [2, 4, 8, 16, 32], layers
+        )
         self.encoder = encoder
 
     def forward(self, x):

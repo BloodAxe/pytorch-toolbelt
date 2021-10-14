@@ -11,6 +11,8 @@ __all__ = ["HRNetSegmentationDecoder"]
 
 
 class HRNetSegmentationDecoder(SegmentationDecoderModule):
+    channels: int
+
     def __init__(
         self,
         feature_maps: List[int],
@@ -22,6 +24,7 @@ class HRNetSegmentationDecoder(SegmentationDecoderModule):
         super().__init__()
         self.interpolation_mode = interpolation_mode
         self.align_corners = align_corners
+        self.channels = channels
 
         features = sum(feature_maps)
         self.embedding = nn.Sequential(
