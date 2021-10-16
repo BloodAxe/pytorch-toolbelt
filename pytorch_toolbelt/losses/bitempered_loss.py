@@ -22,7 +22,7 @@ def exp_t(u, t):
         return (1.0 + (1.0 - t) * u).relu().pow(1.0 / (1.0 - t))
 
 
-def compute_normalization_fixed_point(activations, t, num_iters):
+def compute_normalization_fixed_point(activations: Tensor, t: float, num_iters: int) -> Tensor:
     """Return the normalization value for each example (t > 1.0).
     Args:
       activations: A multi-dimensional tensor with last dimension `num_classes`.
@@ -45,7 +45,7 @@ def compute_normalization_fixed_point(activations, t, num_iters):
     return normalization_constants
 
 
-def compute_normalization_binary_search(activations, t, num_iters):
+def compute_normalization_binary_search(activations: Tensor, t: float, num_iters: int) -> Tensor:
     """Compute normalization value for each example (t < 1.0).
     Args:
       activations: A multi-dimensional tensor with last dimension `num_classes`.
@@ -181,16 +181,40 @@ def bi_tempered_logistic_loss(activations, labels, t1, t2, label_smoothing=0.0, 
 
 
 class BiTemperedLogisticLoss(nn.Module):
-    def __init__(self, t1, t2, smoothing=0.0):
+    """
+
+    https://ai.googleblog.com/2019/08/bi-tempered-logistic-loss-for-training.html
+    https://arxiv.org/abs/1906.03361
+    """
+
+    def __init__(self, t1: float, t2: float, smoothing=0.0, ignore_index=None, reduction: str = "mean"):
+        """
+
+        Args:
+            t1:
+            t2:
+            smoothing:
+            ignore_index:
+            reduction:
+        """
         super(BiTemperedLogisticLoss, self).__init__()
         self.t1 = t1
         self.t2 = t2
         self.smoothing = smoothing
+        self.reduction = reduction
+        self.ignore_index = ignore_index
 
-    def forward(self, logit_label, truth_label):
-        loss_label = bi_tempered_logistic_loss(
-            logit_label, truth_label, t1=self.t1, t2=self.t2, label_smoothing=self.smoothing, reduction="none"
+    def forward(self, predictions: Tensor, targets: Tensor) -> Tensor:
+        loss = bi_tempered_logistic_loss(
+            predictions, targets, t1=self.t1, t2=self.t2, label_smoothing=self.smoothing, reduction="none"
         )
 
-        loss_label = loss_label.mean()
-        return loss_label
+        if self.ignore_index != None:
+            mask = ~targets.eq(self.ignore_index)
+            loss *= mask
+
+        if self.reduction == "mean":
+            loss = loss.mean()
+        elif self.reduction == "sum":
+            loss = loss.sum()
+        return loss
