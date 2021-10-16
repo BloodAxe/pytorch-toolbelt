@@ -3,7 +3,7 @@ from typing import Optional
 from torch import nn, Tensor
 import torch.nn.functional as F
 
-__all__ = ["BiTemperedLogisticLoss"]
+__all__ = ["BiTemperedLogisticLoss", "BinaryBiTemperedLogisticLoss"]
 
 
 def log_t(u, t):
@@ -212,6 +212,68 @@ class BiTemperedLogisticLoss(nn.Module):
         if self.ignore_index != None:
             mask = ~targets.eq(self.ignore_index)
             loss *= mask
+
+        if self.reduction == "mean":
+            loss = loss.mean()
+        elif self.reduction == "sum":
+            loss = loss.sum()
+        return loss
+
+
+class BinaryBiTemperedLogisticLoss(nn.Module):
+    """
+    Modification of BiTemperedLogisticLoss for binary classification case.
+    It's signature matches nn.BCEWithLogitsLoss: Predictions and target tensors must have shape [B,1,...]
+
+    References:
+        https://ai.googleblog.com/2019/08/bi-tempered-logistic-loss-for-training.html
+        https://arxiv.org/abs/1906.03361
+    """
+
+    def __init__(
+        self, t1: float, t2: float, smoothing: float = 0.0, ignore_index: Optional[int] = None, reduction: str = "mean"
+    ):
+        """
+
+        Args:
+            t1:
+            t2:
+            smoothing:
+            ignore_index:
+            reduction:
+        """
+        super().__init__()
+        self.t1 = t1
+        self.t2 = t2
+        self.smoothing = smoothing
+        self.reduction = reduction
+        self.ignore_index = ignore_index
+
+    def forward(self, predictions: Tensor, targets: Tensor) -> Tensor:
+        """
+
+        Args:
+            predictions: [B,1,...]
+            targets: [B,1,...]
+
+        Returns:
+
+        """
+        if predictions.size(1) != 1 or targets.size(1) != 1:
+            raise ValueError("Channel dimension for predictions and targets must be equal to 1")
+
+        loss = bi_tempered_logistic_loss(
+            torch.cat([-predictions, predictions], dim=1).moveaxis(1, -1),
+            torch.cat([1 - targets, targets], dim=1).moveaxis(1, -1),
+            t1=self.t1,
+            t2=self.t2,
+            label_smoothing=self.smoothing,
+            reduction="none",
+        ).unsqueeze(dim=1)
+
+        if self.ignore_index != None:
+            mask = targets.eq(self.ignore_index)
+            loss = torch.masked_fill(loss, mask, 0)
 
         if self.reduction == "mean":
             loss = loss.mean()

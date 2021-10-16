@@ -243,3 +243,13 @@ def test_classification_losses(criterion):
 
     loss = criterion(y_pred, y_true)
     print(loss)
+
+
+def test_binary_bi_tempered_loss():
+    loss = L.BinaryBiTemperedLogisticLoss(t1=0.9, t2=3.0, ignore_index=-100)
+
+    y_pred = torch.randn((4, 1, 512, 512))
+    y_true = (y_pred > 0).type_as(y_pred)
+    y_true[:, :, ::10, ::20] = -100
+    loss_value = loss(y_pred, y_true)
+    assert len(loss_value.size()) == 0
