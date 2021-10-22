@@ -339,12 +339,17 @@ class TileMerger:
             self.image[:, y : y + tile_height, x : x + tile_width] += tile * self.weight
             self.norm_mask[:, y : y + tile_height, x : x + tile_width] += self.weight
 
+    @property
+    def device(self) -> torch.device:
+        return self.image.device
+
     def merge(self) -> torch.Tensor:
         return self.image / self.norm_mask
 
     def merge_(self) -> torch.Tensor:
         self.image /= self.norm_mask
         return self.image
+
 
 @pytorch_toolbelt_deprecated("This class is deprecated and will be removed in 0.5.0. Please use TileMerger instead.")
 class CudaTileMerger(TileMerger):
