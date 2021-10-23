@@ -124,9 +124,9 @@ def int_to_string_human_friendly(value: int) -> str:
     return f"{value / 1000000000.:.2f}B"
 
 
-def to_numpy(x: Union[torch.Tensor, np.ndarray, Any]) -> np.ndarray:
+def to_numpy(x: Union[torch.Tensor, np.ndarray, Any, None]) -> Union[np.ndarray, None]:
     """
-    Convert whatever to numpy array
+    Convert whatever to numpy array. None value returned as is.
 
     Args:
         :param x: List, tuple, PyTorch tensor or numpy array
@@ -134,7 +134,9 @@ def to_numpy(x: Union[torch.Tensor, np.ndarray, Any]) -> np.ndarray:
     Returns:
         :return: Numpy array
     """
-    if torch.is_tensor(x):
+    if x is None:
+        return None
+    elif torch.is_tensor(x):
         return x.data.cpu().numpy()
     elif isinstance(x, np.ndarray):
         return x
