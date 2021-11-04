@@ -1,6 +1,6 @@
 import torch
 from torch import nn, Tensor
-from typing import List, Union, Iterable, Optional, Dict
+from typing import List, Union, Iterable, Optional, Dict, Tuple
 
 __all__ = ["ApplySoftmaxTo", "ApplySigmoidTo", "Ensembler", "PickModelOutput", "SelectByIndex"]
 
@@ -9,8 +9,12 @@ from pytorch_toolbelt.inference.tta import _deaugment_averaging
 
 class ApplySoftmaxTo(nn.Module):
     output_keys: Tuple
+    temperature: float
+    dim: int
 
-    def __init__(self, model: nn.Module, output_key: Union[str, Iterable[str]] = "logits", dim=1, temperature=1):
+    def __init__(
+        self, model: nn.Module, output_key: Union[str, Iterable[str]] = "logits", dim: int = 1, temperature: float = 1
+    ):
         """
         Apply softmax activation on given output(s) of the model
         :param model: Model to wrap
@@ -29,12 +33,13 @@ class ApplySoftmaxTo(nn.Module):
     def forward(self, *input, **kwargs):
         output = self.model(*input, **kwargs)
         for key in self.output_keys:
-            output[key] = output[key].mul(self.temperature).softmax(dim=1)
+            output[key] = output[key].mul(self.temperature).softmax(dim=self.dim)
         return output
 
 
 class ApplySigmoidTo(nn.Module):
     output_keys: Tuple
+    temperature: float
 
     def __init__(self, model: nn.Module, output_key: Union[str, Iterable[str]] = "logits", temperature=1):
         """
