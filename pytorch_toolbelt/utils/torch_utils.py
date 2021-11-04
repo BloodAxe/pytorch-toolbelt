@@ -2,7 +2,7 @@
 
 """
 import collections
-from typing import Optional, Sequence, Union, Dict, List, Any
+from typing import Optional, Sequence, Union, Dict, List, Any, Iterable
 
 import numpy as np
 import torch
@@ -140,7 +140,7 @@ def to_numpy(x: Union[torch.Tensor, np.ndarray, Any, None]) -> Union[np.ndarray,
         return x.data.cpu().numpy()
     elif isinstance(x, np.ndarray):
         return x
-    elif isinstance(x, (list, tuple, int, float)):
+    elif isinstance(x, (Iterable, int, float)):
         return np.array(x)
     else:
         raise ValueError("Unsupported type")

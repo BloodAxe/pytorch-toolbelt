@@ -519,12 +519,16 @@ def flips_image_deaugment(
     Returns:
         Tensor of [B, C, H, W] shape.
     """
-    batch_size: int = image.shape[0] // 3
+    if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+        if image.size(0) % 3 != 0:
+            raise RuntimeError(f"Batch size must be divisible by 3")
+
+    orig, flipped_lr, flipped_ud = torch.chunk(image, 3)
     image: Tensor = torch.stack(
         [
-            image[batch_size * 0 : batch_size * 1],
-            F.torch_fliplr(image[batch_size * 1 : batch_size * 2]),
-            F.torch_flipud(image[batch_size * 2 : batch_size * 3]),
+            orig,
+            F.torch_fliplr(flipped_lr),
+            F.torch_flipud(flipped_ud),
         ]
     )
     return _deaugment_averaging(image, reduction=reduction)
