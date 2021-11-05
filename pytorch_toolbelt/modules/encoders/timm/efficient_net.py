@@ -132,39 +132,54 @@ class TimmB1Encoder(TimmBaseEfficientNetEncoder):
 
 class TimmB2Encoder(TimmBaseEfficientNetEncoder):
     def __init__(
-        self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU, first_conv_stride_one: bool = False
+        self,
+        pretrained=True,
+        layers=[1, 2, 3, 4],
+        activation: str = ACT_SILU,
+        first_conv_stride_one: bool = False,
+        drop_path_rate: float = 0.1,
     ):
         from timm.models.efficientnet import tf_efficientnet_b2_ns
 
         act_layer = get_activation_block(activation)
         encoder = tf_efficientnet_b2_ns(
-            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.1
+            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=drop_path_rate
         )
         super().__init__(encoder, [16, 24, 48, 120, 352], layers=layers, first_conv_stride_one=first_conv_stride_one)
 
 
 class TimmB3Encoder(TimmBaseEfficientNetEncoder):
     def __init__(
-        self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU, first_conv_stride_one: bool = False
+        self,
+        pretrained=True,
+        layers=[1, 2, 3, 4],
+        activation: str = ACT_SILU,
+        first_conv_stride_one: bool = False,
+        drop_path_rate=0.1,
     ):
         from timm.models.efficientnet import tf_efficientnet_b3_ns
 
         act_layer = get_activation_block(activation)
         encoder = tf_efficientnet_b3_ns(
-            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.1
+            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=drop_path_rate
         )
         super().__init__(encoder, [24, 32, 48, 136, 384], layers=layers, first_conv_stride_one=first_conv_stride_one)
 
 
 class TimmB4Encoder(TimmBaseEfficientNetEncoder):
     def __init__(
-        self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU, first_conv_stride_one: bool = False
+        self,
+        pretrained=True,
+        layers=[1, 2, 3, 4],
+        activation: str = ACT_SILU,
+        first_conv_stride_one: bool = False,
+        drop_path_rate=0.2,
     ):
         from timm.models.efficientnet import tf_efficientnet_b4_ns
 
         act_layer = get_activation_block(activation)
         encoder = tf_efficientnet_b4_ns(
-            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.2
+            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=drop_path_rate
         )
 
         super().__init__(encoder, [24, 32, 56, 160, 448], layers=layers, first_conv_stride_one=first_conv_stride_one)
@@ -177,50 +192,68 @@ class TimmB5Encoder(TimmBaseEfficientNetEncoder):
         layers=[1, 2, 3, 4],
         activation: str = ACT_SILU,
         first_conv_stride_one: bool = False,
+        drop_path_rate=0.2,
     ):
         from timm.models.efficientnet import tf_efficientnet_b5_ns
 
         act_layer = get_activation_block(activation)
         encoder = tf_efficientnet_b5_ns(
-            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.2
+            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=drop_path_rate
         )
         super().__init__(encoder, [24, 40, 64, 176, 512], layers=layers, first_conv_stride_one=first_conv_stride_one)
 
 
 class TimmB6Encoder(TimmBaseEfficientNetEncoder):
     def __init__(
-        self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU, first_conv_stride_one: bool = False
+        self,
+        pretrained=True,
+        layers=[1, 2, 3, 4],
+        activation: str = ACT_SILU,
+        first_conv_stride_one: bool = False,
+        drop_path_rate=0.2,
     ):
         from timm.models.efficientnet import tf_efficientnet_b6_ns
 
         act_layer = get_activation_block(activation)
         encoder = tf_efficientnet_b6_ns(
-            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.2
+            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=drop_path_rate
         )
         super().__init__(encoder, [32, 40, 72, 200, 576], layers=layers, first_conv_stride_one=first_conv_stride_one)
 
 
 class TimmB7Encoder(TimmBaseEfficientNetEncoder):
     def __init__(
-        self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU, first_conv_stride_one: bool = False
+        self,
+        pretrained=True,
+        layers=[1, 2, 3, 4],
+        activation: str = ACT_SILU,
+        first_conv_stride_one: bool = False,
+        drop_path_rate=0.2,
     ):
         from timm.models.efficientnet import tf_efficientnet_b7_ns
 
         act_layer = get_activation_block(activation)
         encoder = tf_efficientnet_b7_ns(
-            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.2
+            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=drop_path_rate
         )
         super().__init__(encoder, [32, 48, 80, 224, 640], layers=layers, first_conv_stride_one=first_conv_stride_one)
 
 
 class TimmMixNetXLEncoder(TimmBaseEfficientNetEncoder):
     def __init__(
-        self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU, first_conv_stride_one: bool = False
+        self,
+        pretrained=True,
+        layers=[1, 2, 3, 4],
+        activation: str = ACT_SILU,
+        first_conv_stride_one: bool = False,
+        drop_path_rate=0.2,
     ):
         from timm.models.efficientnet import mixnet_xl
 
         act_layer = get_activation_block(activation)
-        encoder = mixnet_xl(pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.2)
+        encoder = mixnet_xl(
+            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=drop_path_rate
+        )
         super().__init__(encoder, [40, 48, 64, 192, 320], layers=layers, first_conv_stride_one=first_conv_stride_one)
 
 
