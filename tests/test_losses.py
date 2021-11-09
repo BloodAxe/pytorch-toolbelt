@@ -253,3 +253,10 @@ def test_binary_bi_tempered_loss():
     y_true[:, :, ::10, ::20] = -100
     loss_value = loss(y_pred, y_true)
     assert len(loss_value.size()) == 0
+
+
+def test_bbce():
+    x = torch.tensor([0, 0, 0, 0, 0]).float()
+    y = torch.tensor([0, 1, 1, 1, 1]).float()
+    loss = L.balanced_binary_cross_entropy_with_logits(x, y, gamma=1, reduction="none")
+    print(loss)
