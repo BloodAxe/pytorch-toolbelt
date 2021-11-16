@@ -19,3 +19,4 @@ var/
 .idea/
 .pytest_cache/
 /tests/tta_eval.csv
+/tests/tmp.onnx
