@@ -11,14 +11,14 @@ __all__ = ["GenericTimmEncoder", "make_n_channel_input_std_conv"]
 
 
 class GenericTimmEncoder(EncoderModule):
-    def __init__(self, timm_encoder: Union[nn.Module, str], layers: List[int] = None):
+    def __init__(self, timm_encoder: Union[nn.Module, str], layers: List[int] = None, pretrained=True):
         strides = []
         channels = []
         default_layers = []
         if isinstance(timm_encoder, str):
             import timm.models.factory
 
-            timm_encoder = timm.models.factory.create_model(timm_encoder, pretrained=True)
+            timm_encoder = timm.models.factory.create_model(timm_encoder, pretrained=pretrained)
 
         for i, oi in enumerate(timm_encoder.feature_info.out_indices):
             fi = timm_encoder.feature_info.info[i]
