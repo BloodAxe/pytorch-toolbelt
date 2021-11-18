@@ -36,26 +36,17 @@ class BinaryFocalLoss(_Loss):
             reduced_threshold=reduced_threshold,
             reduction=reduction,
             normalized=normalized,
+            ignore_index=ignore_index,
         )
 
     def forward(self, label_input, label_target):
         """Compute focal loss for binary classification problem."""
-
-        if self.ignore_index is not None:
-            # Filter predictions with ignore label from loss computation
-            ignored = label_target.eq(self.ignore_index)
-            mask = ~ignored
-            label_input = label_input * mask
-            label_target = label_target * mask
-
         loss = self.focal_loss_fn(label_input, label_target)
         return loss
 
 
 class FocalLoss(_Loss):
-    def __init__(
-        self, alpha=None, gamma=2, ignore_index=None, reduction="mean", normalized=False, reduced_threshold=None
-    ):
+    def __init__(self, alpha=None, gamma=2, ignore_index=None, reduction="mean", normalized=False, reduced_threshold=None):
         """
         Focal loss for multi-class problem.
 

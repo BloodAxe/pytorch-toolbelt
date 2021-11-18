@@ -24,6 +24,7 @@ def focal_loss_with_logits(
     normalized: bool = False,
     reduced_threshold: Optional[float] = None,
     eps: float = 1e-6,
+    ignore_index=None,
 ) -> torch.Tensor:
     """Compute binary focal loss between target and output logits.
 
@@ -68,6 +69,9 @@ def focal_loss_with_logits(
     if normalized:
         norm_factor = focal_term.sum(dtype=torch.float32).clamp_min(eps)
         loss /= norm_factor
+
+    if ignore_index is not None:
+        loss = torch.masked_fill(loss, target.eq(ignore_index), 0)
 
     if reduction == "mean":
         loss = loss.mean()
@@ -140,14 +144,10 @@ def sigmoid_focal_loss(*input, **kwargs):
 
 @pytorch_toolbelt_deprecated("Function reduced_focal_loss is deprecated. Please use focal_loss_with_logits instead.")
 def reduced_focal_loss(output: torch.Tensor, target: torch.Tensor, threshold=0.5, gamma=2.0, reduction="mean"):
-    return focal_loss_with_logits(
-        output, target, alpha=None, gamma=gamma, reduction=reduction, reduced_threshold=threshold
-    )
+    return focal_loss_with_logits(output, target, alpha=None, gamma=gamma, reduction=reduction, reduced_threshold=threshold)
 
 
-def soft_jaccard_score(
-    output: torch.Tensor, target: torch.Tensor, smooth: float = 0.0, eps: float = 1e-7, dims=None
-) -> torch.Tensor:
+def soft_jaccard_score(output: torch.Tensor, target: torch.Tensor, smooth: float = 0.0, eps: float = 1e-7, dims=None) -> torch.Tensor:
     """
 
     :param output:
@@ -178,9 +178,7 @@ def soft_jaccard_score(
     return jaccard_score
 
 
-def soft_dice_score(
-    output: torch.Tensor, target: torch.Tensor, smooth: float = 0.0, eps: float = 1e-7, dims=None
-) -> torch.Tensor:
+def soft_dice_score(output: torch.Tensor, target: torch.Tensor, smooth: float = 0.0, eps: float = 1e-7, dims=None) -> torch.Tensor:
     """
 
     :param output:
