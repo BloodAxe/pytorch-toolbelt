@@ -51,27 +51,31 @@ def focal_loss_with_logits(
     """
     target = target.type_as(output)
 
-    logpt = F.binary_cross_entropy_with_logits(output, target, reduction="none")
-    pt = torch.exp(-logpt)
+    p = torch.sigmoid(output)
+    ce_loss = F.binary_cross_entropy_with_logits(output, target, reduction="none")
+    pt = p * target + (1 - p) * (1 - target)
 
     # compute the loss
     if reduced_threshold is None:
         focal_term = (1.0 - pt).pow(gamma)
     else:
         focal_term = ((1.0 - pt) / reduced_threshold).pow(gamma)
-        focal_term[pt < reduced_threshold] = 1
+        focal_term = torch.masked_fill(focal_term, pt < reduced_threshold, 1)
 
-    loss = focal_term * logpt
+    loss = focal_term * ce_loss
 
     if alpha is not None:
         loss *= alpha * target + (1 - alpha) * (1 - target)
 
+    if ignore_index is not None:
+        ignore_mask = target.eq(ignore_index)
+        loss = torch.masked_fill(loss, ignore_mask, 0)
+        if normalized:
+            focal_term = torch.masked_fill(focal_term, ignore_mask, 0)
+
     if normalized:
         norm_factor = focal_term.sum(dtype=torch.float32).clamp_min(eps)
         loss /= norm_factor
-
-    if ignore_index is not None:
-        loss = torch.masked_fill(loss, target.eq(ignore_index), 0)
 
     if reduction == "mean":
         loss = loss.mean()
@@ -144,10 +148,14 @@ def sigmoid_focal_loss(*input, **kwargs):
 
 @pytorch_toolbelt_deprecated("Function reduced_focal_loss is deprecated. Please use focal_loss_with_logits instead.")
 def reduced_focal_loss(output: torch.Tensor, target: torch.Tensor, threshold=0.5, gamma=2.0, reduction="mean"):
-    return focal_loss_with_logits(output, target, alpha=None, gamma=gamma, reduction=reduction, reduced_threshold=threshold)
+    return focal_loss_with_logits(
+        output, target, alpha=None, gamma=gamma, reduction=reduction, reduced_threshold=threshold
+    )
 
 
-def soft_jaccard_score(output: torch.Tensor, target: torch.Tensor, smooth: float = 0.0, eps: float = 1e-7, dims=None) -> torch.Tensor:
+def soft_jaccard_score(
+    output: torch.Tensor, target: torch.Tensor, smooth: float = 0.0, eps: float = 1e-7, dims=None
+) -> torch.Tensor:
     """
 
     :param output:
@@ -178,7 +186,9 @@ def soft_jaccard_score(output: torch.Tensor, target: torch.Tensor, smooth: float
     return jaccard_score
 
 
-def soft_dice_score(output: torch.Tensor, target: torch.Tensor, smooth: float = 0.0, eps: float = 1e-7, dims=None) -> torch.Tensor:
+def soft_dice_score(
+    output: torch.Tensor, target: torch.Tensor, smooth: float = 0.0, eps: float = 1e-7, dims=None
+) -> torch.Tensor:
     """
 
     :param output:
