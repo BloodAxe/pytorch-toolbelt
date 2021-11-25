@@ -101,6 +101,15 @@ class ShowPolarBatchesCallback(Callback):
         self.nan_input = None
         self.nan_output = None
 
+    def is_nan(self, x: Union[Tensor, float, np.ndarray]) -> bool:
+        if torch.is_tensor(value) and not torch.isfinite(value).all():
+            return True
+
+        if not np.isfinite(value).all():
+            return True
+
+        return False
+
     def on_batch_end(self, runner: IRunner):
         value = runner.batch_metrics.get(self.target_metric, None)
         if value is None:
@@ -117,7 +126,7 @@ class ShowPolarBatchesCallback(Callback):
             self.worst_input = self.to_cpu(runner.input)
             self.worst_output = self.to_cpu(runner.output)
 
-        if torch.isnan(value).any() or torch.isinf(value):
+        if self.nan_input is None and self.is_nan(value):
             self.nan_input = self.to_cpu(runner.input)
             self.nan_output = self.to_cpu(runner.output)
 
