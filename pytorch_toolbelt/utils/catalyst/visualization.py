@@ -102,7 +102,7 @@ class ShowPolarBatchesCallback(Callback):
         self.nan_input = None
         self.nan_output = None
 
-    def is_nan(self, x: Union[Tensor, float, np.ndarray]) -> bool:
+    def is_nan(self, value: Union[Tensor, float, np.ndarray]) -> bool:
         if torch.is_tensor(value) and not torch.isfinite(value).all():
             return True
 
