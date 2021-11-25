@@ -142,7 +142,7 @@ class ShowPolarBatchesCallback(Callback):
             worst_samples = self.visualize_batch(self.worst_input, self.worst_output)
             self._log_samples(worst_samples, "worst", logger, runner.global_batch_step)
 
-        if self.worst_score is not None:
+        if self.nan_input is not None:
             nan_samples = self.visualize_batch(self.nan_input, self.nan_output)
             self._log_samples(nan_samples, "nan", logger, runner.global_batch_step)
 
