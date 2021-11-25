@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn.functional as F
+from torch import Tensor
 from catalyst.dl import Callback, CallbackOrder, IRunner, CallbackNode
 from catalyst.dl.callbacks import TensorboardLogger
 from catalyst.contrib.tools.tensorboard import SummaryWriter
