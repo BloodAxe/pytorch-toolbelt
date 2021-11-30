@@ -33,6 +33,7 @@ __all__ = [
     "to_numpy",
     "to_tensor",
     "transfer_weights",
+    "move_to_device_non_blocking",
 ]
 
 
@@ -228,14 +229,14 @@ def rgb_image_from_tensor(
     return rgb_image.astype(dtype)
 
 
-def mask_from_tensor(mask: torch.Tensor, squeeze_single_channel=False, dtype=None) -> np.ndarray:
-    mask = np.moveaxis(to_numpy(mask), 0, -1)
-    if squeeze_single_channel and mask.shape[-1] == 1:
-        mask = np.squeeze(mask, -1)
+def mask_from_tensor(mask: torch.Tensor, squeeze_single_channel: bool = False, dtype=None) -> np.ndarray:
+    mask_np = np.moveaxis(to_numpy(mask), 0, -1)
+    if squeeze_single_channel and mask_np.shape[-1] == 1:
+        mask_np = np.squeeze(mask_np, -1)
 
     if dtype is not None:
-        mask = mask.astype(dtype)
-    return mask
+        mask_np = mask_np.astype(dtype)
+    return mask_np
 
 
 def maybe_cuda(x: Union[torch.Tensor, nn.Module]) -> Union[torch.Tensor, nn.Module]:
@@ -279,6 +280,12 @@ def resize_like(x: Tensor, target: Tensor, mode: str = "bilinear", align_corners
         Resized tensor [B,C,Ht,Wt]
     """
     return torch.nn.functional.interpolate(x, target.size()[2:], mode=mode, align_corners=align_corners)
+
+
+def move_to_device_non_blocking(x: Tensor, device: torch.device) -> Tensor:
+    if x.device != device:
+        x = x.to(device=device, non_blocking=True)
+    return x
 
 
 resize_as = resize_like
