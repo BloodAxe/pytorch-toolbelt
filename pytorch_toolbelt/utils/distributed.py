@@ -2,19 +2,20 @@ import pickle
 from typing import Any, Dict, List
 
 import torch
+from torch import Tensor
+
 import torch.distributed as dist
 
 __all__ = [
-    "is_dist_avail_and_initialized",
-    "get_world_size",
-    "get_rank",
-    "is_main_process",
     "all_gather",
-    "reduce_dict_sum",
     "broadcast_from_master",
+    "get_rank",
+    "get_world_size",
+    "is_dist_avail_and_initialized",
+    "is_main_process",
+    "master_print",
+    "reduce_dict_sum",
 ]
-
-from torch import Tensor
 
 
 def is_dist_avail_and_initialized() -> bool:
@@ -153,3 +154,18 @@ def reduce_dict_sum(input_dict: Dict[Any, Any]) -> Dict[Any, Any]:
                 else:
                     reduced_dict[key] = value
     return reduced_dict
+
+
+def master_print(*args, **kwargs) -> None:
+    """
+    Drop-in replacement for built-in `print` function that prints only on master node
+
+    Args:
+        *args:
+        **kwargs:
+
+    Returns:
+        None
+    """
+    if is_main_process():
+        print(*args, **kwargs)
