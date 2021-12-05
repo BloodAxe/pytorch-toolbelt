@@ -4,7 +4,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from pytorch_toolbelt.modules import DecoderModule, get_activation_block, ACT_RELU
+from .common import DecoderModule
+from ..activations import get_activation_block, ACT_RELU
 
 __all__ = ["BiFPNDecoder", "BiFPNBlock", "BiFPNConvBlock", "BiFPNDepthwiseConvBlock"]
 
@@ -115,6 +116,13 @@ class BiFPNBlock(nn.Module):
 
 
 class BiFPNDecoder(DecoderModule):
+    """
+    BiFPN decoder
+
+    Expects input of three feature maps
+
+    Reference: https://arxiv.org/abs/1911.09070
+    """
     def __init__(
         self, feature_maps: List[int], strides: List[int], channels: int = 64, num_layers: int = 2, activation=ACT_RELU
     ):
@@ -122,12 +130,12 @@ class BiFPNDecoder(DecoderModule):
         act = get_activation_block(activation)
         if len(feature_maps) != 3:
             raise ValueError("Number of input feature maps must be equal 3")
-        self.p3 = nn.Conv2d(feature_maps[0], channels, kernel_size=1, stride=1, padding=0)
-        self.p4 = nn.Conv2d(feature_maps[1], channels, kernel_size=1, stride=1, padding=0)
-        self.p5 = nn.Conv2d(feature_maps[2], channels, kernel_size=1, stride=1, padding=0)
+        self.p3 = nn.Conv2d(feature_maps[0], channels, kernel_size=(1, 1))
+        self.p4 = nn.Conv2d(feature_maps[1], channels, kernel_size=(1, 1))
+        self.p5 = nn.Conv2d(feature_maps[2], channels, kernel_size=(1, 1))
 
         # p6 is obtained via a 3x3 stride-2 conv on C5
-        self.p6 = nn.Conv2d(feature_maps[2], channels, kernel_size=3, stride=2, padding=1)
+        self.p6 = nn.Conv2d(feature_maps[2], channels, kernel_size=(3, 3), stride=(2, 2), padding=1)
 
         # p7 is computed by applying ReLU followed by a 3x3 stride-2 conv on p6
         self.p7 = BiFPNConvBlock(channels, channels, kernel_size=3, stride=2, padding=1, act=act)
