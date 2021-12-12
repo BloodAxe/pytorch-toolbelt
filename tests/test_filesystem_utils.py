@@ -27,9 +27,8 @@ def test_read_image_as_is_pathlib():
     assert img.shape == (220, 220, 3)
 
 
-@pytest.mark.skip
 def test_change_extension_str():
-    assert change_extension("lena.png", "jpeg") == "lena.jpeg"
+    assert change_extension("lena.png", ".jpeg") == "lena.jpeg"
 
 
 def test_change_extension_pathlib():
