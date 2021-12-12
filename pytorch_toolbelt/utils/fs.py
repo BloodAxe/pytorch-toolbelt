@@ -4,6 +4,7 @@
 
 import glob
 import os
+from pathlib import Path
 from typing import Union, List
 
 import cv2
@@ -61,8 +62,13 @@ def id_from_fname(fname: str) -> str:
     return os.path.splitext(os.path.basename(fname))[0]
 
 
-def change_extension(fname: str, new_ext: str) -> str:
-    return os.path.splitext(fname)[0] + new_ext
+def change_extension(fname: Union[str, Path], new_ext: str) -> str:
+    if type(fname) == str:
+        return os.path.splitext(fname)[0] + new_ext
+    else:
+        if new_ext[0] != ".":
+            new_ext = "." + new_ext
+        return fname.with_suffix(new_ext)
 
 
 def auto_file(filename: str, where: str = ".") -> str:
@@ -91,13 +97,16 @@ def auto_file(filename: str, where: str = ".") -> str:
     return files[0]
 
 
-def read_rgb_image(fname: str) -> np.ndarray:
+def read_rgb_image(fname: Union[str, Path]) -> np.ndarray:
     """
     Read RGB image from filesystem in RGB color order.
     Note: By default, OpenCV loads images in BGR memory order format.
     :param fname: Image file path
     :return: A numpy array with a loaded image in RGB format
     """
+    if type(fname) != str:
+        fname = str(fname)
+
     image = cv2.imread(fname, cv2.IMREAD_UNCHANGED)
     if image is None:
         raise IOError(f'Cannot read image "{fname}"')
@@ -106,7 +115,9 @@ def read_rgb_image(fname: str) -> np.ndarray:
     return image
 
 
-def read_image_as_is(fname: str) -> np.ndarray:
+def read_image_as_is(fname: Union[str, Path]) -> np.ndarray:
+    if type(fname) != str:
+        fname = str(fname)
     image = cv2.imread(fname, cv2.IMREAD_UNCHANGED)
     if image is None:
         raise IOError(f'Cannot read image "{fname}"')
