@@ -8,19 +8,21 @@ __all__ = ["BalancedBCEWithLogitsLoss", "balanced_binary_cross_entropy_with_logi
 
 
 def balanced_binary_cross_entropy_with_logits(
-    outputs: Tensor, targets: Tensor, gamma: float = 1.0, ignore_index=None, reduction: str = "mean"
+    logits: Tensor, targets: Tensor, gamma: float = 1.0, ignore_index=None, reduction: str = "mean"
 ) -> Tensor:
     """
     Balanced binary cross entropy loss.
+
     Args:
-        outputs:
+        logits:
         targets: This loss function expects target values to be hard targets 0/1.
         gamma: Power factor for balancing weights
         ignore_index:
         reduction:
 
     Returns:
-
+        Zero-sized tensor with reduced loss if `reduction` is `sum` or `mean`; Otherwise returns loss of the
+        shape of `logits` tensor.
     """
     pos_targets: Tensor = targets.eq(1).sum()
     neg_targets: Tensor = targets.eq(0).sum()
@@ -29,8 +31,8 @@ def balanced_binary_cross_entropy_with_logits(
     pos_weight = torch.pow(neg_targets / (num_targets + 1e-7), gamma)
     neg_weight = 1.0 - pos_weight
 
-    pos_term = pos_weight.pow(gamma) * targets * torch.nn.functional.logsigmoid(outputs)
-    neg_term = neg_weight.pow(gamma) * (1 - targets) * torch.nn.functional.logsigmoid(-outputs)
+    pos_term = pos_weight.pow(gamma) * targets * torch.nn.functional.logsigmoid(logits)
+    neg_term = neg_weight.pow(gamma) * (1 - targets) * torch.nn.functional.logsigmoid(-logits)
 
     loss = -(pos_term + neg_term)
 

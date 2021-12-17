@@ -51,6 +51,14 @@ __all__ = [
 MaybeStrOrCallable = Optional[Union[str, Callable]]
 
 
+def split_into_chunks(input: Tensor, batch_size: int) -> Tuple[Tensor, ...]:
+    if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+        if input.size(0) % batch_size != 0:
+            raise RuntimeError(f"Input batch size ({input.size(0)}) must be divisible by {batch_size}.")
+
+    return torch.chunk(input, batch_size)
+
+
 def _deaugment_averaging(x: Tensor, reduction: MaybeStrOrCallable) -> Tensor:
     """
     Average predictions of TTA-ed model.
@@ -115,8 +123,7 @@ def fivecrop_image_augment(image: Tensor, crop_size: Tuple[int, int]) -> Tensor:
 
 
 def fivecrop_label_deaugment(logits: Tensor, reduction: MaybeStrOrCallable = "mean") -> Tensor:
-    crop_tl, crop_tr, crop_bl, crop_br, crop_cc = torch.chunk(logits, 5)
-
+    crop_tl, crop_tr, crop_bl, crop_br, crop_cc = split_into_chunks(logits, 5)
     logits: Tensor = torch.stack([crop_tl, crop_tr, crop_bl, crop_br, crop_cc])
     return _deaugment_averaging(logits, reduction=reduction)
 
@@ -281,9 +288,7 @@ def fliplr_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean"
         Tensor of [B, C, H, W] shape if reduction is not None or "none", otherwise returns de-augmented tensor of
         [2, B, C, H, W] shape
     """
-    assert image.size(0) % 2 == 0
-
-    b1, b2 = torch.chunk(image, 2)
+    b1, b2 = split_into_chunks(image, 2)
     image: Tensor = torch.stack([b1, F.torch_fliplr(b2)])
     return _deaugment_averaging(image, reduction=reduction)
 
@@ -299,9 +304,7 @@ def flipud_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean"
         Tensor of [B, C, H, W] shape if reduction is not None or "none", otherwise returns de-augmented tensor of
         [2, B, C, H, W] shape
     """
-    assert image.size(0) % 2 == 0
-
-    b1, b2 = torch.chunk(image, 2)
+    b1, b2 = split_into_chunks(image, 2)
     image: Tensor = torch.stack([b1, F.torch_flipud(b2)])
     return _deaugment_averaging(image, reduction=reduction)
 
@@ -342,12 +345,7 @@ def d2_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") ->
         Tensor of [B, C, H, W] shape if reduction is not None or "none", otherwise returns de-augmented tensor of
         [4, B, C, H, W] shape
     """
-    if not torch.jit.is_scripting() and not torch.jit.is_tracing():
-        if image.size(0) % 4 != 0:
-            raise RuntimeError(f"Batch size must be divisible by 4")
-
-    b1, b2, b3, b4 = torch.chunk(image, 4)
-
+    b1, b2, b3, b4 = split_into_chunks(image, 4)
     image: Tensor = torch.stack(
         [
             b1,
@@ -371,9 +369,7 @@ def d2_labels_deaugment(logits: Tensor, reduction: MaybeStrOrCallable = "mean") 
         Tensor of [B, C] shape if reduction is not None or "none", otherwise returns de-augmented tensor of
         [4, B, C] shape
     """
-    assert logits.size(0) % 4 == 0
-
-    b1, b2, b3, b4 = torch.chunk(logits, 4)
+    b1, b2, b3, b4 = split_into_chunks(logits, 4)
     logits: Tensor = torch.stack([b1, b2, b3, b4])
 
     return _deaugment_averaging(logits, reduction=reduction)
@@ -430,11 +426,7 @@ def d4_labels_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") -
         Tensor of [B, C] shape if reduction is not None or "none", otherwise returns de-augmented tensor of
         [8, B, C] shape
     """
-    if not torch.jit.is_scripting() and not torch.jit.is_tracing():
-        if image.size(0) % 8 != 0:
-            raise RuntimeError("Batch size must be divisible by 8")
-
-    b1, b2, b3, b4, b5, b6, b7, b8 = torch.chunk(image, 8)
+    b1, b2, b3, b4, b5, b6, b7, b8 = split_into_chunks(image, 8)
     image: Tensor = torch.stack([b1, b2, b3, b4, b5, b7, b7, b8])
 
     return _deaugment_averaging(image, reduction=reduction)
@@ -452,12 +444,7 @@ def d4_image_deaugment(image: Tensor, reduction: MaybeStrOrCallable = "mean") ->
         [4, B, C, H, W] shape
 
     """
-    if not torch.jit.is_scripting() and not torch.jit.is_tracing():
-        if image.size(0) % 8 != 0:
-            raise RuntimeError("Batch size must be divisible by 8")
-
-    b1, b2, b3, b4, b5, b6, b7, b8 = torch.chunk(image, 8)
-
+    b1, b2, b3, b4, b5, b6, b7, b8 = split_into_chunks(image, 8)
     image: Tensor = torch.stack(
         [
             b1,
@@ -519,11 +506,7 @@ def flips_image_deaugment(
     Returns:
         Tensor of [B, C, H, W] shape.
     """
-    if not torch.jit.is_scripting() and not torch.jit.is_tracing():
-        if image.size(0) % 3 != 0:
-            raise RuntimeError(f"Batch size must be divisible by 3")
-
-    orig, flipped_lr, flipped_ud = torch.chunk(image, 3)
+    orig, flipped_lr, flipped_ud = split_into_chunks(image, 3)
     image: Tensor = torch.stack(
         [
             orig,
@@ -547,10 +530,7 @@ def fliplr_labels_deaugment(
     Returns:
         Tensor of [B, C, H, W] shape.
     """
-    if logits.size(0) % 2 != 0:
-        raise RuntimeError("Batch size must be divisible by 2")
-
-    orig, flipped_lr = torch.chunk(logits, 2)
+    orig, flipped_lr = split_into_chunks(logits, 2)
     logits: Tensor = torch.stack([orig, flipped_lr])
     return _deaugment_averaging(logits, reduction=reduction)
 
@@ -568,10 +548,7 @@ def flipud_labels_deaugment(
     Returns:
         Tensor of [B, C, H, W] shape.
     """
-    if logits.size(0) % 2 != 0:
-        raise RuntimeError("Batch size must be divisible by 2")
-
-    orig, flipped_ud = torch.chunk(logits, 2)
+    orig, flipped_ud = split_into_chunks(logits, 2)
     logits: Tensor = torch.stack([orig, flipped_ud])
     return _deaugment_averaging(logits, reduction=reduction)
 
@@ -592,7 +569,7 @@ def flips_labels_deaugment(
     if logits.size(0) % 3 != 0:
         raise RuntimeError("Batch size must be divisible by 3")
 
-    orig, flipped_lr, flipped_ud = torch.chunk(logits, 3)
+    orig, flipped_lr, flipped_ud = split_into_chunks(logits, 3)
     logits: Tensor = torch.stack([orig, flipped_lr, flipped_ud])
     return _deaugment_averaging(logits, reduction=reduction)
 

@@ -1,7 +1,7 @@
-import torch
 from typing import Optional
+
+import torch
 from torch import nn, Tensor
-import torch.nn.functional as F
 
 __all__ = ["BiTemperedLogisticLoss", "BinaryBiTemperedLogisticLoss"]
 
@@ -209,7 +209,7 @@ class BiTemperedLogisticLoss(nn.Module):
             predictions, targets, t1=self.t1, t2=self.t2, label_smoothing=self.smoothing, reduction="none"
         )
 
-        if self.ignore_index != None:
+        if self.ignore_index is not None:
             mask = ~targets.eq(self.ignore_index)
             loss *= mask
 
@@ -251,13 +251,15 @@ class BinaryBiTemperedLogisticLoss(nn.Module):
 
     def forward(self, predictions: Tensor, targets: Tensor) -> Tensor:
         """
+        Forward method of the loss function
 
         Args:
             predictions: [B,1,...]
             targets: [B,1,...]
 
         Returns:
-
+            Zero-sized tensor with reduced loss if self.reduction is `sum` or `mean`; Otherwise returns loss of the
+            shape of `predictions` tensor.
         """
         if predictions.size(1) != 1 or targets.size(1) != 1:
             raise ValueError("Channel dimension for predictions and targets must be equal to 1")
@@ -271,7 +273,7 @@ class BinaryBiTemperedLogisticLoss(nn.Module):
             reduction="none",
         ).unsqueeze(dim=1)
 
-        if self.ignore_index != None:
+        if self.ignore_index is not None:
             mask = targets.eq(self.ignore_index)
             loss = torch.masked_fill(loss, mask, 0)
 

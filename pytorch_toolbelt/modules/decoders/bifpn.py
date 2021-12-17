@@ -123,6 +123,7 @@ class BiFPNDecoder(DecoderModule):
 
     Reference: https://arxiv.org/abs/1911.09070
     """
+
     def __init__(
         self, feature_maps: List[int], strides: List[int], channels: int = 64, num_layers: int = 2, activation=ACT_RELU
     ):
