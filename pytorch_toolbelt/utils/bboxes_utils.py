@@ -20,6 +20,9 @@ BBoxesMatchResult = namedtuple(
         # Matrix of shape [num_classes+1, num_classes+1], where last class corresponds to None,
         # in other words - no detection.
         "confusion_matrix",
+        # An array of [K,2], where K is number of true positive matches and second dimension contains
+        # tuple of (pred_boxes_index, true_boxes_index) of true positive matches
+        "true_positive_indexes",
     ],
 )
 
@@ -91,6 +94,7 @@ def match_bboxes(
             false_positives=false_positives,
             false_negatives=false_negatives,
             confusion_matrix=confusion_matrix,
+            true_positive_indexes=np.zeros((0, 2), dtype=int),
         )
     elif num_pred_objects == 0:
         for true_class in true_labels:
@@ -101,6 +105,7 @@ def match_bboxes(
             false_positives=false_positives,
             false_negatives=false_negatives,
             confusion_matrix=confusion_matrix,
+            true_positive_indexes=np.zeros((0, 2), dtype=int),
         )
     elif num_true_objects == 0:
         for pred_class in pred_labels:
@@ -111,6 +116,7 @@ def match_bboxes(
             false_positives=false_positives,
             false_negatives=false_negatives,
             confusion_matrix=confusion_matrix,
+            true_positive_indexes=np.zeros((0, 2), dtype=int),
         )
 
     iou_matrix = to_numpy(box_iou(torch.from_numpy(pred_boxes).float(), torch.from_numpy(true_boxes).float()))
@@ -118,6 +124,8 @@ def match_bboxes(
 
     remainig_preds = np.ones(num_pred_objects, dtype=np.bool)
     remainig_trues = np.ones(num_true_objects, dtype=np.bool)
+
+    true_positive_indexes = []
 
     for ri, ci in zip(row_ind, col_ind):
         pred_class = pred_labels[ri]
@@ -128,6 +136,7 @@ def match_bboxes(
             if pred_class == true_class:
                 # If there is a matching polygon found above, increase the count of true positives by one (TP).
                 true_positives[true_class] += 1
+                true_positive_indexes.append((ri, ci))
             else:
                 # If classes does not match, then we add false-positive for predicted class and
                 # false-negative to target class
@@ -148,6 +157,7 @@ def match_bboxes(
 
     return BBoxesMatchResult(
         true_positives=true_positives,
+        true_positive_indexes=np.array(true_positive_indexes, dtype=int).reshape((-1, 2)),
         false_positives=false_positives,
         false_negatives=false_negatives,
         confusion_matrix=confusion_matrix,
