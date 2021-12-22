@@ -6,7 +6,7 @@ import torch
 from pytorch_toolbelt.utils import to_numpy
 from torchvision.ops import box_iou
 
-__all__ = ["match_bboxes"]
+__all__ = ["match_bboxes", "BBoxesMatchResult"]
 
 BBoxesMatchResult = namedtuple(
     "BBoxesMatchResult",
