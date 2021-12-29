@@ -11,14 +11,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.checkpoint as checkpoint
-from pytorch_toolbelt.datasets import OUTPUT_MASK_KEY
-from pytorch_toolbelt.modules import EncoderModule, DecoderModule
-from pytorch_toolbelt.modules.encoders import _take
+from torch import Tensor
+
+from .common import EncoderModule, _take, make_n_channel_input
+from ..activations import get_activation_block, ACT_GELU
 from timm.models.layers import DropPath, to_2tuple, trunc_normal_
 
-__all__ = ["SwinTransformer", "SwinB", "SwinL", "SwinT"]
-
-from torch import Tensor
+__all__ = ["SwinTransformer", "SwinB", "SwinL", "SwinT", "SwinS"]
 
 
 class Mlp(nn.Module):
@@ -354,6 +353,7 @@ class BasicLayer(nn.Module):
         drop=0.0,
         attn_drop=0.0,
         drop_path=0.0,
+        act_layer=nn.GELU,
         norm_layer=nn.LayerNorm,
         downsample=None,
         use_checkpoint=False,
@@ -378,6 +378,7 @@ class BasicLayer(nn.Module):
                     drop=drop,
                     attn_drop=attn_drop,
                     drop_path=drop_path[i] if isinstance(drop_path, list) else drop_path,
+                    act_layer=act_layer,
                     norm_layer=norm_layer,
                 )
                 for i in range(depth)
@@ -503,7 +504,7 @@ class SwinTransformer(EncoderModule):
         norm_layer (nn.Module): Normalization layer. Default: nn.LayerNorm.
         ape (bool): If True, add absolute position embedding to the patch embedding. Default: False.
         patch_norm (bool): If True, add normalization after patch embedding. Default: True.
-        out_indices (Sequence[int]): Output from which stages.
+        layers (Sequence[int]): Output from which stages.
         frozen_stages (int): Stages to be frozen (stop grad and set eval mode).
             -1 means not freezing any parameters.
         use_checkpoint (bool): Whether to use checkpointing to save memory. Default: False.
@@ -533,19 +534,22 @@ class SwinTransformer(EncoderModule):
         drop_rate=0.0,
         attn_drop_rate=0.0,
         drop_path_rate=0.2,
+        activation=ACT_GELU,
         norm_layer=nn.LayerNorm,
         ape=False,
         patch_norm=True,
-        out_indices=(0, 1, 2, 3),
+        layers=(0, 1, 2, 3),
         frozen_stages=-1,
         use_checkpoint=False,
         pretrained=None,
     ):
         super().__init__(
-            layers=out_indices,
+            layers=layers,
             channels=[embed_dim, embed_dim * 2, embed_dim * 4, embed_dim * 8],
             strides=[4, 8, 16, 32],
         )
+
+        act_layer = get_activation_block(activation)
 
         self.pretrain_img_size = pretrain_img_size
         self.num_layers = len(depths)
@@ -569,9 +573,7 @@ class SwinTransformer(EncoderModule):
             patch_size = to_2tuple(patch_size)
             patches_resolution = [pretrain_img_size[0] // patch_size[0], pretrain_img_size[1] // patch_size[1]]
 
-            self.absolute_pos_embed = nn.Parameter(
-                torch.zeros(1, embed_dim, patches_resolution[0], patches_resolution[1])
-            )
+            self.absolute_pos_embed = nn.Parameter(torch.zeros(1, embed_dim, patches_resolution[0], patches_resolution[1]))
             trunc_normal_(self.absolute_pos_embed, std=0.02)
 
         self.pos_drop = nn.Dropout(p=drop_rate)
@@ -593,6 +595,7 @@ class SwinTransformer(EncoderModule):
                 drop=drop_rate,
                 attn_drop=attn_drop_rate,
                 drop_path=dpr[sum(depths[:i_layer]) : sum(depths[: i_layer + 1])],
+                act_layer=act_layer,
                 norm_layer=norm_layer,
                 downsample=PatchMerging if (i_layer < self.num_layers - 1) else None,
                 use_checkpoint=use_checkpoint,
@@ -608,7 +611,6 @@ class SwinTransformer(EncoderModule):
             layer_name = f"norm{i_layer}"
             self.add_module(layer_name, layer)
 
-        self._freeze_stages()
         if pretrained:
             self.init_weights(pretrained)
 
@@ -648,13 +650,9 @@ class SwinTransformer(EncoderModule):
 
         if isinstance(pretrained, str):
             self.apply(_init_weights)
-            state = torch.hub.load_state_dict_from_url(pretrained)
-            state = dict(
-                (k.replace("backbone.", ""), v)
-                for (k, v) in state["state_dict"].items()
-                if str.startswith(k, "backbone.")
-            )
-            self.load_state_dict(state)
+            state = torch.hub.load_state_dict_from_url(pretrained, map_location="cpu")
+            model_state_dict = state["model"]
+            self.load_state_dict(model_state_dict, strict=False)
         elif pretrained is None:
             self.apply(_init_weights)
         else:
@@ -689,117 +687,165 @@ class SwinTransformer(EncoderModule):
 
     @torch.jit.unused
     def change_input_channels(self, input_channels: int, mode="auto"):
-        from pytorch_toolbelt.modules import make_n_channel_input
-
         self.patch_embed.proj = make_n_channel_input(self.patch_embed.proj, input_channels)
         return self
 
-    def train(self, mode=True):
-        """Convert the model into training mode while keep layers freezed."""
-        super(SwinTransformer, self).train(mode)
-        self._freeze_stages()
 
-
-class SwinT(EncoderModule):
-    def __init__(self, pretrained=True, layers=(0, 1, 2, 3)):
-        super().__init__([96, 192, 384, 768], [4, 8, 16, 32], [0, 1, 2, 3])
-        self.model = SwinTransformer(
-            ape=False,
-            attn_drop_rate=0.0,
-            depths=(2, 2, 6, 2),
-            drop_path_rate=0.5,
-            drop_rate=0.0,
-            embed_dim=96,
-            mlp_ratio=4.0,
-            num_heads=(3, 6, 12, 24),
-            out_indices=layers,
-            patch_norm=True,
-            qk_scale=None,
-            qkv_bias=True,
-            use_checkpoint=False,
-            window_size=7,
+class SwinT(SwinTransformer):
+    def __init__(
+        self,
+        ape=False,
+        attn_drop_rate=0.0,
+        depths=(2, 2, 6, 2),
+        drop_path_rate=0.5,
+        drop_rate=0.0,
+        embed_dim=96,
+        mlp_ratio=4.0,
+        num_heads=(3, 6, 12, 24),
+        layers=(0, 1, 2, 3),
+        patch_norm=True,
+        qk_scale=None,
+        qkv_bias=True,
+        use_checkpoint=False,
+        window_size=7,
+        activation=ACT_GELU,
+        pretrained="https://github.com/SwinTransformer/storage/releases/download/v1.0.0/swin_tiny_patch4_window7_224.pth",
+    ):
+        super(SwinT, self).__init__(
+            ape=ape,
+            attn_drop_rate=attn_drop_rate,
+            depths=depths,
+            drop_path_rate=drop_path_rate,
+            drop_rate=drop_rate,
+            embed_dim=embed_dim,
+            mlp_ratio=mlp_ratio,
+            num_heads=num_heads,
+            layers=layers,
+            patch_norm=patch_norm,
+            qk_scale=qk_scale,
+            qkv_bias=qkv_bias,
+            use_checkpoint=use_checkpoint,
+            window_size=window_size,
+            activation=activation,
+            pretrained=pretrained,
         )
-        if pretrained:
-            state = torch.hub.load_state_dict_from_url(
-                "https://github.com/SwinTransformer/storage/releases/download/v1.0.0/swin_tiny_patch4_window7_224.pth",
-                map_location="cpu",
-            )
-            self.model.load_state_dict(state["model"], strict=False)
-
-    def change_input_channels(self, input_channels: int, mode="auto"):
-        self.model.change_input_channels(input_channels, mode)
-        return self
-
-    def forward(self, x):
-        features = self.model(x)
-        return features
 
 
-class SwinB(EncoderModule):
-    def __init__(self, pretrained=True, layers=(0, 1, 2, 3)):
-        super().__init__([128, 256, 512, 1024], [4, 8, 16, 32], [0, 1, 2, 3])
-        self.model = SwinTransformer(
-            ape=False,
-            attn_drop_rate=0.0,
-            depths=(2, 2, 18, 2),
-            drop_path_rate=0.5,
-            drop_rate=0.0,
-            embed_dim=128,
-            mlp_ratio=4.0,
-            num_heads=(4, 8, 16, 32),
-            out_indices=layers,
-            patch_norm=True,
-            qk_scale=None,
-            qkv_bias=True,
-            use_checkpoint=False,
-            window_size=7,
+class SwinS(SwinTransformer):
+    def __init__(
+        self,
+        ape=False,
+        attn_drop_rate=0.0,
+        depths=(2, 2, 18, 2),
+        drop_path_rate=0.3,
+        drop_rate=0.0,
+        embed_dim=96,
+        mlp_ratio=4.0,
+        num_heads=(3, 6, 12, 24),
+        layers=(0, 1, 2, 3),
+        patch_norm=True,
+        qk_scale=None,
+        qkv_bias=True,
+        use_checkpoint=False,
+        window_size=7,
+        activation=ACT_GELU,
+        pretrained="https://github.com/SwinTransformer/storage/releases/download/v1.0.0/swin_small_patch4_window7_224.pth",
+    ):
+        super().__init__(
+            ape=ape,
+            attn_drop_rate=attn_drop_rate,
+            depths=depths,
+            drop_path_rate=drop_path_rate,
+            drop_rate=drop_rate,
+            embed_dim=embed_dim,
+            mlp_ratio=mlp_ratio,
+            num_heads=num_heads,
+            layers=layers,
+            patch_norm=patch_norm,
+            qk_scale=qk_scale,
+            qkv_bias=qkv_bias,
+            use_checkpoint=use_checkpoint,
+            window_size=window_size,
+            activation=activation,
+            pretrained=pretrained,
         )
-        if pretrained:
-            state = torch.hub.load_state_dict_from_url(
-                "https://github.com/SwinTransformer/storage/releases/download/v1.0.0/swin_base_patch4_window7_224_22k.pth",
-                map_location="cpu",
-            )
-            self.model.load_state_dict(state["model"], strict=False)
-
-    def change_input_channels(self, input_channels: int, mode="auto"):
-        self.model.change_input_channels(input_channels, mode)
-        return self
-
-    def forward(self, x):
-        features = self.model(x)
-        return features
 
 
-class SwinL(EncoderModule):
-    def __init__(self, pretrained=True, layers=(0, 1, 2, 3)):
-        super().__init__([192, 384, 768, 1536], [4, 8, 16, 32], [0, 1, 2, 3])
-        self.model = SwinTransformer(
-            ape=False,
-            attn_drop_rate=0.0,
-            depths=(2, 2, 18, 2),
-            drop_path_rate=0.3,
-            drop_rate=0.0,
-            embed_dim=192,
-            mlp_ratio=4.0,
-            num_heads=(6, 12, 24, 48),
-            out_indices=layers,
-            patch_norm=True,
-            qk_scale=None,
-            qkv_bias=True,
-            use_checkpoint=False,
-            window_size=7,
+class SwinB(SwinTransformer):
+    def __init__(
+        self,
+        ape=False,
+        attn_drop_rate=0.0,
+        depths=(2, 2, 18, 2),
+        drop_path_rate=0.5,
+        drop_rate=0.0,
+        embed_dim=128,
+        mlp_ratio=4.0,
+        num_heads=(4, 8, 16, 32),
+        layers=(0, 1, 2, 3),
+        patch_norm=True,
+        qk_scale=None,
+        qkv_bias=True,
+        use_checkpoint=False,
+        window_size=7,
+        activation=ACT_GELU,
+        pretrained="https://github.com/SwinTransformer/storage/releases/download/v1.0.0/swin_base_patch4_window7_224.pth",
+    ):
+        super().__init__(
+            ape=ape,
+            attn_drop_rate=attn_drop_rate,
+            depths=depths,
+            drop_path_rate=drop_path_rate,
+            drop_rate=drop_rate,
+            embed_dim=embed_dim,
+            mlp_ratio=mlp_ratio,
+            num_heads=num_heads,
+            layers=layers,
+            patch_norm=patch_norm,
+            qk_scale=qk_scale,
+            qkv_bias=qkv_bias,
+            use_checkpoint=use_checkpoint,
+            window_size=window_size,
+            activation=activation,
+            pretrained=pretrained,
         )
-        if pretrained:
-            state = torch.hub.load_state_dict_from_url(
-                "https://github.com/SwinTransformer/storage/releases/download/v1.0.0/swin_large_patch4_window7_224_22k.pth",
-                map_location="cpu",
-            )
-            self.model.load_state_dict(state["model"], strict=False)
 
-    def change_input_channels(self, input_channels: int, mode="auto"):
-        self.model.change_input_channels(input_channels, mode)
-        return self
 
-    def forward(self, x):
-        features = self.model(x)
-        return features
+class SwinL(SwinTransformer):
+    def __init__(
+        self,
+        ape=False,
+        attn_drop_rate=0.0,
+        depths=(2, 2, 18, 2),
+        drop_path_rate=0.3,
+        drop_rate=0.0,
+        embed_dim=192,
+        mlp_ratio=4.0,
+        num_heads=(6, 12, 24, 48),
+        layers=(0, 1, 2, 3),
+        patch_norm=True,
+        qk_scale=None,
+        qkv_bias=True,
+        use_checkpoint=False,
+        window_size=7,
+        activation=ACT_GELU,
+        pretrained="https://github.com/SwinTransformer/storage/releases/download/v1.0.0/swin_large_patch4_window7_224_22kto1k.pth",
+    ):
+        super().__init__(
+            ape=ape,
+            attn_drop_rate=attn_drop_rate,
+            depths=depths,
+            drop_path_rate=drop_path_rate,
+            drop_rate=drop_rate,
+            embed_dim=embed_dim,
+            mlp_ratio=mlp_ratio,
+            num_heads=num_heads,
+            layers=layers,
+            patch_norm=patch_norm,
+            qk_scale=qk_scale,
+            qkv_bias=qkv_bias,
+            use_checkpoint=use_checkpoint,
+            window_size=window_size,
+            activation=activation,
+            pretrained=pretrained,
+        )
