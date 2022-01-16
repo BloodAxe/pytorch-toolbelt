@@ -8,7 +8,7 @@ __all__ = ["BalancedBCEWithLogitsLoss", "balanced_binary_cross_entropy_with_logi
 
 
 def balanced_binary_cross_entropy_with_logits(
-    logits: Tensor, targets: Tensor, gamma: float = 1.0, ignore_index=None, reduction: str = "mean"
+    logits: Tensor, targets: Tensor, gamma: float = 1.0, ignore_index: Optional[int] = None, reduction: str = "mean"
 ) -> Tensor:
     """
     Balanced binary cross entropy loss.
@@ -57,7 +57,7 @@ class BalancedBCEWithLogitsLoss(nn.Module):
 
     __constants__ = ["gamma", "reduction", "ignore_index"]
 
-    def __init__(self, gamma: float = 1.0, reduction="mean", ignore_index=None):
+    def __init__(self, gamma: float = 1.0, reduction="mean", ignore_index: Optional[int] = None):
         """
 
         Args:
@@ -72,5 +72,5 @@ class BalancedBCEWithLogitsLoss(nn.Module):
 
     def forward(self, output: Tensor, target: Tensor) -> Tensor:
         return balanced_binary_cross_entropy_with_logits(
-            output, target, gamma=self.gamma, ignore_index=self.ignore_index, reduction="none"
+            output, target, gamma=self.gamma, ignore_index=self.ignore_index, reduction=self.reduction
         )
