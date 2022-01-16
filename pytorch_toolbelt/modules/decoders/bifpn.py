@@ -1,9 +1,9 @@
-from typing import List
+from typing import List, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+from torch import Tensor
 from .common import DecoderModule
 from ..activations import get_activation_block, ACT_RELU
 
@@ -29,8 +29,8 @@ class BiFPNDepthwiseConvBlock(nn.Module):
         self.bn = nn.BatchNorm2d(out_channels, momentum=0.9997, eps=4e-5)
         self.act = act(inplace=True)
 
-    def forward(self, inputs):
-        x = self.depthwise(inputs)
+    def forward(self, x: Tensor) -> Tensor:
+        x = self.depthwise(x)
         x = self.pointwise(x)
         x = self.bn(x)
         return self.act(x)
@@ -48,8 +48,8 @@ class BiFPNConvBlock(nn.Module):
         self.bn = nn.BatchNorm2d(out_channels, momentum=0.9997, eps=4e-5)
         self.act = act(inplace=True)
 
-    def forward(self, inputs):
-        x = self.conv(inputs)
+    def forward(self, x: Tensor) -> Tensor:
+        x = self.conv(x)
         x = self.bn(x)
         return self.act(x)
 
@@ -59,7 +59,7 @@ class BiFPNBlock(nn.Module):
     Bi-directional Feature Pyramid Network
     """
 
-    def __init__(self, feature_size=64, epsilon=0.0001, act=nn.ReLU):
+    def __init__(self, feature_size: int = 64, epsilon: float = 0.0001, act=nn.ReLU):
         super(BiFPNBlock, self).__init__()
         self.epsilon = epsilon
 
@@ -81,7 +81,7 @@ class BiFPNBlock(nn.Module):
         torch.nn.init.constant_(self.w1, 1)
         torch.nn.init.constant_(self.w2, 1)
 
-    def forward(self, inputs):
+    def forward(self, inputs: List[Tensor]) -> List[Tensor]:
         p3_x, p4_x, p5_x, p6_x, p7_x = inputs
 
         # Calculate Top-Down Pathway
@@ -99,18 +99,10 @@ class BiFPNBlock(nn.Module):
 
         # Calculate Bottom-Up Pathway
         p3_out = p3_td
-        p4_out = self.p4_out(
-            w2[0, 0] * p4_x + w2[1, 0] * p4_td + w2[2, 0] * F.interpolate(p3_out, size=p4_x.size()[2:])
-        )
-        p5_out = self.p5_out(
-            w2[0, 1] * p5_x + w2[1, 1] * p5_td + w2[2, 1] * F.interpolate(p4_out, size=p5_x.size()[2:])
-        )
-        p6_out = self.p6_out(
-            w2[0, 2] * p6_x + w2[1, 2] * p6_td + w2[2, 2] * F.interpolate(p5_out, size=p6_x.size()[2:])
-        )
-        p7_out = self.p7_out(
-            w2[0, 3] * p7_x + w2[1, 3] * p7_td + w2[2, 3] * F.interpolate(p6_out, size=p7_x.size()[2:])
-        )
+        p4_out = self.p4_out(w2[0, 0] * p4_x + w2[1, 0] * p4_td + w2[2, 0] * F.interpolate(p3_out, size=p4_x.size()[2:]))
+        p5_out = self.p5_out(w2[0, 1] * p5_x + w2[1, 1] * p5_td + w2[2, 1] * F.interpolate(p4_out, size=p5_x.size()[2:]))
+        p6_out = self.p6_out(w2[0, 2] * p6_x + w2[1, 2] * p6_td + w2[2, 2] * F.interpolate(p5_out, size=p6_x.size()[2:]))
+        p7_out = self.p7_out(w2[0, 3] * p7_x + w2[1, 3] * p7_td + w2[2, 3] * F.interpolate(p6_out, size=p7_x.size()[2:]))
 
         return [p3_out, p4_out, p5_out, p6_out, p7_out]
 
@@ -141,10 +133,10 @@ class BiFPNDecoder(DecoderModule):
         # p7 is computed by applying ReLU followed by a 3x3 stride-2 conv on p6
         self.p7 = BiFPNConvBlock(channels, channels, kernel_size=3, stride=2, padding=1, act=act)
 
-        bifpns = []
+        bifpns: List[BiFPNBlock] = []
         for _ in range(num_layers):
             bifpns.append(BiFPNBlock(channels, act=act))
-        self.bifpn = nn.Sequential(*bifpns)
+        self.bifpn = nn.ModuleList(bifpns)
 
         self._channels = [channels] * 5
         self._strides = tuple(strides) + (strides[-1] * 2, strides[-1] * 4)
@@ -157,7 +149,7 @@ class BiFPNDecoder(DecoderModule):
     def strides(self):
         return self._strides
 
-    def forward(self, inputs):
+    def forward(self, inputs: List[Tensor]) -> List[Tensor]:
         c3, c4, c5 = inputs
 
         # Calculate the input column of BiFPN
@@ -167,5 +159,7 @@ class BiFPNDecoder(DecoderModule):
         p6_x = self.p6(c5)
         p7_x = self.p7(p6_x)
 
-        features = [p3_x, p4_x, p5_x, p6_x, p7_x]
-        return self.bifpn(features)
+        features = p3_x, p4_x, p5_x, p6_x, p7_x
+        for bifpn in self.bifpn:
+            features = bifpn(features)
+        return features

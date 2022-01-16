@@ -5,7 +5,7 @@ import torch
 from typing import List, Union
 from torch import Tensor, nn
 
-from ..common import EncoderModule, _take
+from ..common import EncoderModule, _take_ints, _take_tensors
 
 __all__ = ["GenericTimmEncoder", "make_n_channel_input_std_conv"]
 
@@ -33,7 +33,7 @@ class GenericTimmEncoder(EncoderModule):
 
     def forward(self, x: Tensor) -> List[Tensor]:
         all_feature_maps = self.encoder(x)
-        return _take(all_feature_maps, self._layers)
+        return _take_tensors(all_feature_maps, self._layers)
 
 
 def make_n_channel_input_std_conv(conv: nn.Module, in_channels: int, mode="auto", **kwargs) -> nn.Module:
