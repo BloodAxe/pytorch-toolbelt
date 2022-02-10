@@ -109,6 +109,7 @@ def match_bboxes(
 
     # Reorder predictions to start matching with the most confident ones
     order = np.argsort(-pred_scores)
+    rorder = np.argsort(order)
     pred_boxes = pred_boxes[order]
     pred_labels = pred_labels[order]
     #
@@ -116,20 +117,17 @@ def match_bboxes(
         box_iou(torch.from_numpy(pred_boxes).float(), torch.from_numpy(true_boxes).float())
     )
 
-    row_ind = []
-    col_ind = []
-
     remainig_preds = np.ones(num_pred_objects, dtype=bool)
     remainig_trues = np.ones(num_true_objects, dtype=bool)
     true_positive_indexes = []
 
-    for ri in range(num_pred_objects):
-        ci = np.argmax(iou_matrix[ri])
-        if iou_matrix[ri, ci] >= iou_threshold:
-            row_ind.append(ri)
-            col_ind.append(ci)
+    for ci in range(num_true_objects):
+        # Find a first prediction box with IoU greater than or equal iou threshold with a groundtruth box
+        candidates = np.flatnonzero(iou_matrix[:, ci] >= iou_threshold)
+        if len(candidates):
+            ri = candidates[0]
 
-            iou_matrix[:, ci] = 0
+            iou_matrix[ri, :] = 0
 
             remainig_preds[ri] = False
             remainig_trues[ci] = False
@@ -140,8 +138,8 @@ def match_bboxes(
             if pred_class == true_class:
                 # If there is a matching bbox found above, increase the count of true positives by one (TP).
                 true_positives[true_class] += 1
-                # TODO: Need to inverse indexes here to keep the order of original (unsorted) bboxes
-                true_positive_indexes.append((ri, ci))
+                # Inverse indexe of predicted boxes here to keep the order of original (unsorted) bboxes
+                true_positive_indexes.append((rorder[ri], ci))
             else:
                 # If classes does not match, then we add false-positive for predicted class and
                 # false-negative to target class
@@ -179,20 +177,13 @@ def match_bboxes_hungarian(
     iou_threshold: float = 0.5,
 ) -> BBoxesMatchResult:
     """
-    Match predictect and ground-truth bounding boxes with following matching rules:
-
-    If the pred_scores is None, then matches are assigned by Hungarian algorithm to maximize IoU between
-    predicted and ground-truth box. If pred_scores is set, predicted bboxes matched w.r.t to their confidence scores,
-    boxes with higher confidence are matched the first.
-
-    There can be only one match between predicted and ground-truth box.
+    Match predictect and ground-truth bounding boxes using hungarian matching algorithm.
 
     For multi-class case, if the boxes match, but their classes does not match, this counts as 1 FN
     to ground-truth class and 1 FP to predicted class.
 
     :param pred_boxes: Detected bboxes in [x1, y1, x2, y2] format of shape [N,4]
     :param pred_labels: Detected labels of shape [N]
-    :param pred_scores: Detected scores of shape [N]. Optional
     :param true_boxes:  Ground-truth bboxes in [x1, y1, x2, y2] format of shape [M,4]
     :param true_labels: Ground-truth labels of shape [M]
     :param num_classes: Total number of classes

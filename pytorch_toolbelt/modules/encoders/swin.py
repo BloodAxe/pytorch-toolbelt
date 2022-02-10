@@ -21,7 +21,7 @@ __all__ = ["SwinTransformer", "SwinB", "SwinL", "SwinT", "SwinS"]
 
 
 class Mlp(nn.Module):
-    """ Multilayer perceptron."""
+    """Multilayer perceptron."""
 
     def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.GELU, drop=0.0):
         super().__init__()
@@ -573,7 +573,9 @@ class SwinTransformer(EncoderModule):
             patch_size = to_2tuple(patch_size)
             patches_resolution = [pretrain_img_size[0] // patch_size[0], pretrain_img_size[1] // patch_size[1]]
 
-            self.absolute_pos_embed = nn.Parameter(torch.zeros(1, embed_dim, patches_resolution[0], patches_resolution[1]))
+            self.absolute_pos_embed = nn.Parameter(
+                torch.zeros(1, embed_dim, patches_resolution[0], patches_resolution[1])
+            )
             trunc_normal_(self.absolute_pos_embed, std=0.02)
 
         self.pos_drop = nn.Dropout(p=drop_rate)
