@@ -1,6 +1,29 @@
-# Pytorch-toolbelt
+# Important Update
 
-[![Documentation Status](https://readthedocs.org/projects/pytorch-toolbelt/badge/?version=latest)](https://pytorch-toolbelt.readthedocs.io/en/latest/?badge=latest)
+![ukraine-flag](docs/480px-Flag_of_Ukraine.jpg)
+
+On February 24th, 2022, Russia declared war and invaded peaceful Ukraine. 
+After the annexation of Crimea and the occupation of the Donbas region, Putin's regime decided to destroy Ukrainian nationality.
+Ukrainians show fierce resistance and demonstrate to the entire world what it's like to fight for the nation's independence.
+
+Ukraine's government launched a website to help russian mothers, wives & sisters find their beloved ones killed or captured in Ukraine - https://200rf.com & https://t.me/rf200_now (Telegram channel).
+Our goal is to inform those still in Russia & Belarus, so they refuse to assault Ukraine. 
+
+Help us get maximum exposure to what is happening in Ukraine, violence, and inhuman acts of terror that the "Russian World" has brought to Ukraine. 
+This is a comprehensive Wiki on how you can help end this war: https://how-to-help-ukraine-now.super.site/ 
+
+Official channels
+* [Official account of the Parliament of Ukraine](https://t.me/verkhovnaradaofukraine)
+* [Ministry of Defence](https://www.facebook.com/MinistryofDefence.UA)
+* [Office of the president](https://www.facebook.com/president.gov.ua)
+* [Cabinet of Ministers of Ukraine](https://www.facebook.com/KabminUA)
+* [Center of strategic communications](https://www.facebook.com/StratcomCentreUA)
+* [Minister of Foreign Affairs of Ukraine](https://twitter.com/DmytroKuleba)
+
+Glory to Ukraine!
+
+
+# Pytorch-toolbelt
 
 A `pytorch-toolbelt` is a Python library with a set of bells and whistles for PyTorch for fast R&D prototyping and Kaggle farming:
 
