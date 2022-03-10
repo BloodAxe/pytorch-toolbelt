@@ -4,18 +4,35 @@ Encodes listed here provides easy way to swap backbone of classification/segment
 """
 import math
 import warnings
-from typing import List, Union
+from typing import List, Union, Tuple, Iterable, Any
 
 import torch
 from torch import nn, Tensor
 
-__all__ = ["EncoderModule", "_take", "make_n_channel_input"]
+__all__ = ["EncoderModule", "_take", "_take_ints", "_take_tensors", "make_n_channel_input"]
 
 from pytorch_toolbelt.utils.support import pytorch_toolbelt_deprecated
 
 
-def _take(elements, indexes):
-    return list([elements[i] for i in indexes])
+def _take(elements: List[Any], indexes: List[int]) -> List[Any]:
+    selected = []
+    for i in indexes:
+        selected.append(elements[i])
+    return selected
+
+
+def _take_ints(elements: List[int], indexes: List[int]) -> List[int]:
+    selected: List[int] = []
+    for i in indexes:
+        selected.append(elements[i])
+    return selected
+
+
+def _take_tensors(elements: List[Tensor], indexes: List[int]) -> List[Tensor]:
+    selected: List[Tensor] = []
+    for i in indexes:
+        selected.append(elements[i])
+    return selected
 
 
 def make_n_channel_input_conv(
@@ -78,15 +95,16 @@ def make_n_channel_input(conv: nn.Module, in_channels: int, mode="auto", **kwarg
 
 
 class EncoderModule(nn.Module):
+    __constants__ = ["_layers", "_output_strides", "_output_filters"]
+
     def __init__(self, channels: List[int], strides: List[int], layers: List[int]):
         super().__init__()
         if len(channels) != len(strides):
             raise ValueError("Number of channels must be equal to number of strides")
 
-        self._layers = layers
-
-        self._output_strides = _take(strides, layers)
-        self._output_filters = _take(channels, layers)
+        self._layers = list(layers)
+        self._output_strides = _take_ints(strides, self._layers)
+        self._output_filters = _take_ints(channels, self._layers)
 
     def forward(self, x: Tensor) -> List[Tensor]:  # skipcq: PYL-W0221
         output_features = []
@@ -95,17 +113,17 @@ class EncoderModule(nn.Module):
             output_features.append(output)
             x = output
         # Return only features that were requested
-        return _take(output_features, self._layers)
+        return _take_tensors(output_features, self._layers)
 
     @property
     @torch.jit.unused
-    def channels(self) -> List[int]:
-        return self._output_filters
+    def channels(self) -> Tuple[int, ...]:
+        return tuple(self._output_filters)
 
     @property
     @torch.jit.unused
-    def strides(self) -> List[int]:
-        return self._output_strides
+    def strides(self) -> Tuple[int, ...]:
+        return tuple(self._output_strides)
 
     @torch.jit.unused
     def set_trainable(self, trainable):

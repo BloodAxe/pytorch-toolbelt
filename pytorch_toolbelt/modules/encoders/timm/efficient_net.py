@@ -61,26 +61,27 @@ def make_n_channel_input_conv2d_same(conv: nn.Conv2d, in_channels: int, mode="au
     return new_conv
 
 
-class TimmB0Encoder(EncoderModule):
-    def __init__(self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU, no_stride=False):
-        from timm.models.efficientnet import tf_efficientnet_b0_ns
+class TimmBaseEfficientNetEncoder(EncoderModule):
+    def __init__(self, encoder, features, layers=[1, 2, 3, 4], first_conv_stride_one: bool = False):
 
-        act_layer = get_activation_block(activation)
-        encoder = tf_efficientnet_b0_ns(
-            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.05
-        )
         strides = [2, 4, 8, 16, 32]
 
-        if no_stride:
-            encoder.blocks[5][0].conv_dw.stride = (1, 1)
-            encoder.blocks[5][0].conv_dw.dilation = (2, 2)
+        if first_conv_stride_one:
+            strides = [1, 2, 4, 8, 16]
+            encoder.conv_stem.stride = (1, 1)
 
-            encoder.blocks[3][0].conv_dw.stride = (1, 1)
-            encoder.blocks[3][0].conv_dw.dilation = (2, 2)
-            strides[3] = 8
-            strides[4] = 8
+        # if no_stride_s16:
+        #     encoder.blocks[3][0].conv_dw.stride = (1, 1)
+        #     encoder.blocks[3][0].conv_dw.dilation = (2, 2)
+        #     strides[3] = strides[2]
+        #     strides[4] = strides[3] * 2
+        #
+        # if no_stride_s32:
+        #     encoder.blocks[5][0].conv_dw.stride = (1, 1)
+        #     encoder.blocks[5][0].conv_dw.dilation = (2, 2)
+        #     strides[4] = strides[3]
 
-        super().__init__([16, 24, 40, 112, 320], strides, layers)
+        super().__init__(features, strides, layers)
         self.encoder = encoder
 
     def forward(self, x):
@@ -95,260 +96,165 @@ class TimmB0Encoder(EncoderModule):
         return self
 
 
-class TimmB1Encoder(EncoderModule):
-    def __init__(self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU, no_stride=False):
+class TimmB0Encoder(TimmBaseEfficientNetEncoder):
+    def __init__(
+        self,
+        pretrained=True,
+        layers=[1, 2, 3, 4],
+        activation: str = ACT_SILU,
+        first_conv_stride_one: bool = False,
+        use_tf=True,
+    ):
+        from timm.models.efficientnet import tf_efficientnet_b0_ns, efficientnet_b0
+
+        model_cls = tf_efficientnet_b0_ns if use_tf else efficientnet_b0
+
+        act_layer = get_activation_block(activation)
+        encoder = model_cls(pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.05)
+
+        super().__init__(
+            encoder, features=[16, 24, 40, 112, 320], layers=layers, first_conv_stride_one=first_conv_stride_one
+        )
+
+
+class TimmB1Encoder(TimmBaseEfficientNetEncoder):
+    def __init__(
+        self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU, first_conv_stride_one: bool = False
+    ):
         from timm.models.efficientnet import tf_efficientnet_b1_ns
 
         act_layer = get_activation_block(activation)
         encoder = tf_efficientnet_b1_ns(
             pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.05
         )
-        strides = [2, 4, 8, 16, 32]
-        if no_stride:
-            encoder.blocks[5][0].conv_dw.stride = (1, 1)
-            encoder.blocks[5][0].conv_dw.dilation = (2, 2)
-
-            encoder.blocks[3][0].conv_dw.stride = (1, 1)
-            encoder.blocks[3][0].conv_dw.dilation = (2, 2)
-            strides[3] = 8
-            strides[4] = 8
-        super().__init__([16, 24, 40, 112, 320], strides, layers)
-        self.encoder = encoder
-
-    def forward(self, x):
-        features = self.encoder(x)
-        return _take(features, self._layers)
-
-    @torch.jit.unused
-    def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
-        self.encoder.conv_stem = make_n_channel_input_conv2d_same(
-            self.encoder.conv_stem, input_channels, mode, **kwargs
-        )
-        return self
+        super().__init__(encoder, [16, 24, 40, 112, 320], layers=layers, first_conv_stride_one=first_conv_stride_one)
 
 
-class TimmB2Encoder(EncoderModule):
-    def __init__(self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU, no_stride=False):
-        from timm.models.efficientnet import tf_efficientnet_b2_ns
-
-        act_layer = get_activation_block(activation)
-        encoder = tf_efficientnet_b2_ns(
-            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.1
-        )
-        strides = [2, 4, 8, 16, 32]
-        if no_stride:
-            encoder.blocks[5][0].conv_dw.stride = (1, 1)
-            encoder.blocks[5][0].conv_dw.dilation = (2, 2)
-
-            encoder.blocks[3][0].conv_dw.stride = (1, 1)
-            encoder.blocks[3][0].conv_dw.dilation = (2, 2)
-            strides[3] = 8
-            strides[4] = 8
-        super().__init__([16, 24, 48, 120, 352], strides, layers)
-        self.encoder = encoder
-
-    def forward(self, x):
-        features = self.encoder(x)
-        return _take(features, self._layers)
-
-    @torch.jit.unused
-    def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
-        self.encoder.conv_stem = make_n_channel_input_conv2d_same(
-            self.encoder.conv_stem, input_channels, mode, **kwargs
-        )
-        return self
-
-
-class TimmB3Encoder(EncoderModule):
-    def __init__(self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU, no_stride=False):
-        from timm.models.efficientnet import tf_efficientnet_b3_ns
-
-        act_layer = get_activation_block(activation)
-        encoder = tf_efficientnet_b3_ns(
-            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.1
-        )
-        strides = [2, 4, 8, 16, 32]
-        if no_stride:
-            encoder.blocks[5][0].conv_dw.stride = (1, 1)
-            encoder.blocks[5][0].conv_dw.dilation = (2, 2)
-
-            encoder.blocks[3][0].conv_dw.stride = (1, 1)
-            encoder.blocks[3][0].conv_dw.dilation = (2, 2)
-            strides[3] = 8
-            strides[4] = 8
-        super().__init__([24, 32, 48, 136, 384], strides, layers)
-        self.encoder = encoder
-
-    def forward(self, x):
-        features = self.encoder(x)
-        return _take(features, self._layers)
-
-    @torch.jit.unused
-    def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
-        self.encoder.conv_stem = make_n_channel_input_conv2d_same(
-            self.encoder.conv_stem, input_channels, mode, **kwargs
-        )
-        return self
-
-
-class TimmB4Encoder(EncoderModule):
+class TimmB2Encoder(TimmBaseEfficientNetEncoder):
     def __init__(
         self,
         pretrained=True,
         layers=[1, 2, 3, 4],
         activation: str = ACT_SILU,
-        no_stride_s32=False,
-        no_stride_s16=False,
+        first_conv_stride_one: bool = False,
+        drop_path_rate: float = 0.1,
+    ):
+        from timm.models.efficientnet import tf_efficientnet_b2_ns
+
+        act_layer = get_activation_block(activation)
+        encoder = tf_efficientnet_b2_ns(
+            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=drop_path_rate
+        )
+        super().__init__(encoder, [16, 24, 48, 120, 352], layers=layers, first_conv_stride_one=first_conv_stride_one)
+
+
+class TimmB3Encoder(TimmBaseEfficientNetEncoder):
+    def __init__(
+        self,
+        pretrained=True,
+        layers=[1, 2, 3, 4],
+        activation: str = ACT_SILU,
+        first_conv_stride_one: bool = False,
+        drop_path_rate=0.1,
+    ):
+        from timm.models.efficientnet import tf_efficientnet_b3_ns
+
+        act_layer = get_activation_block(activation)
+        encoder = tf_efficientnet_b3_ns(
+            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=drop_path_rate
+        )
+        super().__init__(encoder, [24, 32, 48, 136, 384], layers=layers, first_conv_stride_one=first_conv_stride_one)
+
+
+class TimmB4Encoder(TimmBaseEfficientNetEncoder):
+    def __init__(
+        self,
+        pretrained=True,
+        layers=[1, 2, 3, 4],
+        activation: str = ACT_SILU,
+        first_conv_stride_one: bool = False,
+        drop_path_rate=0.2,
     ):
         from timm.models.efficientnet import tf_efficientnet_b4_ns
 
         act_layer = get_activation_block(activation)
         encoder = tf_efficientnet_b4_ns(
-            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.2
+            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=drop_path_rate
         )
-        strides = [2, 4, 8, 16, 32]
 
-        if no_stride_s16:
-            encoder.blocks[3][0].conv_dw.stride = (1, 1)
-            encoder.blocks[3][0].conv_dw.dilation = (2, 2)
-            strides[3] = 8
-            strides[4] = 16
-
-        if no_stride_s32:
-            encoder.blocks[5][0].conv_dw.stride = (1, 1)
-            encoder.blocks[5][0].conv_dw.dilation = (2, 2)
-            strides[4] = strides[3]
-
-        super().__init__([24, 32, 56, 160, 448], strides, layers)
-        self.encoder = encoder
-
-    def forward(self, x):
-        features = self.encoder(x)
-        return _take(features, self._layers)
-
-    @torch.jit.unused
-    def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
-        self.encoder.conv_stem = make_n_channel_input_conv2d_same(
-            self.encoder.conv_stem, input_channels, mode, **kwargs
-        )
-        return self
+        super().__init__(encoder, [24, 32, 56, 160, 448], layers=layers, first_conv_stride_one=first_conv_stride_one)
 
 
-class TimmB5Encoder(EncoderModule):
-    def __init__(self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU, no_stride=False):
+class TimmB5Encoder(TimmBaseEfficientNetEncoder):
+    def __init__(
+        self,
+        pretrained=True,
+        layers=[1, 2, 3, 4],
+        activation: str = ACT_SILU,
+        first_conv_stride_one: bool = False,
+        drop_path_rate=0.2,
+    ):
         from timm.models.efficientnet import tf_efficientnet_b5_ns
 
         act_layer = get_activation_block(activation)
         encoder = tf_efficientnet_b5_ns(
-            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.2
+            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=drop_path_rate
         )
-        strides = [2, 4, 8, 16, 32]
-        if no_stride:
-            encoder.blocks[5][0].conv_dw.stride = (1, 1)
-            encoder.blocks[5][0].conv_dw.dilation = (2, 2)
-
-            encoder.blocks[3][0].conv_dw.stride = (1, 1)
-            encoder.blocks[3][0].conv_dw.dilation = (2, 2)
-            strides[3] = 8
-            strides[4] = 8
-        super().__init__([24, 40, 64, 176, 512], strides, layers)
-        self.encoder = encoder
-
-    def forward(self, x):
-        features = self.encoder(x)
-        return _take(features, self._layers)
-
-    @torch.jit.unused
-    def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
-        self.encoder.conv_stem = make_n_channel_input_conv2d_same(
-            self.encoder.conv_stem, input_channels, mode, **kwargs
-        )
-        return self
+        super().__init__(encoder, [24, 40, 64, 176, 512], layers=layers, first_conv_stride_one=first_conv_stride_one)
 
 
-class TimmB6Encoder(EncoderModule):
-    def __init__(self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU, no_stride=False):
+class TimmB6Encoder(TimmBaseEfficientNetEncoder):
+    def __init__(
+        self,
+        pretrained=True,
+        layers=[1, 2, 3, 4],
+        activation: str = ACT_SILU,
+        first_conv_stride_one: bool = False,
+        drop_path_rate=0.2,
+    ):
         from timm.models.efficientnet import tf_efficientnet_b6_ns
 
         act_layer = get_activation_block(activation)
         encoder = tf_efficientnet_b6_ns(
-            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.2
+            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=drop_path_rate
         )
-        strides = [2, 4, 8, 16, 32]
-        if no_stride:
-            encoder.blocks[5][0].conv_dw.stride = (1, 1)
-            encoder.blocks[5][0].conv_dw.dilation = (2, 2)
-
-            encoder.blocks[3][0].conv_dw.stride = (1, 1)
-            encoder.blocks[3][0].conv_dw.dilation = (2, 2)
-            strides[3] = 8
-            strides[4] = 8
-        super().__init__([32, 40, 72, 200, 576], strides, layers)
-        self.encoder = encoder
-
-    def forward(self, x):
-        features = self.encoder(x)
-        return _take(features, self._layers)
-
-    @torch.jit.unused
-    def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
-        self.encoder.conv_stem = make_n_channel_input_conv2d_same(
-            self.encoder.conv_stem, input_channels, mode, **kwargs
-        )
-        return self
+        super().__init__(encoder, [32, 40, 72, 200, 576], layers=layers, first_conv_stride_one=first_conv_stride_one)
 
 
-class TimmB7Encoder(EncoderModule):
-    def __init__(self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU, no_stride=False):
+class TimmB7Encoder(TimmBaseEfficientNetEncoder):
+    def __init__(
+        self,
+        pretrained=True,
+        layers=[1, 2, 3, 4],
+        activation: str = ACT_SILU,
+        first_conv_stride_one: bool = False,
+        drop_path_rate=0.2,
+    ):
         from timm.models.efficientnet import tf_efficientnet_b7_ns
 
         act_layer = get_activation_block(activation)
         encoder = tf_efficientnet_b7_ns(
-            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.2
+            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=drop_path_rate
         )
-        strides = [2, 4, 8, 16, 32]
-        if no_stride:
-            encoder.blocks[5][0].conv_dw.stride = (1, 1)
-            encoder.blocks[5][0].conv_dw.dilation = (2, 2)
-
-            encoder.blocks[3][0].conv_dw.stride = (1, 1)
-            encoder.blocks[3][0].conv_dw.dilation = (2, 2)
-            strides[3] = 8
-            strides[4] = 8
-        super().__init__([32, 48, 80, 224, 640], strides, layers)
-        self.encoder = encoder
-
-    def forward(self, x):
-        features = self.encoder(x)
-        return _take(features, self._layers)
-
-    @torch.jit.unused
-    def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
-        self.encoder.conv_stem = make_n_channel_input_conv2d_same(
-            self.encoder.conv_stem, input_channels, mode, **kwargs
-        )
-        return self
+        super().__init__(encoder, [32, 48, 80, 224, 640], layers=layers, first_conv_stride_one=first_conv_stride_one)
 
 
-class TimmMixNetXLEncoder(EncoderModule):
-    def __init__(self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU):
+class TimmMixNetXLEncoder(TimmBaseEfficientNetEncoder):
+    def __init__(
+        self,
+        pretrained=True,
+        layers=[1, 2, 3, 4],
+        activation: str = ACT_SILU,
+        first_conv_stride_one: bool = False,
+        drop_path_rate=0.2,
+    ):
         from timm.models.efficientnet import mixnet_xl
 
         act_layer = get_activation_block(activation)
-        encoder = mixnet_xl(pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.2)
-        super().__init__([40, 48, 64, 192, 320], [2, 4, 8, 16, 32], layers)
-        self.encoder = encoder
-
-    def forward(self, x):
-        features = self.encoder(x)
-        return _take(features, self._layers)
-
-    @torch.jit.unused
-    def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
-        self.encoder.conv_stem = make_n_channel_input_conv2d_same(
-            self.encoder.conv_stem, input_channels, mode, **kwargs
+        encoder = mixnet_xl(
+            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=drop_path_rate
         )
-        return self
+        super().__init__(encoder, [40, 48, 64, 192, 320], layers=layers, first_conv_stride_one=first_conv_stride_one)
 
 
 # Aliases to keep backward compatibility

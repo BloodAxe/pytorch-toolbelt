@@ -1,6 +1,6 @@
 import torch
 from torch import nn, Tensor
-from typing import List, Union, Iterable, Optional, Dict
+from typing import List, Union, Iterable, Optional, Dict, Tuple
 
 __all__ = ["ApplySoftmaxTo", "ApplySigmoidTo", "Ensembler", "PickModelOutput", "SelectByIndex"]
 
@@ -8,7 +8,13 @@ from pytorch_toolbelt.inference.tta import _deaugment_averaging
 
 
 class ApplySoftmaxTo(nn.Module):
-    def __init__(self, model: nn.Module, output_key: Union[str, List[str]] = "logits", dim=1, temperature=1):
+    output_keys: Tuple
+    temperature: float
+    dim: int
+
+    def __init__(
+        self, model: nn.Module, output_key: Union[str, Iterable[str]] = "logits", dim: int = 1, temperature: float = 1
+    ):
         """
         Apply softmax activation on given output(s) of the model
         :param model: Model to wrap
@@ -17,9 +23,9 @@ class ApplySoftmaxTo(nn.Module):
         :param temperature: Temperature scaling coefficient. Values > 1 will make logits sharper.
         """
         super().__init__()
-        output_key = output_key if isinstance(output_key, (list, tuple)) else [output_key]
         # By converting to set, we prevent double-activation by passing output_key=["logits", "logits"]
-        self.output_keys = set(output_key)
+        output_key = tuple(set(output_key)) if isinstance(output_key, Iterable) else tuple([output_key])
+        self.output_keys = output_key
         self.model = model
         self.dim = dim
         self.temperature = temperature
@@ -27,12 +33,15 @@ class ApplySoftmaxTo(nn.Module):
     def forward(self, *input, **kwargs):
         output = self.model(*input, **kwargs)
         for key in self.output_keys:
-            output[key] = output[key].mul(self.temperature).softmax(dim=1)
+            output[key] = output[key].mul(self.temperature).softmax(dim=self.dim)
         return output
 
 
 class ApplySigmoidTo(nn.Module):
-    def __init__(self, model: nn.Module, output_key: Union[str, List[str]] = "logits", temperature=1):
+    output_keys: Tuple
+    temperature: float
+
+    def __init__(self, model: nn.Module, output_key: Union[str, Iterable[str]] = "logits", temperature=1):
         """
         Apply sigmoid activation on given output(s) of the model
         :param model: Model to wrap
@@ -40,16 +49,16 @@ class ApplySigmoidTo(nn.Module):
         :param temperature: Temperature scaling coefficient. Values > 1 will make logits sharper.
         """
         super().__init__()
-        output_key = output_key if isinstance(output_key, (list, tuple)) else [output_key]
         # By converting to set, we prevent double-activation by passing output_key=["logits", "logits"]
-        self.output_keys = set(output_key)
+        output_key = tuple(set(output_key)) if isinstance(output_key, Iterable) else tuple([output_key])
+        self.output_keys = output_key
         self.model = model
         self.temperature = temperature
 
     def forward(self, *input, **kwargs):  # skipcq: PYL-W0221
         output = self.model(*input, **kwargs)
         for key in self.output_keys:
-            output[key] = output[key].mul(self.temperature).sigmoid()
+            output[key] = output[key].mul(self.temperature).sigmoid_()
         return output
 
 

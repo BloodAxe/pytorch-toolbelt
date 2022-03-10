@@ -4,6 +4,7 @@
 import random
 import warnings
 
+import numpy as np
 import torch
 
 __all__ = ["set_manual_seed", "get_rng_state", "set_rng_state", "get_random_name"]
@@ -13,7 +14,7 @@ def set_manual_seed(seed):
     """Set random seed for Python and PyTorch random generators."""
     random.seed(seed)
     torch.manual_seed(seed)
-
+    np.random.seed(seed)
     print("Using manual seed: {seed}".format(seed=seed))
 
 

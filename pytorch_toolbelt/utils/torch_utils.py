@@ -2,7 +2,7 @@
 
 """
 import collections
-from typing import Optional, Sequence, Union, Dict, List, Any
+from typing import Optional, Sequence, Union, Dict, List, Any, Iterable
 
 import numpy as np
 import torch
@@ -10,28 +10,30 @@ from torch import nn, Tensor
 from .support import pytorch_toolbelt_deprecated
 
 __all__ = [
-    "count_parameters",
-    "image_to_tensor",
-    "logit",
-    "mask_from_tensor",
-    "maybe_cuda",
-    "rgb_image_from_tensor",
-    "tensor_from_mask_image",
-    "tensor_from_rgb_image",
-    "to_numpy",
-    "to_tensor",
-    "resize_like",
-    "resize_as",
-    "transfer_weights",
-    "softmax_over_dim_0",
-    "softmax_over_dim_1",
-    "softmax_over_dim_2",
-    "softmax_over_dim_3",
     "argmax_over_dim_0",
     "argmax_over_dim_1",
     "argmax_over_dim_2",
     "argmax_over_dim_3",
+    "count_parameters",
+    "image_to_tensor",
+    "int_to_string_human_friendly",
+    "logit",
+    "mask_from_tensor",
+    "maybe_cuda",
+    "resize_as",
+    "resize_like",
+    "rgb_image_from_tensor",
     "sigmoid_with_threshold",
+    "softmax_over_dim_0",
+    "softmax_over_dim_1",
+    "softmax_over_dim_2",
+    "softmax_over_dim_3",
+    "tensor_from_mask_image",
+    "tensor_from_rgb_image",
+    "to_numpy",
+    "to_tensor",
+    "transfer_weights",
+    "move_to_device_non_blocking",
 ]
 
 
@@ -83,11 +85,14 @@ def logit(x: torch.Tensor, eps=1e-5) -> torch.Tensor:
     return torch.log(x / (1.0 - x))
 
 
-def count_parameters(model: nn.Module, keys: Optional[Sequence[str]] = None) -> Dict[str, int]:
+def count_parameters(
+    model: nn.Module, keys: Optional[Sequence[str]] = None, human_friendly: bool = False
+) -> Dict[str, int]:
     """
     Count number of total and trainable parameters of a model
     :param model: A model
     :param keys: Optional list of top-level blocks
+    :param human_friendly: If True, outputs human-friendly number of paramters: 13.3M, 124K
     :return: Tuple (total, trainable)
     """
     if keys is None:
@@ -100,12 +105,29 @@ def count_parameters(model: nn.Module, keys: Optional[Sequence[str]] = None) -> 
         if hasattr(model, key) and model.__getattr__(key) is not None:
             parameters[key] = int(sum(p.numel() for p in model.__getattr__(key).parameters()))
 
+    if human_friendly:
+        for key in parameters.keys():
+            parameters[key] = int_to_string_human_friendly(parameters[key])
     return parameters
 
 
-def to_numpy(x: Union[torch.Tensor, np.ndarray, Any]) -> np.ndarray:
+def int_to_string_human_friendly(value: int) -> str:
+    if value < 1000:
+        return str(value)
+    if value < 1000000:
+        return f"{value / 1000.:.2f}K"
+    if value < 10000000:
+        return f"{value / 1000000.:.2f}M"
+    if value < 100000000:
+        return f"{value / 1000000.:.1f}M"
+    if value < 1000000000:
+        return f"{value / 1000000.:.1f}M"
+    return f"{value / 1000000000.:.2f}B"
+
+
+def to_numpy(x: Union[torch.Tensor, np.ndarray, Any, None]) -> Union[np.ndarray, None]:
     """
-    Convert whatever to numpy array
+    Convert whatever to numpy array. None value returned as is.
 
     Args:
         :param x: List, tuple, PyTorch tensor or numpy array
@@ -113,11 +135,13 @@ def to_numpy(x: Union[torch.Tensor, np.ndarray, Any]) -> np.ndarray:
     Returns:
         :return: Numpy array
     """
-    if torch.is_tensor(x):
+    if x is None:
+        return None
+    elif torch.is_tensor(x):
         return x.data.cpu().numpy()
     elif isinstance(x, np.ndarray):
         return x
-    elif isinstance(x, (list, tuple, int, float)):
+    elif isinstance(x, (Iterable, int, float)):
         return np.array(x)
     else:
         raise ValueError("Unsupported type")
@@ -205,14 +229,14 @@ def rgb_image_from_tensor(
     return rgb_image.astype(dtype)
 
 
-def mask_from_tensor(mask: torch.Tensor, squeeze_single_channel=False, dtype=None) -> np.ndarray:
-    mask = np.moveaxis(to_numpy(mask), 0, -1)
-    if squeeze_single_channel and mask.shape[-1] == 1:
-        mask = np.squeeze(mask, -1)
+def mask_from_tensor(mask: torch.Tensor, squeeze_single_channel: bool = False, dtype=None) -> np.ndarray:
+    mask_np = np.moveaxis(to_numpy(mask), 0, -1)
+    if squeeze_single_channel and mask_np.shape[-1] == 1:
+        mask_np = np.squeeze(mask_np, -1)
 
     if dtype is not None:
-        mask = mask.astype(dtype)
-    return mask
+        mask_np = mask_np.astype(dtype)
+    return mask_np
 
 
 def maybe_cuda(x: Union[torch.Tensor, nn.Module]) -> Union[torch.Tensor, nn.Module]:
@@ -256,6 +280,12 @@ def resize_like(x: Tensor, target: Tensor, mode: str = "bilinear", align_corners
         Resized tensor [B,C,Ht,Wt]
     """
     return torch.nn.functional.interpolate(x, target.size()[2:], mode=mode, align_corners=align_corners)
+
+
+def move_to_device_non_blocking(x: Tensor, device: torch.device) -> Tensor:
+    if x.device != device:
+        x = x.to(device=device, non_blocking=True)
+    return x
 
 
 resize_as = resize_like

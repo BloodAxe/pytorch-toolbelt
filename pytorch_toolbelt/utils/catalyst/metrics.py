@@ -526,7 +526,12 @@ class OutputDistributionCallback(Callback):
     """
 
     def __init__(
-        self, input_key: str, output_key: str, output_activation: Callable, num_classes: int, prefix="distribution"
+        self,
+        input_key: str,
+        output_key: str,
+        output_activation: Optional[Callable],
+        num_classes: int,
+        prefix="distribution",
     ):
         """
 
@@ -554,9 +559,13 @@ class OutputDistributionCallback(Callback):
 
     @torch.no_grad()
     def on_batch_end(self, state: IRunner):
-        output = state.output[self.output_key].detach()
-        self.true_labels.extend(to_numpy(state.input[self.input_key]).flatten())
-        self.pred_labels.extend(to_numpy(self.output_activation(output)).flatten())
+        y_trues = state.input[self.input_key].detach()
+        y_preds = state.output[self.output_key].detach().float()
+        if self.output_activation:
+            y_preds = self.output_activation(y_preds)
+
+        self.true_labels.extend(to_numpy(y_trues).flatten())
+        self.pred_labels.extend(to_numpy(y_preds).flatten())
 
     def on_loader_end(self, state: IRunner):
         true_labels = np.concatenate(all_gather(np.array(self.true_labels)))
@@ -566,9 +575,13 @@ class OutputDistributionCallback(Callback):
             logger = get_tensorboard_logger(state)
 
             for class_label in range(self.num_classes):
-                logger.add_histogram(
-                    f"{self.prefix}/{class_label}", pred_probas[true_labels == class_label], state.epoch
-                )
+                p = pred_probas[true_labels == class_label]
+                if p.any():
+                    logger.add_histogram(
+                        tag=f"{self.prefix}/{class_label}",
+                        values=pred_probas[true_labels == class_label],
+                        global_step=state.global_epoch,
+                    )
 
 
 class AccuracyCallback(Callback):
@@ -629,7 +642,7 @@ class AccuracyCallback(Callback):
             self.totals += batch_totals
 
         batch_accuracy = float(batch_correct) / float(batch_totals)
-        runner.batch_metrics[self.prefix] = batch_accuracy
+        runner.batch_metrics[self.prefix + "_batch"] = batch_accuracy
 
     def on_loader_end(self, runner: IRunner):
         correct = np.sum(all_gather(self.correct))

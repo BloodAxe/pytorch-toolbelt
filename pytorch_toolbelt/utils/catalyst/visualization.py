@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn.functional as F
+from torch import Tensor
 from catalyst.dl import Callback, CallbackOrder, IRunner, CallbackNode
 from catalyst.dl.callbacks import TensorboardLogger
 from catalyst.contrib.tools.tensorboard import SummaryWriter
@@ -64,6 +65,9 @@ class ShowPolarBatchesCallback(Callback):
         self.worst_input = None
         self.worst_output = None
 
+        self.nan_input = None
+        self.nan_output = None
+
         self.target_metric = metric
         self.num_bad_epochs = 0
         self.is_better = None
@@ -95,6 +99,18 @@ class ShowPolarBatchesCallback(Callback):
         self.worst_input = None
         self.worst_output = None
 
+        self.nan_input = None
+        self.nan_output = None
+
+    def is_nan(self, value: Union[Tensor, float, np.ndarray]) -> bool:
+        if torch.is_tensor(value) and not torch.isfinite(value).all():
+            return True
+
+        if not np.isfinite(value).all():
+            return True
+
+        return False
+
     def on_batch_end(self, runner: IRunner):
         value = runner.batch_metrics.get(self.target_metric, None)
         if value is None:
@@ -111,6 +127,10 @@ class ShowPolarBatchesCallback(Callback):
             self.worst_input = self.to_cpu(runner.input)
             self.worst_output = self.to_cpu(runner.output)
 
+        if self.nan_input is None and self.is_nan(value):
+            self.nan_input = self.to_cpu(runner.input)
+            self.nan_output = self.to_cpu(runner.output)
+
     def on_loader_end(self, runner: IRunner):
         logger = get_tensorboard_logger(runner)
 
@@ -121,6 +141,10 @@ class ShowPolarBatchesCallback(Callback):
         if self.worst_score is not None:
             worst_samples = self.visualize_batch(self.worst_input, self.worst_output)
             self._log_samples(worst_samples, "worst", logger, runner.global_batch_step)
+
+        if self.nan_input is not None:
+            nan_samples = self.visualize_batch(self.nan_input, self.nan_output)
+            self._log_samples(nan_samples, "nan", logger, runner.global_batch_step)
 
     def _log_samples(self, samples, name, logger, step):
         if "tensorboard" in self.targets:

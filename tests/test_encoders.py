@@ -186,7 +186,9 @@ def test_xresnet_encoder(encoder, encoder_params):
     ["encoder", "encoder_params"],
     [
         [timm.B0Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.B0Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4], "first_conv_stride_one": True}],
         [timm.B1Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
+        [timm.B1Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4], "first_conv_stride_one": True}],
         [timm.B2Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
         [timm.B3Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
         [timm.B4Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
@@ -300,6 +302,35 @@ def test_supervised_hourglass_encoder(encoder, encoder_params):
     output, supervision = net(x)
     assert len(output) == len(net.channels)
     assert len(supervision) == len(net.channels) - 2
+
+    for feature_map, expected_stride, expected_channels in zip(output, net.strides, net.channels):
+        assert feature_map.size(1) == expected_channels
+        assert feature_map.size(2) * expected_stride == 256
+        assert feature_map.size(3) * expected_stride == 256
+
+
+@pytest.mark.parametrize(
+    ["encoder", "encoder_params"],
+    [
+        [E.SwinT, {}],
+        [E.SwinS, {}],
+        [E.SwinB, {}],
+        [E.SwinL, {}],
+    ],
+)
+@torch.no_grad()
+@skip_if_no_cuda
+def test_swin_encoder(encoder, encoder_params):
+    net = encoder(**encoder_params).change_input_channels(5).eval()
+    print(net.__class__.__name__, count_parameters(net))
+    print(net.strides)
+    print(net.channels)
+    x = torch.rand((4, 5, 256, 256))
+    x = maybe_cuda(x)
+    net = maybe_cuda(net)
+    output = net(x)
+
+    assert len(output) == len(net.channels)
 
     for feature_map, expected_stride, expected_channels in zip(output, net.strides, net.channels):
         assert feature_map.size(1) == expected_channels

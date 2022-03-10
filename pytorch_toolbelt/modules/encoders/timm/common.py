@@ -5,23 +5,22 @@ import torch
 from typing import List, Union
 from torch import Tensor, nn
 
-from ..common import EncoderModule, _take
+from ..common import EncoderModule, _take_ints, _take_tensors
 
 __all__ = ["GenericTimmEncoder", "make_n_channel_input_std_conv"]
 
 
 class GenericTimmEncoder(EncoderModule):
-    def __init__(self, timm_encoder: Union[nn.Module, str], layers: List[int] = None):
+    def __init__(self, timm_encoder: Union[nn.Module, str], layers: List[int] = None, pretrained=True):
         strides = []
         channels = []
         default_layers = []
         if isinstance(timm_encoder, str):
             import timm.models.factory
 
-            timm_encoder = timm.models.factory.create_model(timm_encoder, pretrained=True)
+            timm_encoder = timm.models.factory.create_model(timm_encoder, features_only=True, pretrained=pretrained)
 
-        for i, oi in enumerate(timm_encoder.feature_info.out_indices):
-            fi = timm_encoder.feature_info.info[i]
+        for i, fi in enumerate(timm_encoder.feature_info):
             strides.append(fi["reduction"])
             channels.append(fi["num_chs"])
             default_layers.append(i)
@@ -33,7 +32,8 @@ class GenericTimmEncoder(EncoderModule):
         self.encoder = timm_encoder
 
     def forward(self, x: Tensor) -> List[Tensor]:
-        return _take(self.encoder(x), self._layers)
+        all_feature_maps = self.encoder(x)
+        return _take_tensors(all_feature_maps, self._layers)
 
 
 def make_n_channel_input_std_conv(conv: nn.Module, in_channels: int, mode="auto", **kwargs) -> nn.Module:

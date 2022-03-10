@@ -3,7 +3,7 @@ from __future__ import absolute_import
 import itertools
 import math
 import warnings
-from typing import List, Iterable, Tuple
+from typing import List, Iterable, Tuple, Optional
 
 import cv2
 import numpy as np
@@ -31,6 +31,7 @@ def plot_confusion_matrix(
     fname=None,
     noshow: bool = False,
     backend: str = "Agg",
+    format_string: Optional[str] = None,
 ):
     """Render the confusion matrix and return matplotlib's figure with it.
     Normalization can be applied by setting `normalize=True`.
@@ -60,14 +61,16 @@ def plot_confusion_matrix(
     plt.xticks(tick_marks, class_names, rotation=45, ha="right")
     plt.yticks(tick_marks, class_names)
 
-    fmt = ".3f" if normalize else "d"
+    if format_string is None:
+        format_string = ".3f" if normalize else "d"
+
     thresh = (cm.max() + cm.min()) / 2.0
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
         if np.isfinite(cm[i, j]):
             plt.text(
                 j,
                 i,
-                format(cm[i, j], fmt),
+                format(cm[i, j], format_string),
                 horizontalalignment="center",
                 fontsize=fontsize,
                 color="white" if cm[i, j] > thresh else "black",
