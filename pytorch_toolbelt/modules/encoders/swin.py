@@ -392,13 +392,13 @@ class BasicLayer(nn.Module):
             self.downsample = None
 
     def forward(self, x, H, W):
-        """Forward function.
+        """
+        Forward function.
 
         Args:
             x: Input feature, tensor size (B, H*W, C).
             H, W: Spatial resolution of the input feature.
         """
-
         # calculate attention mask for SW-MSA
         Hp = int(np.ceil(H / self.window_size)) * self.window_size
         Wp = int(np.ceil(W / self.window_size)) * self.window_size
