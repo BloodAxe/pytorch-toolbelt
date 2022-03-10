@@ -69,8 +69,11 @@ class TimmEfficientNetV2(GenericTimmEncoder):
     @torch.jit.unused
     def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
         from timm.models.layers import Conv2dSame
+
         if isinstance(self.encoder.conv_stem, Conv2dSame):
-            self.encoder.conv_stem = make_n_channel_input_conv2d_same(self.encoder.conv_stem, input_channels, mode, **kwargs)
+            self.encoder.conv_stem = make_n_channel_input_conv2d_same(
+                self.encoder.conv_stem, input_channels, mode, **kwargs
+            )
         else:
             self.encoder.conv_stem = make_n_channel_input(self.encoder.conv_stem, input_channels, mode, **kwargs)
         return self

@@ -158,7 +158,9 @@ def pad_image_tensor(
     elif isinstance(pad_size, int):
         pad_height = pad_width = pad_size
     else:
-        raise ValueError(f"Unsupported pad_size: {pad_size}, must be either tuple(pad_rows,pad_cols) or single int scalar.")
+        raise ValueError(
+            f"Unsupported pad_size: {pad_size}, must be either tuple(pad_rows,pad_cols) or single int scalar."
+        )
 
     if rows > pad_height:
         pad_rows = rows % pad_height

@@ -46,7 +46,9 @@ class BinaryFocalLoss(_Loss):
 
 
 class FocalLoss(_Loss):
-    def __init__(self, alpha=None, gamma=2, ignore_index=None, reduction="mean", normalized=False, reduced_threshold=None):
+    def __init__(
+        self, alpha=None, gamma=2, ignore_index=None, reduction="mean", normalized=False, reduced_threshold=None
+    ):
         """
         Focal loss for multi-class problem.
 
