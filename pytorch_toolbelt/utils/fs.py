@@ -107,7 +107,7 @@ def read_rgb_image(fname: Union[str, Path]) -> np.ndarray:
     if type(fname) != str:
         fname = str(fname)
 
-    image = cv2.imread(fname, cv2.IMREAD_UNCHANGED)
+    image = cv2.imread(fname, cv2.IMREAD_COLOR)
     if image is None:
         raise IOError(f'Cannot read image "{fname}"')
 
