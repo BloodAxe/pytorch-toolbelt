@@ -122,12 +122,6 @@ class ImageSlicer:
             else:
                 margin_left = margin_right = margin_top = margin_bottom = image_margin
 
-            if (self.image_width + margin_left + margin_right) % self.tile_size[1] != 0:
-                raise ValueError()
-
-            if (self.image_height + margin_top + margin_bottom) % self.tile_size[0] != 0:
-                raise ValueError()
-
             self.margin_left = margin_left
             self.margin_right = margin_right
             self.margin_top = margin_top
