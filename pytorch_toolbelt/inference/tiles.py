@@ -60,7 +60,7 @@ class ImageSlicer:
     Helper class to slice image into tiles and merge them back
     """
 
-    def __init__(self, image_shape, tile_size, tile_step=0, image_margin=0, weight="mean"):
+    def __init__(self, image_shape: Tuple[int, int], tile_size, tile_step=0, image_margin=0, weight="mean"):
         """
 
         :param image_shape: Shape of the source image (H, W)
