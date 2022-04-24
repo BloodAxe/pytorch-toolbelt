@@ -337,6 +337,10 @@ class TileMerger:
         if batch.device != self.image.device:
             batch = batch.to(device=self.image.device)
 
+        # Ensure that input batch dtype match the target dtyle of the accumulator
+        if batch.dtype != self.image.dtype:
+            batch = batch.type_as(self.image)
+
         for tile, (x, y, tile_width, tile_height) in zip(batch, crop_coords):
             self.image[:, y : y + tile_height, x : x + tile_width] += tile * self.weight
             self.norm_mask[:, y : y + tile_height, x : x + tile_width] += self.weight
