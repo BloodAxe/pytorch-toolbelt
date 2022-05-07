@@ -75,6 +75,16 @@ def plot_confusion_matrix(
                 fontsize=fontsize,
                 color="white" if cm[i, j] > thresh else "black",
             )
+        else:
+            plt.text(
+                j,
+                i,
+                "N/A",
+                horizontalalignment="center",
+                fontsize=fontsize,
+                color="black",
+            )
+
 
     plt.ylabel("True label")
     plt.xlabel("Predicted label\nAccuracy={:0.4f}; Misclass={:0.4f}".format(accuracy, misclass))
