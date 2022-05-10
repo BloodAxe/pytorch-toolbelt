@@ -41,9 +41,6 @@ def plot_confusion_matrix(
     matplotlib.use(backend)
     import matplotlib.pyplot as plt
 
-    accuracy = np.trace(cm) / float(np.sum(cm))
-    misclass = 1 - accuracy
-
     if cmap is None:
         cmap = plt.cm.Oranges
 
@@ -51,11 +48,14 @@ def plot_confusion_matrix(
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             cm = cm.astype(np.float32) / cm.sum(axis=1)[:, np.newaxis]
+    else:
+        accuracy = np.trace(cm) / (float(np.sum(cm)) + 1e-8)
+        misclass = 1 - accuracy
 
     f = plt.figure(figsize=figsize)
     plt.imshow(cm, interpolation="nearest", cmap=cmap)
     plt.title(title)
-    plt.colorbar()
+    plt.colorbar(fraction=0.046, pad=0.04)
 
     tick_marks = np.arange(len(class_names))
     plt.xticks(tick_marks, class_names, rotation=45, ha="right")
@@ -85,9 +85,14 @@ def plot_confusion_matrix(
                 color="black",
             )
 
-
     plt.ylabel("True label")
-    plt.xlabel("Predicted label\nAccuracy={:0.4f}; Misclass={:0.4f}".format(accuracy, misclass))
+
+    if normalize:
+        # We don't show Accuracy & Misclassification scores for normalized CM
+        plt.xlabel("Predicted label")
+    else:
+        plt.xlabel("Predicted label\nAccuracy={:0.4f}; Misclass={:0.4f}".format(accuracy, misclass))
+
     plt.tight_layout()
 
     if fname is not None:
