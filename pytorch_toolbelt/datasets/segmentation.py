@@ -139,7 +139,7 @@ class SegmentationDataset(Dataset):
 
             if self.need_supervision_masks:
                 for i in range(1, 6):
-                    stride = 2 ** i
+                    stride = 2**i
                     mask = block_reduce(mask, (2, 2), partial(_block_reduce_dominant_label))
                     sample[name_for_stride(TARGET_MASK_KEY, stride)] = self.make_target(mask)
 

@@ -100,7 +100,7 @@ class UNetDecoderV2(DecoderModule):
         super().__init__()
 
         if not isinstance(decoder_features, list):
-            decoder_features = [decoder_features * (2 ** i) for i in range(len(feature_maps))]
+            decoder_features = [decoder_features * (2**i) for i in range(len(feature_maps))]
 
         blocks = []
         for block_index, in_enc_features in enumerate(feature_maps[:-1]):

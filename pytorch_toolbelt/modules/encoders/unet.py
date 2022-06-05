@@ -27,8 +27,8 @@ class UnetEncoder(EncoderModule):
         if pool_block is None:
             pool_block = partial(nn.MaxPool2d, kernel_size=2, stride=2)
 
-        feature_maps = [out_channels * (growth_factor ** i) for i in range(num_layers)]
-        strides = [2 ** i for i in range(num_layers)]
+        feature_maps = [out_channels * (growth_factor**i) for i in range(num_layers)]
+        strides = [2**i for i in range(num_layers)]
         super().__init__(feature_maps, strides, layers=list(range(num_layers)))
 
         input_filters = in_channels

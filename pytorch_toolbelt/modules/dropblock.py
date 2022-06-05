@@ -68,7 +68,7 @@ class DropBlock2D(nn.Module):
         return block_mask, keeped
 
     def _compute_gamma(self, x):
-        return self.drop_prob / (self.block_size ** 2)
+        return self.drop_prob / (self.block_size**2)
 
 
 class DropBlock3D(DropBlock2D):
@@ -131,7 +131,7 @@ class DropBlock3D(DropBlock2D):
         return block_mask
 
     def _compute_gamma(self, x):
-        return self.drop_prob / (self.block_size ** 3)
+        return self.drop_prob / (self.block_size**3)
 
 
 class DropBlockScheduled(nn.Module):

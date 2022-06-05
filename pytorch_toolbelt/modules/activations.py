@@ -264,7 +264,15 @@ def instantiate_activation_block(activation_name: str, **kwargs) -> nn.Module:
 
     act_params = {}
 
-    if "inplace" in kwargs and activation_name in {ACT_RELU, ACT_RELU6, ACT_LEAKY_RELU, ACT_SELU, ACT_SILU, ACT_CELU, ACT_ELU}:
+    if "inplace" in kwargs and activation_name in {
+        ACT_RELU,
+        ACT_RELU6,
+        ACT_LEAKY_RELU,
+        ACT_SELU,
+        ACT_SILU,
+        ACT_CELU,
+        ACT_ELU,
+    }:
         act_params["inplace"] = kwargs["inplace"]
 
     if "slope" in kwargs and activation_name in {ACT_LEAKY_RELU}:
@@ -296,7 +304,9 @@ def ABN(
     slope=0.01,
     inplace=True,
 ):
-    bn = nn.BatchNorm2d(num_features, eps=eps, momentum=momentum, affine=affine, track_running_stats=track_running_stats)
+    bn = nn.BatchNorm2d(
+        num_features, eps=eps, momentum=momentum, affine=affine, track_running_stats=track_running_stats
+    )
     act = instantiate_activation_block(activation, inplace=inplace, slope=slope)
     return nn.Sequential(OrderedDict([("bn", bn), (activation, act)]))
 
