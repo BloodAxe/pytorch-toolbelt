@@ -1,14 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
-# For a fully annotated version of this file and what it does, see
-# https://github.com/pypa/sampleproject/blob/master/setup.py
-
-# To upload this file to PyPI you must build it then upload it:
-# python setup.py sdist bdist_wheel  # build in 'dist' folder
-# python-m twine upload dist/*  # 'twine' must be installed: 'pip install twine'
-
-
 import ast
 import io
 import re
@@ -18,7 +7,10 @@ import sys
 from setuptools import find_packages, setup
 
 
-def is_docker():
+def is_docker() -> bool:
+    """
+    Check whether setup is running in Docker environment.
+    """
     # Note: You have to set the environment variable AM_I_IN_A_DOCKER_CONTAINER manually
     # in your Dockerfile .
     if os.environ.get("AM_I_IN_A_DOCKER_CONTAINER", False):
@@ -30,18 +22,18 @@ def is_docker():
 
     with open(path) as f:
         for line in f:
-            if re.match("\d+:[\w=]+:/docker(-[ce]e)?/\w+", line):
+            if re.match("\\d+:[\\w=]+:/docker(-[ce]e)?/\\w+", line):
                 return True
 
     return False
 
 
-def is_kaggle():
+def is_kaggle() -> bool:
     """
+    Check whether setup is running in Kaggle environment.
     This is not 100% bulletproff solution to detect whether we are in Kaggle Notebooks,
     but it should be enough unless Kaggle change their environment variables.
     """
-
     return (
         ("KAGGLE_CONTAINER_NAME" in os.environ)
         or ("KAGGLE_URL_BASE" in os.environ)
@@ -49,8 +41,9 @@ def is_kaggle():
     )
 
 
-def is_colab():
+def is_colab() -> bool:
     """
+    Check whether setup is running in Google Colab.
     This is not 100% bulletproff solution to detect whether we are in Colab,
     but it should be enough unless Google change their environment variables.
     """
@@ -63,6 +56,7 @@ def is_colab():
 
 def get_opencv_requirement():
     """
+    Return the OpenCV requirement string.
     Since opencv library is distributed in several independent packages,
     we first check whether any form of opencv is already installed. If not,
     we choose between opencv-python vs opencv-python-headless version based
