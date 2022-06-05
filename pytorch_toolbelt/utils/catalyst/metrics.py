@@ -234,7 +234,7 @@ class F1ScoreCallback(Callback):
             true_sum = np.array([true_sum.sum()])
 
         # Finally, we have all our sufficient statistics. Divide! #
-        beta2 = beta ** 2
+        beta2 = beta**2
 
         # Divide, and on zero-division, set scores and/or warn according to
         # zero_division:

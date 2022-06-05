@@ -1,14 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
-# For a fully annotated version of this file and what it does, see
-# https://github.com/pypa/sampleproject/blob/master/setup.py
-
-# To upload this file to PyPI you must build it then upload it:
-# python setup.py sdist bdist_wheel  # build in 'dist' folder
-# python-m twine upload dist/*  # 'twine' must be installed: 'pip install twine'
-
-
 import ast
 import io
 import re
@@ -16,6 +5,78 @@ import os
 import sys
 
 from setuptools import find_packages, setup
+
+
+def is_docker() -> bool:
+    """
+    Check whether setup is running in Docker environment.
+    """
+    # Note: You have to set the environment variable AM_I_IN_A_DOCKER_CONTAINER manually
+    # in your Dockerfile .
+    if os.environ.get("AM_I_IN_A_DOCKER_CONTAINER", False):
+        return True
+
+    path = "/proc/self/cgroup"
+    if not os.path.isfile(path):
+        return False
+
+    with open(path) as f:
+        for line in f:
+            if re.match("\\d+:[\\w=]+:/docker(-[ce]e)?/\\w+", line):
+                return True
+
+    return False
+
+
+def is_kaggle() -> bool:
+    """
+    Check whether setup is running in Kaggle environment.
+    This is not 100% bulletproff solution to detect whether we are in Kaggle Notebooks,
+    but it should be enough unless Kaggle change their environment variables.
+    """
+    return (
+        ("KAGGLE_CONTAINER_NAME" in os.environ)
+        or ("KAGGLE_URL_BASE" in os.environ)
+        or ("KAGGLE_DOCKER_IMAGE" in os.environ)
+    )
+
+
+def is_colab() -> bool:
+    """
+    Check whether setup is running in Google Colab.
+    This is not 100% bulletproff solution to detect whether we are in Colab,
+    but it should be enough unless Google change their environment variables.
+    """
+    return (
+        ("COLAB_GPU" in os.environ)
+        or ("GCE_METADATA_TIMEOUT" in os.environ)
+        or ("GCS_READ_CACHE_BLOCK_SIZE_MB" in os.environ)
+    )
+
+
+def get_opencv_requirement():
+    """
+    Return the OpenCV requirement string.
+    Since opencv library is distributed in several independent packages,
+    we first check whether any form of opencv is already installed. If not,
+    we choose between opencv-python vs opencv-python-headless version based
+    on the environment.
+    For headless environment (Docker, Colab & Kaggle notebooks), we install
+    opencv-python-headless; otherwise - default to opencv-python.
+    """
+    try:
+        import cv2
+
+        return []
+    except ImportError:
+        default_requirement = "opencv-python>=4.1"
+        headless_requirement = "opencv-python-headless>=4.1"
+
+        if is_docker() or is_kaggle() or is_colab():
+            return [headless_requirement]
+        else:
+            return [default_requirement]
+
 
 # Package meta-data.
 NAME = "pytorch_toolbelt"
@@ -30,13 +91,11 @@ DEPENDENCIES = [
     "torch>=1.8.1",
     # We use some pretrained models from torchvision
     "torchvision>=0.9.1",
-    # We use OpenCV for loading images and some visualization stuff.
-    # Particular version is mostly irrelevant
-    "opencv-python>=4.1",
     # Library uses scipy for linear_sum_assignment for match_bboxes.
     # 1.4.0 is the first release where `maximize` argument gets introduced to this function
     "scipy>=1.4.0",
-]
+] + get_opencv_requirement()
+
 EXCLUDE_FROM_PACKAGES = ["contrib", "docs", "tests", "examples"]
 CURDIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -57,7 +116,7 @@ def load_readme():
 
 
 def get_test_requirements():
-    requirements = ["pytest", "onnx==1.9.0", "catalyst>=20.10.1", "black==21.9b0", "timm==0.4.12"]
+    requirements = ["pytest", "onnx==1.9.0", "catalyst>=20.10.1", "black==22.3.0", "timm==0.4.12", "matplotlib"]
     if sys.version_info < (3, 3):
         requirements.append("mock")
     return requirements
