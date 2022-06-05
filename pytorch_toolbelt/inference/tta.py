@@ -79,6 +79,8 @@ def _deaugment_averaging(x: Tensor, reduction: MaybeStrOrCallable) -> Tensor:
         x = F.geometric_mean(x, dim=0)
     elif reduction in {"hmean", "harmonic_mean"}:
         x = F.harmonic_mean(x, dim=0)
+    elif reduction == "logodd":
+        x = F.logodd_mean(x, dim=0)
     elif callable(reduction):
         x = reduction(x, dim=0)
     elif reduction in {None, "None", "none"}:
