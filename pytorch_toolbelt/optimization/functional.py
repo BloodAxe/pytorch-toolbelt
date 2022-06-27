@@ -46,7 +46,9 @@ def get_optimizable_parameters(model: nn.Module) -> Iterator[nn.Parameter]:
     return filter(lambda x: x.requires_grad, model.parameters())
 
 
-def freeze_model(module: nn.Module, freeze_parameters: Optional[bool] = True, freeze_bn: Optional[bool] = True):
+def freeze_model(
+    module: nn.Module, freeze_parameters: Optional[bool] = True, freeze_bn: Optional[bool] = True
+) -> nn.Module:
     """
     Change 'requires_grad' value for module and it's child modules and
     optionally freeze batchnorm modules.
@@ -70,3 +72,5 @@ def freeze_model(module: nn.Module, freeze_parameters: Optional[bool] = True, fr
         for m in module.modules():
             if isinstance(m, bn_types):
                 module.track_running_stats = not freeze_bn
+
+    return module

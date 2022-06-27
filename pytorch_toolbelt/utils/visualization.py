@@ -29,12 +29,31 @@ def plot_confusion_matrix(
     title: str = "Confusion matrix",
     cmap=None,
     fname=None,
+    show_scores: bool = True,
     noshow: bool = False,
     backend: str = "Agg",
     format_string: Optional[str] = None,
 ):
-    """Render the confusion matrix and return matplotlib's figure with it.
+    """
+    Render the confusion matrix and return matplotlib's figure with it.
     Normalization can be applied by setting `normalize=True`.
+
+    Args:
+        cm: Numpy array of (N,N) shape - confusion matrix array
+        class_names: List of [N] names of the classes
+        figsize:
+        fontsize:
+        normalize: Whether to apply normalization for each row of CM
+        title: Title of the confusion matrix
+        cmap:
+        fname: Filename of the rendered confusion matrix
+        show_scores: Show scores in each cell
+        noshow:
+        backend:
+        format_string:
+
+    Returns:
+        Matplotlib's figure
     """
     import matplotlib
 
@@ -64,26 +83,12 @@ def plot_confusion_matrix(
     if format_string is None:
         format_string = ".3f" if normalize else "d"
 
-    thresh = (cm.max() + cm.min()) / 2.0
-    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
-        if np.isfinite(cm[i, j]):
-            plt.text(
-                j,
-                i,
-                format(cm[i, j], format_string),
-                horizontalalignment="center",
-                fontsize=fontsize,
-                color="white" if cm[i, j] > thresh else "black",
-            )
-        else:
-            plt.text(
-                j,
-                i,
-                "N/A",
-                horizontalalignment="center",
-                fontsize=fontsize,
-                color="black",
-            )
+    if show_scores:
+        thresh = (cm.max() + cm.min()) / 2.0
+        for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+            text = format(cm[i, j], format_string) if np.isfinite(cm[i, j]) else "N/A"
+            color = "white" if cm[i, j] > thresh else "black"
+            plt.text(j, i, text, horizontalalignment="center", fontsize=fontsize, color=color)
 
     plt.ylabel("True label")
 
