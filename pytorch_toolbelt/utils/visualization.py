@@ -29,20 +29,36 @@ def plot_confusion_matrix(
     title: str = "Confusion matrix",
     cmap=None,
     fname=None,
+    show_scores: bool = True,
     noshow: bool = False,
     backend: str = "Agg",
     format_string: Optional[str] = None,
 ):
-    """Render the confusion matrix and return matplotlib's figure with it.
+    """
+    Render the confusion matrix and return matplotlib's figure with it.
     Normalization can be applied by setting `normalize=True`.
+
+    Args:
+        cm: Numpy array of (N,N) shape - confusion matrix array
+        class_names: List of [N] names of the classes
+        figsize:
+        fontsize:
+        normalize: Whether to apply normalization for each row of CM
+        title: Title of the confusion matrix
+        cmap:
+        fname: Filename of the rendered confusion matrix
+        show_scores: Show scores in each cell
+        noshow:
+        backend:
+        format_string:
+
+    Returns:
+        Matplotlib's figure
     """
     import matplotlib
 
     matplotlib.use(backend)
     import matplotlib.pyplot as plt
-
-    accuracy = np.trace(cm) / float(np.sum(cm))
-    misclass = 1 - accuracy
 
     if cmap is None:
         cmap = plt.cm.Oranges
@@ -51,11 +67,14 @@ def plot_confusion_matrix(
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             cm = cm.astype(np.float32) / cm.sum(axis=1)[:, np.newaxis]
+    else:
+        accuracy = np.trace(cm) / (float(np.sum(cm)) + 1e-8)
+        misclass = 1 - accuracy
 
     f = plt.figure(figsize=figsize)
     plt.imshow(cm, interpolation="nearest", cmap=cmap)
     plt.title(title)
-    plt.colorbar()
+    plt.colorbar(fraction=0.046, pad=0.04)
 
     tick_marks = np.arange(len(class_names))
     plt.xticks(tick_marks, class_names, rotation=45, ha="right")
@@ -64,20 +83,21 @@ def plot_confusion_matrix(
     if format_string is None:
         format_string = ".3f" if normalize else "d"
 
-    thresh = (cm.max() + cm.min()) / 2.0
-    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
-        if np.isfinite(cm[i, j]):
-            plt.text(
-                j,
-                i,
-                format(cm[i, j], format_string),
-                horizontalalignment="center",
-                fontsize=fontsize,
-                color="white" if cm[i, j] > thresh else "black",
-            )
+    if show_scores:
+        thresh = (cm.max() + cm.min()) / 2.0
+        for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+            text = format(cm[i, j], format_string) if np.isfinite(cm[i, j]) else "N/A"
+            color = "white" if cm[i, j] > thresh else "black"
+            plt.text(j, i, text, horizontalalignment="center", fontsize=fontsize, color=color)
 
     plt.ylabel("True label")
-    plt.xlabel("Predicted label\nAccuracy={:0.4f}; Misclass={:0.4f}".format(accuracy, misclass))
+
+    if normalize:
+        # We don't show Accuracy & Misclassification scores for normalized CM
+        plt.xlabel("Predicted label")
+    else:
+        plt.xlabel("Predicted label\nAccuracy={:0.4f}; Misclass={:0.4f}".format(accuracy, misclass))
+
     plt.tight_layout()
 
     if fname is not None:

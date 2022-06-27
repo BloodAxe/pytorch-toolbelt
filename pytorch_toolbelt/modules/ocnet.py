@@ -62,7 +62,7 @@ class _SelfAttentionBlock(nn.Module):
         key = self.f_key(x).view(batch_size, self.key_channels, -1)
 
         sim_map = torch.matmul(query, key)
-        sim_map = (self.key_channels ** -0.5) * sim_map
+        sim_map = (self.key_channels**-0.5) * sim_map
         sim_map = F.softmax(sim_map, dim=-1)
 
         context = torch.matmul(sim_map, value)
@@ -300,7 +300,7 @@ class _PyramidSelfAttentionBlock(nn.Module):
             key_local = key_local.contiguous().view(batch_size, self.key_channels, -1)
 
             sim_map = torch.matmul(query_local, key_local)
-            sim_map = (self.key_channels ** -0.5) * sim_map
+            sim_map = (self.key_channels**-0.5) * sim_map
             sim_map = F.softmax(sim_map, dim=-1)
 
             context_local = torch.matmul(sim_map, value_local)

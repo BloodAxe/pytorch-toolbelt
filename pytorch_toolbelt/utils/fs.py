@@ -16,6 +16,7 @@ __all__ = [
     "find_images_in_dir",
     "find_in_dir",
     "find_in_dir_glob",
+    "find_subdirectories_in_dir",
     "has_ext",
     "has_image_ext",
     "id_from_fname",
@@ -43,6 +44,19 @@ def has_image_ext(fname: str) -> bool:
 
 def find_in_dir(dirname: str) -> List[str]:
     return [os.path.join(dirname, fname) for fname in sorted(os.listdir(dirname))]
+
+
+def find_subdirectories_in_dir(dirname: str) -> List[str]:
+    """
+    Retrieve list of subdirectories (non-recursive) in the given directory.
+    Args:
+        dirname: Target directory name
+
+    Returns:
+        Sorted list of absolute paths to directories
+    """
+    all_entries = find_in_dir(dirname)
+    return [entry for entry in all_entries if os.path.isdir(entry)]
 
 
 def find_in_dir_with_ext(dirname: str, extensions: Union[str, List[str]]) -> List[str]:
@@ -107,7 +121,7 @@ def read_rgb_image(fname: Union[str, Path]) -> np.ndarray:
     if type(fname) != str:
         fname = str(fname)
 
-    image = cv2.imread(fname, cv2.IMREAD_UNCHANGED)
+    image = cv2.imread(fname, cv2.IMREAD_COLOR)
     if image is None:
         raise IOError(f'Cannot read image "{fname}"')
 

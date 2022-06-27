@@ -60,7 +60,7 @@ class ImageSlicer:
     Helper class to slice image into tiles and merge them back
     """
 
-    def __init__(self, image_shape, tile_size, tile_step=0, image_margin=0, weight="mean"):
+    def __init__(self, image_shape: Tuple[int, int], tile_size, tile_step=0, image_margin=0, weight="mean"):
         """
 
         :param image_shape: Shape of the source image (H, W)
@@ -121,12 +121,6 @@ class ImageSlicer:
                 margin_left, margin_right, margin_top, margin_bottom = image_margin
             else:
                 margin_left = margin_right = margin_top = margin_bottom = image_margin
-
-            if (self.image_width + margin_left + margin_right) % self.tile_size[1] != 0:
-                raise ValueError()
-
-            if (self.image_height + margin_top + margin_bottom) % self.tile_size[0] != 0:
-                raise ValueError()
 
             self.margin_left = margin_left
             self.margin_right = margin_right
@@ -336,6 +330,10 @@ class TileMerger:
 
         if batch.device != self.image.device:
             batch = batch.to(device=self.image.device)
+
+        # Ensure that input batch dtype match the target dtyle of the accumulator
+        if batch.dtype != self.image.dtype:
+            batch = batch.type_as(self.image)
 
         for tile, (x, y, tile_width, tile_height) in zip(batch, crop_coords):
             self.image[:, y : y + tile_height, x : x + tile_width] += tile * self.weight

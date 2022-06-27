@@ -80,7 +80,7 @@ class CosineAnnealingLRWithDecay(_LRScheduler):
         def compute_lr(base_lr):
             return (
                 self.eta_min
-                + (base_lr * self.gamma ** self.last_epoch - self.eta_min)
+                + (base_lr * self.gamma**self.last_epoch - self.eta_min)
                 * (1 + math.cos(math.pi * self.last_epoch / self.T_max))
                 / 2
             )
@@ -110,7 +110,7 @@ class CosineAnnealingWarmRestartsWithDecay(CosineAnnealingWarmRestarts):
 
         return [
             self.eta_min
-            + (base_lr * self.gamma ** self.last_epoch - self.eta_min)
+            + (base_lr * self.gamma**self.last_epoch - self.eta_min)
             * (1 + math.cos(math.pi * self.T_cur / self.T_i))
             / 2
             for base_lr in self.base_lrs

@@ -264,7 +264,15 @@ def instantiate_activation_block(activation_name: str, **kwargs) -> nn.Module:
 
     act_params = {}
 
-    if "inplace" in kwargs and activation_name in {ACT_RELU, ACT_RELU6, ACT_LEAKY_RELU, ACT_SELU, ACT_CELU, ACT_ELU}:
+    if "inplace" in kwargs and activation_name in {
+        ACT_RELU,
+        ACT_RELU6,
+        ACT_LEAKY_RELU,
+        ACT_SELU,
+        ACT_SILU,
+        ACT_CELU,
+        ACT_ELU,
+    }:
         act_params["inplace"] = kwargs["inplace"]
 
     if "slope" in kwargs and activation_name in {ACT_LEAKY_RELU}:

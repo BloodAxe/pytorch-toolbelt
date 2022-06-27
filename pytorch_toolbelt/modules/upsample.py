@@ -50,14 +50,14 @@ def icnr_init(tensor: torch.Tensor, upscale_factor=2, initializer=nn.init.kaimin
     .. _Checkerboard artifact free sub-pixel convolution:
         https://arxiv.org/abs/1707.02937
     """
-    new_shape = [int(tensor.shape[0] / (upscale_factor ** 2))] + list(tensor.shape[1:])
+    new_shape = [int(tensor.shape[0] / (upscale_factor**2))] + list(tensor.shape[1:])
     subkernel = torch.zeros(new_shape)
     subkernel = initializer(subkernel)
     subkernel = subkernel.transpose(0, 1)
 
     subkernel = subkernel.contiguous().view(subkernel.shape[0], subkernel.shape[1], -1)
 
-    kernel = subkernel.repeat(1, 1, upscale_factor ** 2)
+    kernel = subkernel.repeat(1, 1, upscale_factor**2)
 
     transposed_shape = [tensor.shape[1]] + [tensor.shape[0]] + list(tensor.shape[2:])
     kernel = kernel.contiguous().view(transposed_shape)
@@ -77,7 +77,7 @@ class DepthToSpaceUpsample2d(nn.Module):
 
     def __init__(self, in_channels: int, out_channels: int, scale_factor: int = 2):
         super().__init__()
-        n = 2 ** scale_factor
+        n = 2**scale_factor
         self.conv = nn.Conv2d(in_channels, out_channels * n, kernel_size=3, padding=1, bias=False)
         self.out_channels = out_channels
         self.shuffle = nn.PixelShuffle(upscale_factor=scale_factor)

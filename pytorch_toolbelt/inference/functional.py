@@ -7,26 +7,27 @@ from torch import Tensor
 from ..utils.support import pytorch_toolbelt_deprecated
 
 __all__ = [
-    "torch_none",
-    "torch_rot90",
-    "torch_rot90_cw",
-    "torch_rot90_ccw",
-    "torch_transpose_rot90_cw",
-    "torch_transpose_rot90_ccw",
-    "torch_rot90_ccw_transpose",
-    "torch_rot90_cw_transpose",
-    "torch_rot180",
-    "torch_rot270",
+    "geometric_mean",
+    "harmonic_mean",
+    "logodd_mean",
+    "pad_image_tensor",
     "torch_fliplr",
     "torch_flipud",
+    "torch_none",
+    "torch_rot180",
+    "torch_rot270",
+    "torch_rot90",
+    "torch_rot90_ccw",
+    "torch_rot90_ccw_transpose",
+    "torch_rot90_cw",
+    "torch_rot90_cw_transpose",
     "torch_transpose",
     "torch_transpose2",
     "torch_transpose_",
-    "pad_image_tensor",
+    "torch_transpose_rot90_ccw",
+    "torch_transpose_rot90_cw",
     "unpad_image_tensor",
     "unpad_xyxy_bboxes",
-    "geometric_mean",
-    "harmonic_mean",
 ]
 
 
@@ -239,4 +240,24 @@ def harmonic_mean(x: Tensor, dim: int, eps: float = 1e-6) -> Tensor:
     x = torch.reciprocal(x.clamp_min(eps))
     x = torch.mean(x, dim=dim)
     x = torch.reciprocal(x.clamp_min(eps))
+    return x
+
+
+def logodd_mean(x: Tensor, dim: int, eps: float = 1e-6) -> Tensor:
+    """
+    Compute log-odd mean along given dimension.
+    logodd = log(p / (1 - p))
+
+    This implementation assume values are in range [0, 1] (Probabilities)
+    Args:
+        x: Input tensor of arbitrary shape
+        dim: Dimension to reduce
+
+    Returns:
+        Tensor
+    """
+    x = x.clamp(min=eps, max=1.0 - eps)
+    x = torch.log(x / (1 - x))
+    x = torch.mean(x, dim=dim)
+    x = torch.exp(x) / (1 + torch.exp(x))
     return x
