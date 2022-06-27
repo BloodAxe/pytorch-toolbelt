@@ -14,7 +14,8 @@ def get_lr_decay_parameters(model: nn.Module, learning_rate: float, lr_multiplie
         groups: {"encoder": 0.1 ,"encoder.layer2": 0.2}
     """
     custom_lr_parameters = dict(
-        (group_name, {"params": [], "lr": learning_rate * lr_factor}) for (group_name, lr_factor) in lr_multipliers.items()
+        (group_name, {"params": [], "lr": learning_rate * lr_factor})
+        for (group_name, lr_factor) in lr_multipliers.items()
     )
     custom_lr_parameters["default"] = {"params": [], "lr": learning_rate}
 
@@ -45,7 +46,9 @@ def get_optimizable_parameters(model: nn.Module) -> Iterator[nn.Parameter]:
     return filter(lambda x: x.requires_grad, model.parameters())
 
 
-def freeze_model(module: nn.Module, freeze_parameters: Optional[bool] = True, freeze_bn: Optional[bool] = True) -> nn.Module:
+def freeze_model(
+    module: nn.Module, freeze_parameters: Optional[bool] = True, freeze_bn: Optional[bool] = True
+) -> nn.Module:
     """
     Change 'requires_grad' value for module and it's child modules and
     optionally freeze batchnorm modules.
