@@ -34,6 +34,7 @@ __all__ = [
     "to_tensor",
     "transfer_weights",
     "move_to_device_non_blocking",
+    "describe_outputs",
 ]
 
 
@@ -289,3 +290,27 @@ def move_to_device_non_blocking(x: Tensor, device: torch.device) -> Tensor:
 
 
 resize_as = resize_like
+
+
+def describe_outputs(outputs: Union[Tensor, Dict[str, Tensor], Iterable[Tensor]]) -> Union[List[Dict], Dict[str, Any]]:
+    """
+    Describe outputs and return shape, mean & std for each tensor in list or dict (Supports nested tensors)
+
+    Args:
+        outputs: Input (Usually model outputs)
+    Returns:
+        Same structure but each item represents tensor shape, mean & std
+    """
+    if torch.is_tensor(outputs):
+        desc = dict(size=tuple(outputs.size()), mean=outputs.mean().item(), std=outputs.std().item())
+    elif isinstance(outputs, collections.Mapping):
+        desc = {}
+        for key, value in outputs.items():
+            desc[key] = describe_outputs(value)
+    elif isinstance(outputs, collections.Iterable):
+        desc = []
+        for index, output in enumerate(outputs):
+            desc.append(describe_outputs(output))
+    else:
+        raise NotImplemented
+    return desc
