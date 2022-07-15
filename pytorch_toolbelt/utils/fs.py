@@ -14,8 +14,10 @@ __all__ = [
     "auto_file",
     "change_extension",
     "find_images_in_dir",
+    "find_images_in_dir_recursive",
     "find_in_dir",
     "find_in_dir_glob",
+    "find_in_dir_with_ext",
     "find_subdirectories_in_dir",
     "has_ext",
     "has_image_ext",
@@ -64,7 +66,15 @@ def find_in_dir_with_ext(dirname: str, extensions: Union[str, List[str]]) -> Lis
 
 
 def find_images_in_dir(dirname: str) -> List[str]:
-    return [fname for fname in find_in_dir(dirname) if has_image_ext(fname)]
+    return [fname for fname in find_in_dir(dirname) if has_image_ext(fname) and os.path.isfile(fname)]
+
+
+def find_images_in_dir_recursive(dirname: str) -> List[str]:
+    return [
+        fname
+        for fname in glob.glob(os.path.join(dirname, "**"), recursive=True)
+        if has_image_ext(fname) and os.path.isfile(fname)
+    ]
 
 
 def find_in_dir_glob(dirname: str, recursive=False):
@@ -76,13 +86,17 @@ def id_from_fname(fname: str) -> str:
     return os.path.splitext(os.path.basename(fname))[0]
 
 
-def change_extension(fname: Union[str, Path], new_ext: str) -> str:
-    if type(fname) == str:
+def change_extension(fname: Union[str, Path], new_ext: str) -> Union[str, Path]:
+    if isinstance(fname, str):
         return os.path.splitext(fname)[0] + new_ext
-    else:
+    elif isinstance(fname, Path):
         if new_ext[0] != ".":
             new_ext = "." + new_ext
         return fname.with_suffix(new_ext)
+    else:
+        raise RuntimeError(
+            f"Received input argument `fname` for unsupported type {type(fname)}. Argument must be string or Path."
+        )
 
 
 def auto_file(filename: str, where: str = ".") -> str:
