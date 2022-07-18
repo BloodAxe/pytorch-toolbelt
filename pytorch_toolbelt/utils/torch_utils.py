@@ -86,9 +86,7 @@ def logit(x: torch.Tensor, eps=1e-5) -> torch.Tensor:
     return torch.log(x / (1.0 - x))
 
 
-def count_parameters(
-    model: nn.Module, keys: Optional[Sequence[str]] = None, human_friendly: bool = False
-) -> Dict[str, int]:
+def count_parameters(model: nn.Module, keys: Optional[Sequence[str]] = None, human_friendly: bool = False) -> Dict[str, int]:
     """
     Count number of total and trainable parameters of a model
     :param model: A model
@@ -103,8 +101,11 @@ def count_parameters(
     parameters = {"total": total, "trainable": trainable}
 
     for key in keys:
-        if hasattr(model, key) and model.__getattr__(key) is not None:
-            parameters[key] = int(sum(p.numel() for p in model.__getattr__(key).parameters()))
+        try:
+            if hasattr(model, key) and model.__getattr__(key) is not None:
+                parameters[key] = int(sum(p.numel() for p in model.__getattr__(key).parameters()))
+        except AttributeError:
+            pass
 
     if human_friendly:
         for key in parameters.keys():
