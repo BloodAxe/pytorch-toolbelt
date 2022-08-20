@@ -313,5 +313,5 @@ def describe_outputs(outputs: Union[Tensor, Dict[str, Tensor], Iterable[Tensor]]
         for index, output in enumerate(outputs):
             desc.append(describe_outputs(output))
     else:
-        raise NotImplemented
+        raise NotImplementedError
     return desc
