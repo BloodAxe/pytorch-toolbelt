@@ -13,18 +13,22 @@ class ApplySoftmaxTo(nn.Module):
     dim: int
 
     def __init__(
-        self, model: nn.Module, output_key: Union[str, Iterable[str]] = "logits", dim: int = 1, temperature: float = 1
+        self,
+        model: nn.Module,
+        output_key: Union[str, int, Iterable[str]] = "logits",
+        dim: int = 1,
+        temperature: float = 1,
     ):
         """
         Apply softmax activation on given output(s) of the model
         :param model: Model to wrap
-        :param output_key: string or list of strings, indicating to what outputs softmax activation should be applied.
+        :param output_key: string, index or list of strings, indicating to what outputs softmax activation should be applied.
         :param dim: Tensor dimension for softmax activation
         :param temperature: Temperature scaling coefficient. Values > 1 will make logits sharper.
         """
         super().__init__()
         # By converting to set, we prevent double-activation by passing output_key=["logits", "logits"]
-        output_key = tuple(set(output_key)) if isinstance(output_key, Iterable) else tuple([output_key])
+        output_key = (output_key,) if isinstance(output_key, (str, int)) else tuple(set(output_key))
         self.output_keys = output_key
         self.model = model
         self.dim = dim
@@ -41,16 +45,16 @@ class ApplySigmoidTo(nn.Module):
     output_keys: Tuple
     temperature: float
 
-    def __init__(self, model: nn.Module, output_key: Union[str, Iterable[str]] = "logits", temperature=1):
+    def __init__(self, model: nn.Module, output_key: Union[str, int, Iterable[str]] = "logits", temperature=1):
         """
         Apply sigmoid activation on given output(s) of the model
         :param model: Model to wrap
-        :param output_key: string or list of strings, indicating to what outputs sigmoid activation should be applied.
+        :param output_key: string index, or list of strings, indicating to what outputs sigmoid activation should be applied.
         :param temperature: Temperature scaling coefficient. Values > 1 will make logits sharper.
         """
         super().__init__()
         # By converting to set, we prevent double-activation by passing output_key=["logits", "logits"]
-        output_key = tuple(set(output_key)) if isinstance(output_key, Iterable) else tuple([output_key])
+        output_key = (output_key,) if isinstance(output_key, (str, int)) else tuple(set(output_key))
         self.output_keys = output_key
         self.model = model
         self.temperature = temperature
