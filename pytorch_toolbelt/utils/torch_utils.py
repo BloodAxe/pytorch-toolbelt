@@ -86,7 +86,9 @@ def logit(x: torch.Tensor, eps=1e-5) -> torch.Tensor:
     return torch.log(x / (1.0 - x))
 
 
-def count_parameters(model: nn.Module, keys: Optional[Sequence[str]] = None, human_friendly: bool = False) -> Dict[str, int]:
+def count_parameters(
+    model: nn.Module, keys: Optional[Sequence[str]] = None, human_friendly: bool = False
+) -> Dict[str, int]:
     """
     Count number of total and trainable parameters of a model
     :param model: A model
