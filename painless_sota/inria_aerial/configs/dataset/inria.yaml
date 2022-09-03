@@ -1,0 +1,62 @@
+data_dir: ${oc.env:INRIA_AERIAL_DATA_DIR, "c:/datasets/inria"}
+
+num_input_channels: 3
+num_output_classes: 1
+
+provider:
+  _target_: pytorch_toolbelt.datasets.providers.InriaAerialImageDataset.init_from_folder
+  data_dir: ${dataset.data_dir}
+  download: False
+
+train:
+  dataset:
+    _target_: painless_sota.inria_aerial.data.RandomCropFromImageDataset.from_dataframe
+    image_size: 512
+    num_samples: ${num_samples}
+    channels_last: ${torch.channels_last}
+    need_supervision_masks: False
+    need_weighting_mask: False
+    transforms:
+      augmentations: ${augmentations}
+
+      size:
+        - _target_: ${A:PadIfNeeded}
+          min_height: ${dataset.train.dataset.image_size}
+          min_width: ${dataset.train.dataset.image_size}
+          border_mode: 0 # BORDER_CONSTANT
+          mask_value: 0
+          value: 0
+
+      normalization:
+        - _target_: ${A:Normalize}
+          mean: [ 0.485, 0.456, 0.406 ]
+          std: [ 0.229, 0.224, 0.225 ]
+
+  loader:
+    batch_size: ${batch_size}
+    num_workers: ${num_workers}
+
+validation:
+  dataset:
+    _target_: painless_sota.inria_aerial.data.FixedCropFromImageDataset.from_dataframe
+    image_size: 1024
+    channels_last: ${torch.channels_last}
+    transforms:
+      augmentations:
+
+      size:
+        - _target_: ${A:PadIfNeeded}
+          min_height: ${dataset.validation.dataset.image_size}
+          min_width: ${dataset.validation.dataset.image_size}
+          border_mode: 0 # BORDER_CONSTANT
+          mask_value: 0
+          value: 0
+
+      normalization:
+        - _target_: ${A:Normalize}
+          mean: [ 0.485, 0.456, 0.406 ]
+          std: [ 0.229, 0.224, 0.225 ]
+
+  loader:
+    batch_size: ${batch_size}
+    num_workers: ${num_workers}

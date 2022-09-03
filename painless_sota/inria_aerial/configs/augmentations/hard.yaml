@@ -1,0 +1,39 @@
+- _target_: ${A:RandomRotate90}
+  p: 1.0
+- _target_: ${A:Transpose}
+  p: 0.5
+
+- _target_: ${A:MaskDropoutV2}
+  max_objects: [ 0.1, 0.5 ]
+  p: 0.1
+
+- _target_: ${A:ShiftScaleRotate}
+  scale_limit: 0.15
+  rotate_limit: 25
+  value: 0
+  mask_value: 0
+  border_mode: 0 # cv2.BORDER_CONSTANT = 0
+  interpolation: 1 # cv2.INTER_LINEAR = 1
+  p: 0.5
+
+- _target_: ${A:RandomGridShuffle}
+  p: 0.1
+
+- _target_: ${A:RandomBrightnessContrast}
+  brightness_by_max: False
+  brightness_limit: 0.1
+  contrast_limit: 0.1
+  p: 0.25
+
+- _target_: ${A:RandomToneCurve}
+  p: 0.1
+
+- _target_: ${A:ISONoise}
+  intensity:
+    - 0.05
+    - 0.1
+  p: 0.1
+
+- _target_: ${A:FancyPCA}
+  p: 0.1
+

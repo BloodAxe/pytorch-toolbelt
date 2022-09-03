@@ -1,0 +1,14 @@
+benchmark: True
+deterministic: False
+detect_anomaly: False
+
+find_unused_parameters: False
+
+# https://pytorch.org/tutorials/intermediate/memory_format_tutorial.html
+channels_last: False
+
+# https://pytorch.org/docs/stable/notes/cuda.html#tf32-on-ampere
+cuda_allow_tf32: True
+cudnn_allow_tf32: True
+
+use_affinity_mask: False

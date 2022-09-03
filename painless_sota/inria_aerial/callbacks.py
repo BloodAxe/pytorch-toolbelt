@@ -18,10 +18,10 @@ class JaccardMetricPerImageWithOptimalThreshold(Callback):
 
     def __init__(
         self,
-        targets_key: str = "targets",
-        predictions_key: str = "logits",
-        image_id_key: str = "image_id",
-        prefix: str = "optimal_threshold",
+        targets_key: str,
+        predictions_key: str,
+        image_id_key: str,
+        prefix: str,
         predictions_postprocess_fn=torch.sigmoid,
     ):
         super().__init__(CallbackOrder.Metric)
@@ -85,8 +85,8 @@ class JaccardMetricPerImageWithOptimalThreshold(Callback):
                 all_scores_per_image[image_id]["union"] += values["union"]
 
         for image_id, values in all_scores_per_image.items():
-            intersection = values["intersection"]
-            union = values["union"]
+            intersection: np.ndarray = values["intersection"]
+            union: np.ndarray = values["union"]
             metric = intersection / (union + eps)
             ious_per_image.append(metric)
 

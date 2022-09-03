@@ -7,7 +7,7 @@ from painless_sota.inria_aerial.pipeline import InriaAerialPipeline
 from pytorch_toolbelt.utils.distributed import is_dist_avail_and_initialized
 
 
-@hydra_dpp_friendly_main(config_path="configs", config_name="train")
+@hydra_dpp_friendly_main(config_path="configs", config_name="train", version_base="1.2")
 def main(config: DictConfig) -> None:
     pytorch_toolbelt.utils.set_manual_seed(int(config.seed))
 
@@ -25,6 +25,7 @@ def main(config: DictConfig) -> None:
     # This is necessary if we are running DDP hydra sweep mode
     if is_dist_avail_and_initialized():
         torch.distributed.barrier()
+        torch.distributed.destroy_process_group()
 
 
 if __name__ == "__main__":

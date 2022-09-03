@@ -149,7 +149,7 @@ class InriaAerialImageDataset:
         df = pd.DataFrame.from_dict({"images": self.train_images, "masks": self.train_masks})
         df["location_with_index"] = df["images"].apply(lambda x: fs.id_from_fname(x))
         df["location"] = df["location_with_index"].apply(lambda x: x.rstrip("0123456789"))
-        df["split"] = df["location"].apply(lambda l: "valid" if l in valid_locations else "train")
+        df["split"] = df["location_with_index"].apply(lambda l: "valid" if l in valid_locations else "train")
         df["rows"] = 5000
         df["cols"] = 5000
         return df
