@@ -13,7 +13,11 @@ class ApplySoftmaxTo(nn.Module):
     dim: int
 
     def __init__(
-        self, model: nn.Module, output_key: Union[str, int, Iterable[str]] = "logits", dim: int = 1, temperature: float = 1
+        self,
+        model: nn.Module,
+        output_key: Union[str, int, Iterable[str]] = "logits",
+        dim: int = 1,
+        temperature: float = 1,
     ):
         """
         Apply softmax activation on given output(s) of the model
