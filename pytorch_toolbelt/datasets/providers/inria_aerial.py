@@ -20,7 +20,7 @@ __all__ = ["InriaAerialImageDataset"]
 
 class InriaAerialImageDataset:
     """
-    python -m pytorch_toolbelt.datasets.providers.inria_aerial /data/dir/to/save
+    python -m pytorch_toolbelt.datasets.providers.inria_aerial inria_dataset
     """
 
     TASK = "binary_segmentation"
@@ -49,6 +49,7 @@ class InriaAerialImageDataset:
         for file_url, file_hash in cls.urls.items():
             file_path = os.path.join(data_dir, os.path.basename(file_url))
             if not os.path.isfile(file_path) or cls.sha256digest(file_path) != file_hash:
+                os.makedirs(data_dir, exist_ok=True)
                 torch.hub.download_url_to_file(file_url, file_path)
 
             filenames.append(file_path)
