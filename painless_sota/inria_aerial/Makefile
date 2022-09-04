@@ -14,3 +14,9 @@ opencv:
 
 pull:
 	git	pull
+
+
+grid_search: pull
+	torchrun --standalone --nnodes=1 --nproc_per_node=$(NUM_GPUS) train.py -m \
+	model=seg_repvgg_unet,b6_unet32_s2_rdtc,seg_r200d_unet \
+	batch_size=16

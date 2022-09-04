@@ -1,0 +1,5 @@
+input_key: INPUT_IMAGE_KEY
+output_key:
+
+architecture:
+  _target_: painless_sota.inria_aerial.models.b6_unet32_s2_rdtc
