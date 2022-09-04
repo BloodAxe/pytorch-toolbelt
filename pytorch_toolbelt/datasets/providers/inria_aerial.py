@@ -19,7 +19,9 @@ __all__ = ["InriaAerialImageDataset"]
 
 
 class InriaAerialImageDataset:
-    """ """
+    """
+    python -m pytorch_toolbelt.datasets.providers.inria_aerial /data/dir/to/save
+    """
 
     TASK = "binary_segmentation"
     METRIC = ""
@@ -167,8 +169,14 @@ class InriaAerialImageDataset:
         return df
 
 
-if __name__ == "__main__":
-    ds = InriaAerialImageDataset.init_from_folder("c:/datasets/inria")
+def download_and_extract(data_dir):
+    ds = InriaAerialImageDataset.init_from_folder(data_dir, download=True)
     print(ds.get_test_df())
     print(ds.get_train_val_split_train_df())
     print(ds.get_kfold_split_train_df())
+
+
+if __name__ == "__main__":
+    from fire import Fire
+
+    Fire(download_and_extract)
