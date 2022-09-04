@@ -129,8 +129,17 @@ class InriaAerialImageDataset:
         self.root_dir = root_dir
         self.train_dir = os.path.join(root_dir, "train")
         self.test_dir = os.path.join(root_dir, "test")
+
+        if not os.path.isdir(self.train_dir):
+            raise FileNotFoundError(f"Train directory {self.train_dir} does not exist")
+        if not os.path.isdir(self.test_dir):
+            raise FileNotFoundError(f"Test directory {self.train_dir} does not exist")
+
         self.train_images = fs.find_images_in_dir(os.path.join(self.train_dir, "images"))
         self.train_masks = fs.find_images_in_dir(os.path.join(self.train_dir, "gt"))
+
+        if len(self.train_images) != 180 or len(self.train_masks) != 180:
+            raise RuntimeError("Number of train images and ground-truth masks must be 180")
 
     def get_test_df(self) -> pd.DataFrame:
         test_images = fs.find_images_in_dir(os.path.join(self.test_dir, "images"))
