@@ -20,4 +20,7 @@ grid_search: pull
 	export OMP_NUM_THREADS=4
 	INRIA_AERIAL_DATA_DIR=/home/eugene/inria_dataset torchrun --standalone --nnodes=1 --nproc_per_node=$(NUM_GPUS) train.py -m \
 	model=seg_repvgg_unet,b6_unet32_s2_rdtc,seg_r200d_unet \
-	batch_size=16
+	dataset.train.loader.batch_size=32 \
+	dataset.train.dataset.num_samples=4096 \
+	dataset.validation.loader.batch_size=16 \
+	runner.show_batches=False
