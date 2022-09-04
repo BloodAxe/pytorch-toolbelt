@@ -17,6 +17,7 @@ pull:
 
 
 grid_search: pull
+	export INRIA_AERIAL_DATA_DIR=/home/eugene/inria_dataset
 	torchrun --standalone --nnodes=1 --nproc_per_node=$(NUM_GPUS) train.py -m \
 	model=seg_repvgg_unet,b6_unet32_s2_rdtc,seg_r200d_unet \
 	batch_size=16
