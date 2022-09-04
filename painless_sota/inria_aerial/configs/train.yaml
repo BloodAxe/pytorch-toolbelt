@@ -9,7 +9,7 @@ defaults:
 
 batch_size: 4
 channels_last: False
-num_samples: 32
+num_samples: 1024
 num_workers: 4
 
 # DDP Stuff
