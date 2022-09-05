@@ -16,11 +16,31 @@ pull:
 	git	pull
 
 
-grid_search: pull
+
+seg_r200d_unet: pull
 	export OMP_NUM_THREADS=4
-	INRIA_AERIAL_DATA_DIR=/home/eugene/inria_dataset torchrun --standalone --nnodes=1 --nproc_per_node=$(NUM_GPUS) train.py -m \
-	model=seg_repvgg_unet,b6_unet32_s2_rdtc,seg_r200d_unet \
-	dataset.train.loader.batch_size=32 \
+	INRIA_AERIAL_DATA_DIR=/home/eugene/inria_dataset torchrun --standalone --nnodes=1 --nproc_per_node=4 train.py \
+	model=seg_r200d_unet \
+	dataset.train.loader.batch_size=16 \
 	dataset.train.dataset.num_samples=4096 \
+	dataset.validation.loader.batch_size=16 \
+	runner.show_batches=False
+
+b6_unet32_s2_rdtc: pull
+	export OMP_NUM_THREADS=4
+	INRIA_AERIAL_DATA_DIR=/home/eugene/inria_dataset torchrun --standalone --nnodes=1 --nproc_per_node=4 train.py \
+	model=b6_unet32_s2_rdtc \
+	dataset.train.loader.batch_size=16 \
+	dataset.train.dataset.num_samples=4096 \
+	dataset.validation.loader.batch_size=16 \
+	runner.show_batches=False
+
+seg_repvgg_unet: pull
+	export OMP_NUM_THREADS=4
+	INRIA_AERIAL_DATA_DIR=/home/eugene/inria_dataset torchrun --standalone --nnodes=1 --nproc_per_node=4 train.py \
+	model=seg_repvgg_unet \
+	optimizer=adamw_scratch \
+	dataset.train.loader.batch_size=32 \
+	dataset.train.dataset.num_samples=16536 \
 	dataset.validation.loader.batch_size=16 \
 	runner.show_batches=False

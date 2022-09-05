@@ -2,6 +2,7 @@ from collections import OrderedDict
 from functools import partial
 from typing import Union, List, Dict, Type
 
+import torch
 from pytorch_toolbelt.datasets import OUTPUT_MASK_KEY
 from pytorch_toolbelt.modules import (
     conv1x1,
@@ -100,3 +101,10 @@ def b6_unet32_s2_rdtc(input_channels=3, num_classes=1, dropout=0.2, pretrained=T
         upsample_block=ResidualDeconvolutionUpsample2d,
         last_upsample_block=ResidualDeconvolutionUpsample2d,
     )
+
+
+if __name__ == "__main__":
+    net = b6_unet32_s2_rdtc().cuda().eval()
+    input = torch.randn((1, 3, 512, 512)).cuda()
+
+    output = net(input)

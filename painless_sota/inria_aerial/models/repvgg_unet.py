@@ -1,7 +1,7 @@
 import collections
 import copy
 from pprint import pprint
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 import numpy as np
 import torch
@@ -476,7 +476,7 @@ class RepVGGUnet(nn.Module):
             decoder_features=config.decoder_features,
             drop_path_rate=config.drop_path_rate,
             activation=config.activation,
-            segmentation_head=segmentation_head
+            segmentation_head=segmentation_head,
         )
 
     def __init__(
@@ -485,7 +485,7 @@ class RepVGGUnet(nn.Module):
         decoder_features: List[int],
         drop_path_rate: float,
         activation: str,
-        segmentation_head:nn.Module
+        segmentation_head: nn.Module,
     ):
         super().__init__()
         self.encoder = get_RepVGG_func_by_name(encoder)(activation=activation)
@@ -538,13 +538,42 @@ class RepVGGUnet(nn.Module):
         )
 
 
+class RDTSCHead(nn.Module):
+    def __init__(self, channels: List[int], output_name: Optional[str] = None):
+        super().__init__()
+        ch1 = channels[0]
+        ch2 = ch1 // 4
+        ch3 = ch2 // 4
+
+        self.up = nn.Sequential(
+            ResidualDeconvolutionUpsample2d(ch1),
+            ResidualDeconvolutionUpsample2d(ch2),
+            nn.Dropout2d(0.1),
+            nn.Conv2d(ch3, 1, kernel_size=1),
+        )
+        self.output_name = output_name
+
+    def forward(self, feature_maps, size):
+        output = self.up(feature_maps[0])
+        if self.output_name is not None:
+            return {self.output_name: output}
+        else:
+            return output
+
+
 if __name__ == "__main__":
     model = RepVGGUnet(
         encoder="RepVGG-B2",
         decoder_features=[64, 128, 256, 512],
         drop_path_rate=0.1,
         activation="silu",
-        num_classes=10,
+        # segmentation_head=PixelShufflePredictionsHead(
+        #     channels=[64, 128, 256, 512],
+        #     num_classes=10,
+        #     scale_factor=4,
+        #     output_name=
+        # ),
+        segmentation_head=RDTSCHead(channels=[64, 128, 256, 512], output_name="OUTPUT_MASK_KEY"),
     ).cuda()
     input = torch.randn((4, 3, 512, 768)).cuda()
 

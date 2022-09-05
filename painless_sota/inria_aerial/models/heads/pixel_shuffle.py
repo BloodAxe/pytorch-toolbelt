@@ -8,10 +8,18 @@ from torch import nn, Tensor
 
 class PixelShufflePredictionsHead(nn.Module):
     def __init__(
-        self, channels: List[int], num_classes: int, scale_factor: int = 4, output_name: Optional[str] = None
+        self,
+        channels: List[int],
+        num_classes: int,
+        scale_factor: int = 4,
+        output_name: Optional[str] = None,
+        dropout_rate=0.0,
     ):
         super().__init__()
-        self.projection = nn.Conv2d(channels[0], num_classes * scale_factor * scale_factor, kernel_size=1)
+        self.projection = nn.Sequential(
+            nn.Dropout2d(dropout_rate),
+            nn.Conv2d(channels[0], num_classes * scale_factor * scale_factor, kernel_size=1),
+        )
         self.up = nn.PixelShuffle(scale_factor)
         self.output_name = output_name
 
