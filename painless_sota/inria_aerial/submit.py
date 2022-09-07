@@ -154,15 +154,15 @@ def main():
     if args.tta is not None:
         test_predictions_dir += f"_{args.tta}"
 
-    test_predictions_dir = os.path.join(test_predictions_dir, "raw")
+    test_predictions_dir_raw = os.path.join(test_predictions_dir, "raw")
     test_predictions_dir_compressed = os.path.join(test_predictions_dir, "compressed")
 
-    os.makedirs(test_predictions_dir, exist_ok=True)
+    os.makedirs(test_predictions_dir_raw, exist_ok=True)
     os.makedirs(test_predictions_dir_compressed, exist_ok=True)
 
     test_images = find_in_dir(os.path.join(data_dir, "test", "images"))
     for fname in tqdm(test_images, total=len(test_images)):
-        predicted_mask_fname = os.path.join(test_predictions_dir, os.path.basename(fname))
+        predicted_mask_fname = os.path.join(test_predictions_dir_raw, os.path.basename(fname))
 
         image = read_tiff(fname)
         mask = predict(model, image, image_size=(1024, 1024), batch_size=args.batch_size * torch.cuda.device_count())
