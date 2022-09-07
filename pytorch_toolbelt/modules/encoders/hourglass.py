@@ -259,7 +259,7 @@ class StackedHGEncoder(EncoderModule):
 
         return outputs
 
-    def change_input_channels(self, input_channels: int, mode="auto"):
+    def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
         self.stem.conv1 = make_n_channel_input(self.stem.conv1, input_channels, mode)
         return self
 
