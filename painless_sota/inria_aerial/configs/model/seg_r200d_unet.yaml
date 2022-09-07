@@ -10,6 +10,7 @@ architecture:
 
     encoder:
       _target_: pytorch_toolbelt.modules.encoders.TimmResnet200D
+      drop_path_rate: 0.2
       pretrained: True
       layers:
         - 1 # 4
