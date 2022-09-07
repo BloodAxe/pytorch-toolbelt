@@ -47,8 +47,7 @@ def predict(model: nn.Module, image: np.ndarray, image_size, normalize=A.Normali
     transform = A.Compose([normalize])
 
     data = list(
-        {"image": patch, "coords": np.array(coords, dtype=int)}
-        for (patch, coords) in zip(patches, tile_slicer.crops)
+        {"image": patch, "coords": np.array(coords, dtype=int)} for (patch, coords) in zip(patches, tile_slicer.crops)
     )
 
     for batch in DataLoader(
@@ -146,16 +145,10 @@ def main():
     else:
         pass
 
-    model = model.cuda()
+    model = model.cuda().eval()
+
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
-
-    model = model.eval()
-
-    # mask = predict(model, read_inria_image("sample_color.jpg"), image_size=(512, 512), batch_size=args.batch_size * torch.cuda.device_count())
-    # mask = ((mask > threshold) * 255).astype(np.uint8)
-    # name = os.path.join(run_dir, "sample_color.jpg")
-    # cv2.imwrite(name, mask)
 
     test_predictions_dir = os.path.join(out_dir, "test_predictions")
     if args.tta is not None:
@@ -172,9 +165,7 @@ def main():
         predicted_mask_fname = os.path.join(test_predictions_dir, os.path.basename(fname))
 
         image = read_tiff(fname)
-        mask = predict(
-            model, image, image_size=(1024, 1024), batch_size=args.batch_size * torch.cuda.device_count()
-        )
+        mask = predict(model, image, image_size=(1024, 1024), batch_size=args.batch_size * torch.cuda.device_count())
         mask = ((mask > threshold) * 255).astype(np.uint8)
         cv2.imwrite(predicted_mask_fname, mask)
 
