@@ -5,6 +5,5 @@ from .efficient_net_v2 import *
 from .hrnet import *
 from .nf_regnet import *
 from .nfnet import *
-from .nfnet_s import *
 from .res2net import *
 from .resnet import *

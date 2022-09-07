@@ -217,15 +217,6 @@ def test_xresnet_encoder(encoder, encoder_params):
         [timm.NFNetF6Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
         [timm.NFNetF7Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
         #
-        [timm.NFNetF0SEncoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.NFNetF1SEncoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.NFNetF2SEncoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.NFNetF3SEncoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.NFNetF4SEncoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.NFNetF5SEncoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.NFNetF6SEncoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        [timm.NFNetF7SEncoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
-        #
         [timm.NFRegNetB0Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
         [timm.NFRegNetB1Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],
         [timm.NFRegNetB2Encoder, {"pretrained": False, "layers": [0, 1, 2, 3, 4]}],

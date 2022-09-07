@@ -47,6 +47,6 @@ class UnetEncoder(EncoderModule):
     def encoder_layers(self):
         return [self.__getattr__(f"layer{layer}") for layer in range(self.num_layers)]
 
-    def change_input_channels(self, input_channels: int, mode="auto"):
+    def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
         self.layer0.conv1 = make_n_channel_input(self.layer0.conv1, input_channels, mode)
         return self

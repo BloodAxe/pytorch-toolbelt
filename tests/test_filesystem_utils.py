@@ -1,10 +1,11 @@
-import pytest
+import os.path
 from pathlib import Path
+
 from pytorch_toolbelt.utils.fs import read_rgb_image, read_image_as_is, change_extension
 
-lena_str_name = "tests/lena.png"
-lena_path = Path(".") / "tests" / "lena.png"
-lena_path_jpeg = Path(".") / "tests" / "lena.jpeg"
+lena_str_name = os.path.join(os.path.dirname(__file__), "lena.png")
+lena_path = Path(os.path.dirname(__file__)) / "lena.png"
+lena_path_jpeg = Path(os.path.dirname(__file__)) / "lena.jpeg"
 
 
 def test_read_rgb_image_str():

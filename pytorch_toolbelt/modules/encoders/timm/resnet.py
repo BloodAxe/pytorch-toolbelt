@@ -143,8 +143,8 @@ class TimmResnet152D(GenericTimmEncoder):
         encoder = resnet152d(features_only=True, pretrained=pretrained, act_layer=act_layer, **kwargs)
         super().__init__(encoder, layers)
 
-    def change_input_channels(self, input_channels: int, mode="auto"):
-        self.encoder.conv1[0] = make_n_channel_input(self.encoder.conv1[0], input_channels, mode=mode)
+    def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
+        self.encoder.conv1[0] = make_n_channel_input(self.encoder.conv1[0], input_channels, mode=mode, **kwargs)
         return self
 
 
@@ -156,8 +156,8 @@ class TimmSEResnet152D(GenericTimmEncoder):
         encoder = seresnet152d(features_only=True, pretrained=pretrained, act_layer=act_layer, **kwargs)
         super().__init__(encoder, layers)
 
-    def change_input_channels(self, input_channels: int, mode="auto"):
-        self.encoder.conv1[0] = make_n_channel_input(self.encoder.conv1[0], input_channels, mode=mode)
+    def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
+        self.encoder.conv1[0] = make_n_channel_input(self.encoder.conv1[0], input_channels, mode=mode, **kwargs)
         return self
 
 
@@ -169,8 +169,8 @@ class TimmResnet50D(GenericTimmEncoder):
         encoder = resnet50d(features_only=True, pretrained=pretrained, act_layer=act_layer, **kwargs)
         super().__init__(encoder, layers)
 
-    def change_input_channels(self, input_channels: int, mode="auto"):
-        self.encoder.conv1[0] = make_n_channel_input(self.encoder.conv1[0], input_channels, mode=mode)
+    def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
+        self.encoder.conv1[0] = make_n_channel_input(self.encoder.conv1[0], input_channels, mode=mode, **kwargs)
         return self
 
 
@@ -182,8 +182,8 @@ class TimmResnet101D(GenericTimmEncoder):
         encoder = resnet101d(features_only=True, pretrained=pretrained, act_layer=act_layer, **kwargs)
         super().__init__(encoder, layers)
 
-    def change_input_channels(self, input_channels: int, mode="auto"):
-        self.encoder.conv1[0] = make_n_channel_input(self.encoder.conv1[0], input_channels, mode=mode)
+    def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
+        self.encoder.conv1[0] = make_n_channel_input(self.encoder.conv1[0], input_channels, mode=mode, **kwargs)
         return self
 
 
@@ -195,6 +195,6 @@ class TimmResnet200D(GenericTimmEncoder):
         encoder = resnet200d(features_only=True, pretrained=pretrained, act_layer=act_layer, **kwargs)
         super().__init__(encoder, layers)
 
-    def change_input_channels(self, input_channels: int, mode="auto"):
-        self.encoder.conv1[0] = make_n_channel_input(self.encoder.conv1[0], input_channels, mode=mode)
+    def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
+        self.encoder.conv1[0] = make_n_channel_input(self.encoder.conv1[0], input_channels, mode=mode, **kwargs)
         return self
