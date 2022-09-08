@@ -1,7 +1,7 @@
 NUM_GPUS=`python -c "import torch;print(torch.cuda.device_count())"`
 
 tensorboard-daemon:
-	nohup tensorboard --logdir=./runs --host 0.0.0.0 --port 6006 --window_title "EOS Detection" > tb.log &
+	nohup tensorboard --logdir=./runs --host 0.0.0.0 --port 7007 --window_title "Inria Aerial" > /dev/null &
 
 env:
 	conda remove --name xview3 --all;
