@@ -36,11 +36,10 @@ class InMemoryDataset(Dataset):
 
 
 @torch.no_grad()
-def predict(model: nn.Module, image: np.ndarray, image_size, normalize=A.Normalize(), batch_size=1) -> np.ndarray:
-
-    tile_step = (3 * image_size[0] // 4, 3 * image_size[1] // 4)
-
-    tile_slicer = ImageSlicer(image.shape, image_size, tile_step, weight="pyramid")
+def predict(
+    model: nn.Module, image: np.ndarray, tile_size: int, tile_step: int, normalize=A.Normalize(), batch_size=1
+) -> np.ndarray:
+    tile_slicer = ImageSlicer(image.shape, tile_size, tile_step, weight="pyramid")
     tile_merger = TileMerger(tile_slicer.target_shape, 1, tile_slicer.weight, device="cuda")
     patches = tile_slicer.split(image)
 
@@ -109,6 +108,8 @@ def main():
     )
     parser.add_argument("-b", "--batch-size", type=int, default=16, help="Batch size for inference")
     parser.add_argument("-tta", "--tta", default=None, type=str, help="Type of TTA to use [fliplr, d4]")
+    parser.add_argument("--tile-size", default=1024, type=int, help="Tile Size")
+    parser.add_argument("--tile-step", default=768, type=int, help="Tile Step")
     args = parser.parse_args()
 
     data_dir = args.data_dir
@@ -150,7 +151,12 @@ def main():
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
 
-    test_predictions_dir = os.path.join(out_dir, "test_predictions")
+    tile_size = args.tile_size
+    tile_step = args.tile_step
+    print("Tile size", tile_size)
+    print("Tile step", tile_step)
+
+    test_predictions_dir = os.path.join(out_dir, f"test_predictions_{tile_size}_{tile_step}")
     if args.tta is not None:
         test_predictions_dir += f"_{args.tta}"
 
@@ -165,7 +171,13 @@ def main():
         predicted_mask_fname = os.path.join(test_predictions_dir_raw, os.path.basename(fname))
 
         image = read_tiff(fname)
-        mask = predict(model, image, image_size=(1024, 1024), batch_size=args.batch_size * torch.cuda.device_count())
+        mask = predict(
+            model,
+            image,
+            tile_size=tile_size,
+            tile_step=tile_step,
+            batch_size=args.batch_size * torch.cuda.device_count(),
+        )
         mask = ((mask > threshold) * 255).astype(np.uint8)
         cv2.imwrite(predicted_mask_fname, mask)
 
