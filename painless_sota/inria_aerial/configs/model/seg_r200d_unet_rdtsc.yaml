@@ -18,7 +18,7 @@ architecture:
         - 4 # 32
 
     decoder:
-      upsample_type: bilinear
+      upsample_type: rdtsc
       block_type: IRBlock
       channels:
         - 256
@@ -26,8 +26,9 @@ architecture:
         - 512
 
     segmentation:
-      _target_: painless_sota.inria_aerial.models.SimpleSegmentationHead
+      _target_: painless_sota.inria_aerial.models.PixelShufflePredictionsHead
       channels: ${model.architecture.config.decoder.channels}
       num_classes: ${dataset.num_output_classes}
+      scale_factor: 4
       dropout_rate: 0.1
       output_name: OUTPUT_MASK_KEY
