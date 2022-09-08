@@ -39,7 +39,7 @@ seg_r200d_unet_rdtsc_s2: pull
 	export OMP_NUM_THREADS=4
 	INRIA_AERIAL_DATA_DIR=/home/eugene/inria_dataset torchrun --standalone --nnodes=1 --nproc_per_node=4 train.py \
 	model=seg_r200d_unet_rdtsc_s2 \
-	dataset.train.loader.batch_size=16 \
+	dataset.train.loader.batch_size=20 \
 	dataset.train.dataset.num_samples=16536 \
 	dataset.validation.loader.batch_size=16 \
 	runner.show_batches=False

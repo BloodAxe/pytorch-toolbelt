@@ -25,7 +25,17 @@
   mask_value: 0
   border_mode: 0 # cv2.BORDER_CONSTANT = 0
   interpolation: 1 # cv2.INTER_LINEAR = 1
-  p: 0.5
+  p: 0.95
+
+- _target_: ${A:ElasticTransform}
+  alpha_affine: 0.15
+  alpha: 25
+  sigma: 10
+  value: 0
+  mask_value: 0
+  border_mode: 0 # cv2.BORDER_CONSTANT = 0
+  interpolation: 1 # cv2.INTER_LINEAR = 1
+  p: 0.1
 
 - _target_: ${A:RandomGridShuffle}
   p: 0.1
