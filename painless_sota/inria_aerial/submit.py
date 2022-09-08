@@ -143,8 +143,10 @@ def main():
         model = tta.MultiscaleTTA(model, size_offsets=[-128, -64, 64, 128])
     elif args.tta == "ms":
         model = tta.MultiscaleTTA(model, size_offsets=[-128, -64, 64, 128])
-    else:
+    elif args.tta is None:
         pass
+    else:
+        raise KeyError(args.tta)
 
     model = model.cuda().eval()
 
