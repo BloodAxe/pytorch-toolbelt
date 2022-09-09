@@ -1,0 +1,8 @@
+aggregation: sum
+losses:
+  - loss:
+      _target_: torch.nn.BCEWithLogitsLoss
+    prefix: loss/bce
+    target_key: TARGET_MASK_KEY
+    output_key: OUTPUT_MASK_KEY
+    weight: 1.0
