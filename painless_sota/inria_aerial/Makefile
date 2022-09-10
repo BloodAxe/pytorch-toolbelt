@@ -59,7 +59,7 @@ seg_r200d_unet_rdtsc_s2: pull
 	dataset.train.loader.batch_size=16 \
 	dataset.train.dataset.num_samples=16536 \
 	dataset.validation.loader.batch_size=16 \
-	loss=soft_bce \
+	loss=bce_dice \
 	runner.show_batches=False optimizer=adamw2
 
 	export OMP_NUM_THREADS=4
@@ -68,7 +68,7 @@ seg_r200d_unet_rdtsc_s2: pull
 	dataset.train.loader.batch_size=16 \
 	dataset.train.dataset.num_samples=16536 \
 	dataset.validation.loader.batch_size=16 \
-	loss=bce_dice \
+	loss=soft_bce \
 	runner.show_batches=False optimizer=adamw2
 
 	export OMP_NUM_THREADS=4
