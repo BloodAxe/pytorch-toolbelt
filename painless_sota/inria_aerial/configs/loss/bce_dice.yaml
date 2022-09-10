@@ -1,11 +1,11 @@
 aggregation: sum
 losses:
   - loss:
-      _target_: pytorch_toolbelt.losses.BinaryFocalLoss
-    prefix: loss/focal
+      _target_: torch.nn.BCEWithLogitsLoss
+    prefix: loss/bce
     target_key: TARGET_MASK_KEY
     output_key: OUTPUT_MASK_KEY
-    weight: 10.0
+    weight: 1.0
 
   - loss:
       _target_: pytorch_toolbelt.losses.DiceLoss

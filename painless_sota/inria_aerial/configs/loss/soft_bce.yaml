@@ -1,0 +1,9 @@
+aggregation: sum
+losses:
+  - loss:
+      _target_: pytorch_toolbelt.losses.SoftBCEWithLogitsLoss
+      smooth_factor: 0.1
+    prefix: loss/soft_bce
+    target_key: TARGET_MASK_KEY
+    output_key: OUTPUT_MASK_KEY
+    weight: 1.0
