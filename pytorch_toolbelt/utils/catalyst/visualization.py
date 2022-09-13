@@ -9,7 +9,8 @@ import torch.nn.functional as F
 from torch import Tensor
 from catalyst.dl import Callback, CallbackOrder, IRunner, CallbackNode
 from catalyst.dl.callbacks import TensorboardLogger
-from catalyst.contrib.tools.tensorboard import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
+
 from pytorch_toolbelt.utils import render_figure_to_tensor
 from pytorch_toolbelt.utils.distributed import all_gather
 
