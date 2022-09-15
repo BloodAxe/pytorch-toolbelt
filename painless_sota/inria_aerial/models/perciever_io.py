@@ -896,6 +896,7 @@ class PercieverIOForSegmentation(PerceiverIO):
             **config.decoder.base_kwargs(),
         )
         super().__init__(encoder, decoder)
+        self.output_name = config.output_name
 
     def forward(self, x):
         output = super().forward(x)

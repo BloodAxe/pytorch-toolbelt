@@ -4,7 +4,6 @@ output_key:
 architecture:
   _target_: painless_sota.inria_aerial.models.PercieverIOForSegmentation.from_config
   config:
-    slug: seg_perciever2
     train_size: ${dataset.train.dataset.image_size}
     num_classes: ${dataset.num_output_classes}
     d_latents: 512
