@@ -82,7 +82,7 @@ seg_perciever_io: pull
 	dataset.train.loader.batch_size=2 \
 	dataset.train.dataset.num_samples=16536 \
 	dataset.validation.dataset.image_size=512 \
-	dataset.validation.loader.batch_size=2 \
+	dataset.validation.loader.batch_size=24 \
 	loss=bce \
 	runner.show_batches=True \
 	optimizer=adamw_perciever
