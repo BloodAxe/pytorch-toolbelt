@@ -10,6 +10,6 @@ architecture:
     num_latents: 1024
     num_self_attention_heads: 16
     num_self_attends_per_block: 16
-    activation_checkpointing: False
+    activation_checkpointing: True
     activation_offloading: False
     output_name: OUTPUT_MASK_KEY
