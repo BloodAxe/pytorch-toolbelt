@@ -16,6 +16,53 @@ from torch import Tensor
 __all__ = ["PercieverIOForSegmentation"]
 
 
+def _positions(spatial_shape, v_min=-1.0, v_max=1.0):
+    """Create evenly spaced position coordinates for self.spatial_shape with values in [v_min, v_max].
+
+    :param v_min: minimum coordinate value per dimension.
+    :param v_max: maximum coordinate value per dimension.
+    :return: position coordinates tensor of shape (*shape, len(shape)).
+    """
+    coords = [torch.linspace(v_min, v_max, steps=s) for s in spatial_shape]
+    return torch.stack(torch.meshgrid(*coords, indexing="ij"), dim=len(spatial_shape))
+
+
+def _position_encodings(
+    p: Tensor,
+    num_frequency_bands,
+    max_frequencies: Optional[Tuple[int, ...]] = None,
+    include_positions: bool = True,
+) -> Tensor:
+    """Fourier-encode positions p using self.num_bands frequency bands.
+
+    :param p: positions of shape (*d, c) where c = len(d).
+    :param max_frequencies: maximum frequency for each dimension (1-tuple for sequences,
+           2-tuple for images, ...). If `None` values are derived from shape of p.
+    :param include_positions: whether to include input positions p in returned encodings tensor.
+    :returns: position encodings tensor of shape (*d, c * (2 * num_bands + include_positions)).
+    """
+    encodings = []
+
+    if max_frequencies is None:
+        max_frequencies = p.shape[:-1]
+
+    frequencies = [
+        torch.linspace(1.0, max_freq / 2.0, num_frequency_bands, device=p.device) for max_freq in max_frequencies
+    ]
+    frequency_grids = []
+
+    for i, frequencies_i in enumerate(frequencies):
+        frequency_grids.append(p[..., i : i + 1] * frequencies_i[None, ...])
+
+    if include_positions:
+        encodings.append(p)
+
+    encodings.extend([torch.sin(math.pi * frequency_grid) for frequency_grid in frequency_grids])
+    encodings.extend([torch.cos(math.pi * frequency_grid) for frequency_grid in frequency_grids])
+
+    return torch.cat(encodings, dim=-1)
+
+
 @dataclass
 class EncoderConfig:
     num_cross_attention_heads: int = 8
@@ -77,14 +124,7 @@ class PerceiverConfig(Generic[E, D]):
     num_latent_channels: int
     activation_checkpointing: bool = False
     activation_offloading: bool = False
-    output_name: str = None
-
-
-@dataclass
-class ClassificationDecoderConfig(DecoderConfig):
-    num_output_queries: int = 1
-    num_output_query_channels: int = 256
-    num_classes: int = 100
+    output_name: Optional[str] = None
 
 
 def _base_kwargs(config, base_class, exclude):
@@ -150,7 +190,7 @@ class MultiHeadAttention(nn.Module):
 
         num_qk_channels_per_head = num_qk_channels // num_heads
 
-        self.dp_scale = num_qk_channels_per_head ** -0.5
+        self.dp_scale = num_qk_channels_per_head**-0.5
         self.num_heads = num_heads
 
         self.q_proj = nn.Linear(num_q_input_channels, num_qk_channels)
@@ -398,110 +438,6 @@ class OutputAdapter(nn.Module):
         raise NotImplementedError()
 
 
-class ClassificationOutputAdapter(OutputAdapter):
-    def __init__(
-        self,
-        num_classes: int,
-        num_output_queries: int = 1,
-        num_output_query_channels: Optional[int] = None,
-        init_scale: float = 0.02,
-    ):
-
-        if num_output_query_channels is None:
-            num_output_query_channels = num_classes
-
-        super().__init__(
-            output_query=torch.empty(num_output_queries, num_output_query_channels), init_scale=init_scale
-        )
-        self.linear = nn.Linear(num_output_query_channels, num_classes)
-
-    def forward(self, x):
-        return self.linear(x).squeeze(dim=1)
-
-
-class SegmentationOutputAdapter(OutputAdapter):
-    def __init__(
-        self,
-        num_classes: int,
-        num_frequency_bands: int,
-        image_shape,
-        num_output_query_channels: Optional[int] = None,
-        init_scale: float = 0.02,
-    ):
-        *spatial_shape, num_image_channels = image_shape
-
-        # create encodings for single example
-        pos = self._positions(spatial_shape)
-        enc = self._position_encodings(pos, num_frequency_bands)
-        # flatten encodings along spatial dimensions
-        enc = rearrange(enc, "... c -> (...) c")
-
-        super().__init__(output_query=enc, init_scale=init_scale)
-        self.linear = nn.Linear(self.num_output_query_channels, num_classes)
-        self.spatial_shape = spatial_shape
-
-    def _init_parameters(self, init_scale):
-        pass
-
-    @classmethod
-    def _positions(cls, spatial_shape, v_min=-1.0, v_max=1.0):
-        """Create evenly spaced position coordinates for self.spatial_shape with values in [v_min, v_max].
-
-        :param v_min: minimum coordinate value per dimension.
-        :param v_max: maximum coordinate value per dimension.
-        :return: position coordinates tensor of shape (*shape, len(shape)).
-        """
-        coords = [torch.linspace(v_min, v_max, steps=s) for s in spatial_shape]
-        return torch.stack(torch.meshgrid(*coords, indexing="ij"), dim=len(spatial_shape))
-
-    @classmethod
-    def _position_encodings(
-        cls,
-        p: Tensor,
-        num_frequency_bands,
-        max_frequencies: Optional[Tuple[int, ...]] = None,
-        include_positions: bool = True,
-    ) -> Tensor:
-        """Fourier-encode positions p using self.num_bands frequency bands.
-
-        :param p: positions of shape (*d, c) where c = len(d).
-        :param max_frequencies: maximum frequency for each dimension (1-tuple for sequences,
-               2-tuple for images, ...). If `None` values are derived from shape of p.
-        :param include_positions: whether to include input positions p in returned encodings tensor.
-        :returns: position encodings tensor of shape (*d, c * (2 * num_bands + include_positions)).
-        """
-        encodings = []
-
-        if max_frequencies is None:
-            max_frequencies = p.shape[:-1]
-
-        frequencies = [
-            torch.linspace(1.0, max_freq / 2.0, num_frequency_bands, device=p.device) for max_freq in max_frequencies
-        ]
-        frequency_grids = []
-
-        for i, frequencies_i in enumerate(frequencies):
-            frequency_grids.append(p[..., i : i + 1] * frequencies_i[None, ...])
-
-        if include_positions:
-            encodings.append(p)
-
-        encodings.extend([torch.sin(math.pi * frequency_grid) for frequency_grid in frequency_grids])
-        encodings.extend([torch.cos(math.pi * frequency_grid) for frequency_grid in frequency_grids])
-
-        return torch.cat(encodings, dim=-1)
-
-    def output_query(self, x):
-        b, *d = x.shape
-        return repeat(self._output_query, "... -> b ...", b=b)
-
-    def forward(self, x):
-        y = self.linear(x)
-        b, spatial_flatten, channels = y.shape
-
-        return torch.moveaxis(y.view([b] + self.spatial_shape + [channels]), -1, 1)
-
-
 class PerceiverEncoder(nn.Module):
     def __init__(
         self,
@@ -731,121 +667,90 @@ def _init_parameters(module, init_scale):
 
 class ImageInputAdapter(InputAdapter):
     def __init__(self, image_shape: Tuple[int, ...], num_frequency_bands: int):
-        *self.spatial_shape, num_image_channels = image_shape
-        self.image_shape = image_shape
-        self.num_frequency_bands = num_frequency_bands
+        image_shape_down = (image_shape[0] // 4, image_shape[1] // 4, image_shape[2] * 4 * 4)
+        *spatial_shape, num_image_channels = image_shape_down
 
-        super().__init__(num_input_channels=num_image_channels + self._num_position_encoding_channels())
+        include_positions = True
+        num_position_encoding_channels = len(spatial_shape) * (2 * num_frequency_bands + include_positions)
 
         # create encodings for single example
-        pos = self._positions()
-        enc = self._position_encodings(pos)
+        pos = _positions(spatial_shape)
+        enc = _position_encodings(pos, num_frequency_bands)
 
         # flatten encodings along spatial dimensions
         enc = rearrange(enc, "... c -> (...) c")
 
-        # position encoding prototype
+        super().__init__(num_input_channels=num_image_channels + num_position_encoding_channels)
+        self.image_shape_down = image_shape_down
+        self.num_frequency_bands = num_frequency_bands
+        self.space2depth = nn.PixelUnshuffle(4)
         self.register_buffer("position_encoding", enc)
-
-    def _positions(self, v_min=-1.0, v_max=1.0):
-        """Create evenly spaced position coordinates for self.spatial_shape with values in [v_min, v_max].
-
-        :param v_min: minimum coordinate value per dimension.
-        :param v_max: maximum coordinate value per dimension.
-        :return: position coordinates tensor of shape (*shape, len(shape)).
-        """
-        coords = [torch.linspace(v_min, v_max, steps=s) for s in self.spatial_shape]
-        return torch.stack(torch.meshgrid(*coords, indexing="ij"), dim=len(self.spatial_shape))
-
-    def _position_encodings(
-        self, p: Tensor, max_frequencies: Optional[Tuple[int, ...]] = None, include_positions: bool = True
-    ) -> Tensor:
-        """Fourier-encode positions p using self.num_bands frequency bands.
-
-        :param p: positions of shape (*d, c) where c = len(d).
-        :param max_frequencies: maximum frequency for each dimension (1-tuple for sequences,
-               2-tuple for images, ...). If `None` values are derived from shape of p.
-        :param include_positions: whether to include input positions p in returned encodings tensor.
-        :returns: position encodings tensor of shape (*d, c * (2 * num_bands + include_positions)).
-        """
-        encodings = []
-
-        if max_frequencies is None:
-            max_frequencies = p.shape[:-1]
-
-        frequencies = [
-            torch.linspace(1.0, max_freq / 2.0, self.num_frequency_bands, device=p.device)
-            for max_freq in max_frequencies
-        ]
-        frequency_grids = []
-
-        for i, frequencies_i in enumerate(frequencies):
-            frequency_grids.append(p[..., i : i + 1] * frequencies_i[None, ...])
-
-        if include_positions:
-            encodings.append(p)
-
-        encodings.extend([torch.sin(math.pi * frequency_grid) for frequency_grid in frequency_grids])
-        encodings.extend([torch.cos(math.pi * frequency_grid) for frequency_grid in frequency_grids])
-
-        return torch.cat(encodings, dim=-1)
 
     def _num_position_encoding_channels(self, include_positions: bool = True) -> int:
         return len(self.spatial_shape) * (2 * self.num_frequency_bands + include_positions)
 
     def forward(self, x):
+        x = self.space2depth(x)
         x = torch.moveaxis(x, 1, -1)  # Move BCHW to BHWC
         b, *d = x.shape
 
-        if tuple(d) != self.image_shape:
-            raise ValueError(f"Input image shape {tuple(d)} different from required shape {self.image_shape}")
+        if tuple(d) != self.image_shape_down:
+            raise ValueError(f"Input image shape {tuple(d)} different from required shape {self.image_shape_down}")
 
         x_enc = repeat(self.position_encoding, "... -> b ...", b=b)
         x = rearrange(x, "b ... c -> b (...) c")
         return torch.cat([x, x_enc], dim=-1)
 
 
-class ImageClassifier(PerceiverIO):
-    def __init__(self, config: PerceiverConfig[ImageEncoderConfig, ClassificationDecoderConfig]):
-        input_adapter = ImageInputAdapter(
-            image_shape=config.encoder.image_shape, num_frequency_bands=config.encoder.num_frequency_bands
-        )
+class SegmentationOutputAdapter(OutputAdapter):
+    def __init__(
+        self,
+        num_classes: int,
+        num_frequency_bands: int,
+        image_shape,
+        num_output_query_channels: Optional[int] = None,
+        init_scale: float = 0.02,
+    ):
+        image_shape_down = (image_shape[0] // 4, image_shape[1] // 4, image_shape[2] * 4 * 4)
+        *spatial_shape, num_image_channels = image_shape_down
 
-        encoder_kwargs = config.encoder.base_kwargs()
-        if encoder_kwargs["num_cross_attention_qk_channels"] is None:
-            encoder_kwargs["num_cross_attention_qk_channels"] = input_adapter.num_input_channels
+        include_positions = True
+        num_position_encoding_channels = len(spatial_shape) * (2 * num_frequency_bands + include_positions)
 
-        encoder = PerceiverEncoder(
-            input_adapter=input_adapter,
-            num_latents=config.num_latents,
-            num_latent_channels=config.num_latent_channels,
-            activation_checkpointing=config.activation_checkpointing,
-            activation_offloading=config.activation_offloading,
-            **encoder_kwargs,
-        )
-        output_adapter = ClassificationOutputAdapter(
-            num_classes=config.decoder.num_classes,
-            num_output_queries=config.decoder.num_output_queries,
-            num_output_query_channels=config.decoder.num_output_query_channels,
-            init_scale=config.decoder.init_scale,
-        )
-        decoder = PerceiverDecoder(
-            output_adapter=output_adapter,
-            num_latent_channels=config.num_latent_channels,
-            activation_checkpointing=config.activation_checkpointing,
-            activation_offloading=config.activation_offloading,
-            **config.decoder.base_kwargs(),
-        )
-        super().__init__(encoder, decoder)
+        # create encodings for single example
+        pos = _positions(spatial_shape)
+        enc = _position_encodings(pos, num_frequency_bands)
+
+        # flatten encodings along spatial dimensions
+        enc = rearrange(enc, "... c -> (...) c")
+
+        super().__init__(output_query=enc, init_scale=init_scale)
+        self.linear = nn.Linear(self.num_output_query_channels, num_classes * 4 * 4)
+        self.image_shape = image_shape
+        self.image_shape_down = (image_shape[0] // 4, image_shape[1] // 4, image_shape[2] * 4 * 4)
+        self.depth2space = nn.PixelShuffle(4)
+        *self.spatial_shape, num_image_channels = self.image_shape_down
+
+    def output_query(self, x):
+        b, *d = x.shape
+        return repeat(self._output_query, "... -> b ...", b=b)
+
+    def forward(self, x):
+        y = self.linear(x)
+        b, spatial_flatten, channels = y.shape
+
+        output = torch.moveaxis(y.view([b] + self.spatial_shape + [channels]), -1, 1)
+        output = self.depth2space(output)
+        return output
 
 
 class PercieverIOForSegmentation(PerceiverIO):
     @classmethod
-    def from_config(self, config):
+    def from_config(cls, config):
         train_size = as_tuple_of_two(config.train_size)
 
         image_shape: Tuple[int, int, int] = list(train_size) + [3]
-        return PercieverIOForSegmentation(
+        return cls(
             PerceiverConfig(
                 activation_checkpointing=config.activation_checkpointing,
                 activation_offloading=config.activation_offloading,
@@ -854,10 +759,11 @@ class PercieverIOForSegmentation(PerceiverIO):
                     num_cross_attention_heads=1,
                     num_self_attention_heads=config.num_self_attention_heads,
                     num_self_attention_layers_per_block=config.num_self_attends_per_block,
+                    init_scale=0.05,
                     dropout=0.1,
                 ),
                 decoder=SegmentationDecoderConfig(
-                    num_classes=config.num_classes, num_cross_attention_heads=1, dropout=0.1
+                    init_scale=0.05, num_classes=config.num_classes, num_cross_attention_heads=1, dropout=0.1
                 ),
                 num_latents=config.num_latents,
                 num_latent_channels=config.d_latents,
@@ -910,9 +816,9 @@ if __name__ == "__main__":
     model = (
         PercieverIOForSegmentation(
             PerceiverConfig(
-                encoder=ImageEncoderConfig(image_shape=(256, 256, 3), num_cross_attention_heads=1, dropout=0.1),
+                encoder=ImageEncoderConfig(image_shape=(256, 384, 3), num_cross_attention_heads=1, dropout=0.1),
                 decoder=SegmentationDecoderConfig(num_classes=7, num_cross_attention_heads=1, dropout=0.1),
-                num_latents=512,
+                num_latents=640,
                 num_latent_channels=512,
                 activation_checkpointing=False,
                 activation_offloading=False,
@@ -922,7 +828,7 @@ if __name__ == "__main__":
         .cuda()
     )
 
-    input = torch.randn((2, 3, 256, 256)).cuda()
+    input = torch.randn((2, 3, 256, 384)).cuda()
 
     with torch.no_grad():
         with torch.cuda.amp.autocast(True):
