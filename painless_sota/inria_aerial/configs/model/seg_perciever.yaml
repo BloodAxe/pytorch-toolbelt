@@ -1,0 +1,11 @@
+_target_: painless_sota.inria_aerial.models.PerceiverForSegmentation.from_config
+config:
+  slug: seg_perciever
+  train_size: ${train.train_image_size}
+  num_classes: ${dataset.segmentation_num_classes}
+  d_latents: 512
+  num_latents: 1024
+  num_self_attention_heads: 16
+  num_self_attends_per_block: 16
+  num_cross_attention_heads: 1
+  output_name: OUTPUT_MASK_KEY
