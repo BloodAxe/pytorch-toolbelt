@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn.functional as F
+
+from painless_sota.inria_aerial.data.functional import as_tuple_of_two
 from pytorch_toolbelt.utils import describe_outputs, count_parameters, to_numpy
 from torch import Tensor, nn
 from transformers import PerceiverConfig, apply_chunking_to_forward
@@ -20,6 +22,8 @@ from transformers.models.perceiver.modeling_perceiver import (
     PreprocessorType,
 )
 from transformers.utils import ModelOutput
+
+__all__ = ["PerceiverForSegmentation"]
 
 
 class AbstractPreprocessor(nn.Module):
@@ -457,7 +461,7 @@ class PerceiverImagePreprocessor(nn.Module):
             if self.conv_after_patching:
                 inp_dim = self.out_channels
             else:
-                inp_dim = self.in_channels * self.spatial_downsample**2
+                inp_dim = self.in_channels * self.spatial_downsample ** 2
                 if is_temporal:
                     inp_dim *= self.temporal_downsample
 
@@ -1056,15 +1060,16 @@ class PerceiverForSegmentation(nn.Module):
     def __init__(self, config, num_classes, output_name):
         super().__init__()
 
+        train_size = as_tuple_of_two(config.train_size)
         fourier_position_encoding_kwargs_preprocessor = dict(
             num_bands=64,
-            max_resolution=(config.train_size[0] // 2, config.train_size[1] // 2),
+            max_resolution=(train_size[0] // 2, train_size[1] // 2),
             sine_only=False,
             concat_pos=True,
         )
         fourier_position_encoding_kwargs_decoder = dict(
             concat_pos=True,
-            max_resolution=(config.train_size[0] // 2, config.train_size[1] // 2),
+            max_resolution=(train_size[0] // 2, train_size[1] // 2),
             num_bands=64,
             sine_only=False,
         )
@@ -1091,7 +1096,7 @@ class PerceiverForSegmentation(nn.Module):
 
         self.perceiver = PerceiverModel(config, input_preprocessor=image_preprocessor, decoder=mask_decoder)
         self.output_name = output_name
-        
+
     @classmethod
     def extract_image_patches(cls, x, kernel, stride=1, dilation=1):
 
@@ -1158,7 +1163,7 @@ if __name__ == "__main__":
         use_query_residual=False,
         initializer_range=0.15,
     )
-    model = PerceiverForSegmentation(config, num_classes=10,output_name=None).cuda()
+    model = PerceiverForSegmentation(config, num_classes=10, output_name=None).cuda()
     input = torch.randn((1, 3, 256, 256)).cuda()
 
     input[:, 0, :128, :128] = 1

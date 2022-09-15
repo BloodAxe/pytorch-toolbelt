@@ -72,3 +72,16 @@ seg_repvgg_unet: pull
 	dataset.train.dataset.num_samples=16536 \
 	dataset.validation.loader.batch_size=16 \
 	runner.show_batches=True
+
+
+seg_perciever2: pull
+	export OMP_NUM_THREADS=4
+	INRIA_AERIAL_DATA_DIR=/home/eugene/inria_dataset torchrun --standalone --nnodes=1 --nproc_per_node=4 train.py \
+	model=seg_perciever2 \
+	dataset.train.dataset.image_size=512 \
+	dataset.train.loader.batch_size=4 \
+	dataset.train.dataset.num_samples=16536 \
+	dataset.validation.dataset.image_size=512 \
+	dataset.validation.loader.batch_size=4 \
+	loss=bce_iou2 \
+	runner.show_batches=True optimizer=adamw2

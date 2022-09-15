@@ -7,9 +7,13 @@ import torch
 import torch.nn as nn
 from einops import rearrange, repeat
 from fairscale.nn import checkpoint_wrapper
+
+from painless_sota.inria_aerial.data.functional import as_tuple_of_two
 from pytorch_toolbelt.utils import count_parameters, describe_outputs
 from torch import Tensor
 
+
+__all__ = ["PercieverIOForSegmentation"]
 
 
 @dataclass
@@ -146,7 +150,7 @@ class MultiHeadAttention(nn.Module):
 
         num_qk_channels_per_head = num_qk_channels // num_heads
 
-        self.dp_scale = num_qk_channels_per_head**-0.5
+        self.dp_scale = num_qk_channels_per_head ** -0.5
         self.num_heads = num_heads
 
         self.q_proj = nn.Linear(num_q_input_channels, num_qk_channels)
@@ -406,7 +410,9 @@ class ClassificationOutputAdapter(OutputAdapter):
         if num_output_query_channels is None:
             num_output_query_channels = num_classes
 
-        super().__init__(output_query=torch.empty(num_output_queries, num_output_query_channels), init_scale=init_scale)
+        super().__init__(
+            output_query=torch.empty(num_output_queries, num_output_query_channels), init_scale=init_scale
+        )
         self.linear = nn.Linear(num_output_query_channels, num_classes)
 
     def forward(self, x):
@@ -450,7 +456,11 @@ class SegmentationOutputAdapter(OutputAdapter):
 
     @classmethod
     def _position_encodings(
-        cls, p: Tensor, num_frequency_bands, max_frequencies: Optional[Tuple[int, ...]] = None, include_positions: bool = True
+        cls,
+        p: Tensor,
+        num_frequency_bands,
+        max_frequencies: Optional[Tuple[int, ...]] = None,
+        include_positions: bool = True,
     ) -> Tensor:
         """Fourier-encode positions p using self.num_bands frequency bands.
 
@@ -465,7 +475,9 @@ class SegmentationOutputAdapter(OutputAdapter):
         if max_frequencies is None:
             max_frequencies = p.shape[:-1]
 
-        frequencies = [torch.linspace(1.0, max_freq / 2.0, num_frequency_bands, device=p.device) for max_freq in max_frequencies]
+        frequencies = [
+            torch.linspace(1.0, max_freq / 2.0, num_frequency_bands, device=p.device) for max_freq in max_frequencies
+        ]
         frequency_grids = []
 
         for i, frequencies_i in enumerate(frequencies):
@@ -575,7 +587,9 @@ class PerceiverEncoder(nn.Module):
                 widening_factor=cross_attention_widening_factor,
                 dropout=dropout,
             )
-            return checkpoint_wrapper(layer, offload_to_cpu=activation_offloading) if activation_checkpointing else layer
+            return (
+                checkpoint_wrapper(layer, offload_to_cpu=activation_offloading) if activation_checkpointing else layer
+            )
 
         def self_attn():
             return SelfAttentionBlock(
@@ -760,7 +774,8 @@ class ImageInputAdapter(InputAdapter):
             max_frequencies = p.shape[:-1]
 
         frequencies = [
-            torch.linspace(1.0, max_freq / 2.0, self.num_frequency_bands, device=p.device) for max_freq in max_frequencies
+            torch.linspace(1.0, max_freq / 2.0, self.num_frequency_bands, device=p.device)
+            for max_freq in max_frequencies
         ]
         frequency_grids = []
 
@@ -827,7 +842,9 @@ class ImageClassifier(PerceiverIO):
 class PercieverIOForSegmentation(PerceiverIO):
     @classmethod
     def from_config(self, config):
-        image_shape: Tuple[int, int, int] = list(config.train_size) + [3]
+        train_size = as_tuple_of_two(config.train_size)
+
+        image_shape: Tuple[int, int, int] = list(train_size) + [3]
         return PercieverIOForSegmentation(
             PerceiverConfig(
                 activation_checkpointing=config.activation_checkpointing,
@@ -839,10 +856,12 @@ class PercieverIOForSegmentation(PerceiverIO):
                     num_self_attention_layers_per_block=config.num_self_attends_per_block,
                     dropout=0.1,
                 ),
-                decoder=SegmentationDecoderConfig(num_classes=config.num_classes, num_cross_attention_heads=1, dropout=0.1),
+                decoder=SegmentationDecoderConfig(
+                    num_classes=config.num_classes, num_cross_attention_heads=1, dropout=0.1
+                ),
                 num_latents=config.num_latents,
                 num_latent_channels=config.d_latents,
-                output_name=config.output_name
+                output_name=config.output_name,
             )
         )
 
