@@ -1,6 +1,6 @@
 fp16: False
 wd_on_bias: True
-accumulation: 64
+accumulation: 1
 
 optimizer:
   name: SGD
