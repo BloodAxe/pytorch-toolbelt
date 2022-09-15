@@ -72,6 +72,8 @@ class InriaAerialImageDataset:
 
     @classmethod
     def init_from_folder(cls, data_dir: Union[str, Path], download: bool = False):
+        data_dir = os.path.expanduser(data_dir)
+
         if download:
             if not cls.download_and_extract(data_dir):
                 raise RuntimeError("Download and extract failed")
