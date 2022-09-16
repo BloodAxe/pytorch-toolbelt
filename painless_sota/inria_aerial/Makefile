@@ -43,16 +43,7 @@ seg_r200d_unet_rdtsc_s2: pull
 	dataset.train.dataset.num_samples=16536 \
 	dataset.validation.loader.batch_size=16 \
 	loss=bce_iou2 \
-	runner.show_batches=False optimizer=adamw2
-
-	export OMP_NUM_THREADS=4
-	INRIA_AERIAL_DATA_DIR=/home/eugene/inria_dataset torchrun --standalone --nnodes=1 --nproc_per_node=4 train.py \
-	model=seg_r200d_unet_rdtsc_s2 \
-	dataset.train.loader.batch_size=16 \
-	dataset.train.dataset.num_samples=16536 \
-	dataset.validation.loader.batch_size=16 \
-	loss=bce_iou3 \
-	runner.show_batches=False optimizer=adamw2
+	runner.show_batches=False optimizer=sgd_perciever optimizer.fp16=True
 
 b6_unet32_s2_rdtc: pull
 	export OMP_NUM_THREADS=4

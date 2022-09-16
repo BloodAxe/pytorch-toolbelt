@@ -57,7 +57,10 @@ def _position_encodings(
         max_frequencies = p.shape[:-1]
 
     frequencies = [
-        torch.linspace(1.0, max_freq / 2.0, num_frequency_bands, device=p.device) for max_freq in max_frequencies
+        torch.reciprocal(
+            10000 ** (torch.linspace(1.0, max_freq / 2.0, num_frequency_bands, device=p.device) / max_freq)
+        )
+        for max_freq in max_frequencies
     ]
     frequency_grids = []
 
