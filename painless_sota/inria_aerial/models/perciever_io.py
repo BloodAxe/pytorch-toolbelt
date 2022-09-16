@@ -16,6 +16,16 @@ from torch import Tensor
 __all__ = ["PercieverIOForSegmentation"]
 
 
+def _init_parameters(module, init_scale):
+    for m in module.modules():
+        if isinstance(m, nn.Linear):
+            m.weight.data.normal_(mean=0.0, std=init_scale)
+            if m.bias is not None:
+                m.bias.data.zero_()
+        elif isinstance(m, nn.Embedding):
+            m.weight.data.normal_(mean=0.0, std=init_scale)
+
+
 def _positions(spatial_shape, v_min=-1.0, v_max=1.0):
     """Create evenly spaced position coordinates for self.spatial_shape with values in [v_min, v_max].
 
@@ -90,6 +100,7 @@ class EncoderConfig:
 class ImageEncoderConfig(EncoderConfig):
     image_shape: Tuple[int, int, int] = (224, 224, 3)
     num_frequency_bands: int = 64
+    include_positions: bool = False
 
 
 @dataclass
@@ -110,6 +121,7 @@ class DecoderConfig:
 class SegmentationDecoderConfig(DecoderConfig):
     num_classes: int = 10
     num_frequency_bands: int = 64
+    include_positions: bool = False
 
 
 E = TypeVar("E", bound=EncoderConfig)
@@ -140,11 +152,6 @@ class Sequential(nn.Sequential):
             else:
                 x = module(x)
         return x
-
-
-def freeze(module: nn.Module):
-    for param in module.parameters():
-        param.requires_grad = False
 
 
 class MultiHeadAttention(nn.Module):
@@ -655,27 +662,16 @@ class PerceiverIO(Sequential):
         return self[1]
 
 
-def _init_parameters(module, init_scale):
-    for m in module.modules():
-        if isinstance(m, nn.Linear):
-            m.weight.data.normal_(mean=0.0, std=init_scale)
-            if m.bias is not None:
-                m.bias.data.zero_()
-        elif isinstance(m, nn.Embedding):
-            m.weight.data.normal_(mean=0.0, std=init_scale)
-
-
 class ImageInputAdapter(InputAdapter):
-    def __init__(self, image_shape: Tuple[int, ...], num_frequency_bands: int):
+    def __init__(self, image_shape: Tuple[int, ...], num_frequency_bands: int, include_positions: bool):
         image_shape_down = (image_shape[0] // 4, image_shape[1] // 4, image_shape[2] * 4 * 4)
         *spatial_shape, num_image_channels = image_shape_down
 
-        include_positions = True
         num_position_encoding_channels = len(spatial_shape) * (2 * num_frequency_bands + include_positions)
 
         # create encodings for single example
         pos = _positions(spatial_shape)
-        enc = _position_encodings(pos, num_frequency_bands)
+        enc = _position_encodings(pos, num_frequency_bands=num_frequency_bands, include_positions=include_positions)
 
         # flatten encodings along spatial dimensions
         enc = rearrange(enc, "... c -> (...) c")
@@ -702,11 +698,12 @@ class ImageInputAdapter(InputAdapter):
         return torch.cat([x, x_enc], dim=-1)
 
 
-class SegmentationOutputAdapter(OutputAdapter):
+class SegmentationOutputAdapter(nn.Module):
     def __init__(
         self,
         num_classes: int,
         num_frequency_bands: int,
+        include_positions: bool,
         image_shape,
         num_output_query_channels: Optional[int] = None,
         init_scale: float = 0.02,
@@ -714,26 +711,36 @@ class SegmentationOutputAdapter(OutputAdapter):
         image_shape_down = (image_shape[0] // 4, image_shape[1] // 4, image_shape[2] * 4 * 4)
         *spatial_shape, num_image_channels = image_shape_down
 
-        include_positions = True
         num_position_encoding_channels = len(spatial_shape) * (2 * num_frequency_bands + include_positions)
 
         # create encodings for single example
         pos = _positions(spatial_shape)
-        enc = _position_encodings(pos, num_frequency_bands)
+        enc = _position_encodings(pos, num_frequency_bands=num_frequency_bands, include_positions=include_positions)
 
         # flatten encodings along spatial dimensions
         enc = rearrange(enc, "... c -> (...) c")
 
-        super().__init__(output_query=enc, init_scale=init_scale)
+        super().__init__()
+        self.register_buffer("position_encoding", enc)
+        self.num_position_encoding_channels = num_position_encoding_channels
         self.linear = nn.Linear(self.num_output_query_channels, num_classes * 4 * 4)
         self.image_shape = image_shape
         self.image_shape_down = (image_shape[0] // 4, image_shape[1] // 4, image_shape[2] * 4 * 4)
         self.depth2space = nn.PixelShuffle(4)
         *self.spatial_shape, num_image_channels = self.image_shape_down
 
+    @property
+    def num_output_query_channels(self):
+        return self.num_position_encoding_channels
+
     def output_query(self, x):
         b, *d = x.shape
-        return repeat(self._output_query, "... -> b ...", b=b)
+        # query = repeat(self._output_query, "... -> b ...", b=b)
+
+        position_encoding = repeat(self.position_encoding, "... -> b ...", b=b)
+        position_encoding = rearrange(position_encoding, "b ... c -> b (...) c")
+
+        return position_encoding
 
     def forward(self, x):
         y = self.linear(x)
@@ -773,7 +780,9 @@ class PercieverIOForSegmentation(PerceiverIO):
 
     def __init__(self, config: PerceiverConfig[ImageEncoderConfig, SegmentationDecoderConfig]):
         input_adapter = ImageInputAdapter(
-            image_shape=config.encoder.image_shape, num_frequency_bands=config.encoder.num_frequency_bands
+            image_shape=config.encoder.image_shape,
+            num_frequency_bands=config.encoder.num_frequency_bands,
+            include_positions=config.encoder.include_positions,
         )
 
         encoder_kwargs = config.encoder.base_kwargs()
@@ -791,6 +800,7 @@ class PercieverIOForSegmentation(PerceiverIO):
         output_adapter = SegmentationOutputAdapter(
             num_classes=config.decoder.num_classes,
             num_frequency_bands=config.decoder.num_frequency_bands,
+            include_positions=config.decoder.include_positions,
             init_scale=config.decoder.init_scale,
             image_shape=config.encoder.image_shape,
         )
@@ -816,8 +826,12 @@ if __name__ == "__main__":
     model = (
         PercieverIOForSegmentation(
             PerceiverConfig(
-                encoder=ImageEncoderConfig(image_shape=(256, 384, 3), num_cross_attention_heads=1, dropout=0.1),
-                decoder=SegmentationDecoderConfig(num_classes=7, num_cross_attention_heads=1, dropout=0.1),
+                encoder=ImageEncoderConfig(
+                    image_shape=(256, 384, 3), num_cross_attention_heads=1, dropout=0.1, include_positions=False
+                ),
+                decoder=SegmentationDecoderConfig(
+                    num_classes=7, num_cross_attention_heads=1, dropout=0.1, include_positions=False
+                ),
                 num_latents=640,
                 num_latent_channels=512,
                 activation_checkpointing=False,

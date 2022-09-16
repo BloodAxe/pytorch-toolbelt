@@ -39,28 +39,35 @@ def test_receptive_field():
     averaged_acts = []
 
     for _ in range(10):
-        net = PercieverIOForSegmentation(
-            PerceiverConfig(
-                activation_checkpointing=False,
-                activation_offloading=False,
-                encoder=ImageEncoderConfig(
-                    image_shape=tuple((512, 512, 3)),
-                    num_cross_attention_heads=1,
-                    num_self_attention_heads=8,
-                    num_self_attention_layers_per_block=4,
-                    dropout=0.1,
-                    init_scale=0.05
-                ),
-                decoder=SegmentationDecoderConfig(
-                    num_classes=1,
-                    num_cross_attention_heads=1,
-                    init_scale=0.05,
-                    dropout=0.1),
-                num_latents=512,
-                num_latent_channels=512,
-                output_name=None,
+        net = (
+            PercieverIOForSegmentation(
+                PerceiverConfig(
+                    activation_checkpointing=False,
+                    activation_offloading=False,
+                    encoder=ImageEncoderConfig(
+                        image_shape=tuple((512, 512, 3)),
+                        num_cross_attention_heads=1,
+                        num_self_attention_heads=8,
+                        num_self_attention_layers_per_block=4,
+                        dropout=0.1,
+                        init_scale=0.05,
+                        include_positions=False,
+                    ),
+                    decoder=SegmentationDecoderConfig(
+                        num_classes=1,
+                        num_cross_attention_heads=8,
+                        init_scale=0.05,
+                        dropout=0.1,
+                        include_positions=False,
+                    ),
+                    num_latents=512,
+                    num_latent_channels=512,
+                    output_name=None,
+                )
             )
-        ).cuda().eval()
+            .cuda()
+            .eval()
+        )
 
         input = torch.ones(((1, 3, 512, 512)), requires_grad=True).cuda()
 
