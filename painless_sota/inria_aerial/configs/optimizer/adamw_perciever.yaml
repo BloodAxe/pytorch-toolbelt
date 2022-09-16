@@ -5,7 +5,7 @@ accumulation: 128
 optimizer:
   name: AdamW
   params:
-    lr: 1e-5
+    lr: 1e-4
     eps: 1e-6
     weight_decay: 1e-2
 

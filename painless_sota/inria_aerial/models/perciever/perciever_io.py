@@ -1,17 +1,20 @@
-import math
-from dataclasses import asdict, dataclass, fields
-from typing import Generic, Optional, TypeVar
+from typing import Optional
 from typing import Tuple
 
 import torch
 import torch.nn as nn
 from einops import rearrange, repeat
 from fairscale.nn import checkpoint_wrapper
-
 from painless_sota.inria_aerial.data.functional import as_tuple_of_two
+from painless_sota.inria_aerial.models.perciever.config import (
+    PerceiverConfig,
+    ImageEncoderConfig,
+    SegmentationDecoderConfig,
+)
+from painless_sota.inria_aerial.models.perciever.input_adapter import FourierPEImageInputAdapter
+from painless_sota.inria_aerial.models.perciever.output_adapter import SameInputQuerySegmentationOutputAdapter
 from pytorch_toolbelt.utils import count_parameters, describe_outputs
 from torch import Tensor
-
 
 __all__ = ["PercieverIOForSegmentation"]
 
@@ -19,132 +22,9 @@ __all__ = ["PercieverIOForSegmentation"]
 def _init_parameters(module, init_scale):
     for m in module.modules():
         if isinstance(m, nn.Linear):
-            m.weight.data.normal_(mean=0.0, std=init_scale)
+            torch.nn.init.trunc_normal_(m.weight, mean=0.0, std=init_scale)
             if m.bias is not None:
-                m.bias.data.zero_()
-        elif isinstance(m, nn.Embedding):
-            m.weight.data.normal_(mean=0.0, std=init_scale)
-
-
-def _positions(spatial_shape, v_min=-1.0, v_max=1.0):
-    """Create evenly spaced position coordinates for self.spatial_shape with values in [v_min, v_max].
-
-    :param v_min: minimum coordinate value per dimension.
-    :param v_max: maximum coordinate value per dimension.
-    :return: position coordinates tensor of shape (*shape, len(shape)).
-    """
-    coords = [torch.linspace(v_min, v_max, steps=s) for s in spatial_shape]
-    return torch.stack(torch.meshgrid(*coords, indexing="ij"), dim=len(spatial_shape))
-
-
-def _position_encodings(
-    p: Tensor,
-    num_frequency_bands,
-    max_frequencies: Optional[Tuple[int, ...]] = None,
-    include_positions: bool = True,
-) -> Tensor:
-    """Fourier-encode positions p using self.num_bands frequency bands.
-
-    :param p: positions of shape (*d, c) where c = len(d).
-    :param max_frequencies: maximum frequency for each dimension (1-tuple for sequences,
-           2-tuple for images, ...). If `None` values are derived from shape of p.
-    :param include_positions: whether to include input positions p in returned encodings tensor.
-    :returns: position encodings tensor of shape (*d, c * (2 * num_bands + include_positions)).
-    """
-    encodings = []
-
-    if max_frequencies is None:
-        max_frequencies = p.shape[:-1]
-
-    frequencies = [
-        torch.reciprocal(
-            10000 ** (torch.linspace(1.0, max_freq / 2.0, num_frequency_bands, device=p.device) / max_freq)
-        )
-        for max_freq in max_frequencies
-    ]
-    frequency_grids = []
-
-    for i, frequencies_i in enumerate(frequencies):
-        frequency_grids.append(p[..., i : i + 1] * frequencies_i[None, ...])
-
-    if include_positions:
-        encodings.append(p)
-
-    encodings.extend([torch.sin(math.pi * frequency_grid) for frequency_grid in frequency_grids])
-    encodings.extend([torch.cos(math.pi * frequency_grid) for frequency_grid in frequency_grids])
-
-    return torch.cat(encodings, dim=-1)
-
-
-@dataclass
-class EncoderConfig:
-    num_cross_attention_heads: int = 8
-    num_cross_attention_qk_channels: Optional[int] = None
-    num_cross_attention_v_channels: Optional[int] = None
-    num_cross_attention_layers: int = 1
-    first_cross_attention_layer_shared: bool = False
-    cross_attention_widening_factor: int = 1
-    num_self_attention_heads: int = 8
-    num_self_attention_qk_channels: Optional[int] = None
-    num_self_attention_v_channels: Optional[int] = None
-    num_self_attention_layers_per_block: int = 8
-    num_self_attention_blocks: int = 1
-    first_self_attention_block_shared: bool = True
-    self_attention_widening_factor: int = 1
-    dropout: float = 0.0
-    init_scale: float = 0.02
-    freeze: bool = False
-
-    def base_kwargs(self, exclude=("freeze",)):
-        return _base_kwargs(self, EncoderConfig, exclude)
-
-
-@dataclass
-class ImageEncoderConfig(EncoderConfig):
-    image_shape: Tuple[int, int, int] = (224, 224, 3)
-    num_frequency_bands: int = 64
-    include_positions: bool = False
-
-
-@dataclass
-class DecoderConfig:
-    num_cross_attention_heads: int = 8
-    num_cross_attention_qk_channels: Optional[int] = None
-    num_cross_attention_v_channels: Optional[int] = None
-    cross_attention_widening_factor: int = 1
-    dropout: float = 0.0
-    init_scale: float = 0.02
-    freeze: bool = False
-
-    def base_kwargs(self, exclude=("freeze",)):
-        return _base_kwargs(self, DecoderConfig, exclude)
-
-
-@dataclass
-class SegmentationDecoderConfig(DecoderConfig):
-    num_classes: int = 10
-    num_frequency_bands: int = 64
-    include_positions: bool = False
-
-
-E = TypeVar("E", bound=EncoderConfig)
-D = TypeVar("D", bound=DecoderConfig)
-
-
-@dataclass
-class PerceiverConfig(Generic[E, D]):
-    encoder: E
-    decoder: D
-    num_latents: int
-    num_latent_channels: int
-    activation_checkpointing: bool = False
-    activation_offloading: bool = False
-    output_name: Optional[str] = None
-
-
-def _base_kwargs(config, base_class, exclude):
-    base_field_names = [field.name for field in fields(base_class) if field.name not in exclude]
-    return {k: v for k, v in asdict(config).items() if k in base_field_names}
+                torch.nn.init.zeros_(m.bias)
 
 
 class Sequential(nn.Sequential):
@@ -404,54 +284,10 @@ class Residual(nn.Module):
         return self.dropout(x) + args[0]
 
 
-class InputAdapter(nn.Module):
-    def __init__(self, num_input_channels: int):
-        """Transforms and position-encodes task-specific input to generic encoder input.
-
-        :param num_input_channels: Number of channels of the generic encoder input produced by this adapter.
-        """
-        super().__init__()
-        self._num_input_channels = num_input_channels
-
-    @property
-    def num_input_channels(self):
-        return self._num_input_channels
-
-    def forward(self, x):
-        raise NotImplementedError()
-
-
-class OutputAdapter(nn.Module):
-    def __init__(self, output_query: Tensor, init_scale: float):
-        """Transforms generic decoder cross-attention output to task-specific output.
-
-        :param output_query: Output query prototype (does not include batch dimension) used as query input to
-            generic decoder cross-attention.
-        :param init_scale: Output query parameter initialization scale.
-        """
-        super().__init__()
-        self._output_query = nn.Parameter(output_query)
-        self._init_parameters(init_scale)
-
-    def _init_parameters(self, init_scale: float):
-        with torch.no_grad():
-            self._output_query.normal_(0.0, init_scale)
-
-    @property
-    def num_output_query_channels(self):
-        return self._output_query.shape[-1]
-
-    def output_query(self, x):
-        return repeat(self._output_query, "... -> b ...", b=x.shape[0])
-
-    def forward(self, x):
-        raise NotImplementedError()
-
-
 class PerceiverEncoder(nn.Module):
     def __init__(
         self,
-        input_adapter: InputAdapter,
+        num_input_channels: int,
         num_latents: int,
         num_latent_channels: int,
         num_cross_attention_heads: int = 4,
@@ -506,8 +342,6 @@ class PerceiverEncoder(nn.Module):
         """
         super().__init__()
 
-        self.input_adapter = input_adapter
-
         if num_cross_attention_layers <= 0:
             raise ValueError("num_cross_attention_layers must be > 0")
 
@@ -527,7 +361,7 @@ class PerceiverEncoder(nn.Module):
             layer = CrossAttentionLayer(
                 num_heads=num_cross_attention_heads,
                 num_q_input_channels=num_latent_channels,
-                num_kv_input_channels=input_adapter.num_input_channels,
+                num_kv_input_channels=num_input_channels,
                 num_qk_channels=num_cross_attention_qk_channels,
                 num_v_channels=num_cross_attention_v_channels,
                 widening_factor=cross_attention_widening_factor,
@@ -568,15 +402,11 @@ class PerceiverEncoder(nn.Module):
         self._init_parameters(init_scale)
 
     def _init_parameters(self, init_scale: float):
-        with torch.no_grad():
-            self.latent.normal_(0.0, init_scale)
-            _init_parameters(self, init_scale)
+        torch.nn.init.trunc_normal_(self.latent, 0.0, init_scale)
+        _init_parameters(self, init_scale)
 
     def forward(self, x, pad_mask=None):
         b, *_ = x.shape
-
-        # encode task-specific input
-        x = self.input_adapter(x)
 
         # repeat initial latent vector along batch dimension
         x_latent = repeat(self.latent, "... -> b ...", b=b)
@@ -595,7 +425,7 @@ class PerceiverEncoder(nn.Module):
 class PerceiverDecoder(nn.Module):
     def __init__(
         self,
-        output_adapter: OutputAdapter,
+        num_output_query_channels: int,
         num_latent_channels: int,
         num_cross_attention_heads: int = 4,
         num_cross_attention_qk_channels: Optional[int] = None,
@@ -627,7 +457,7 @@ class PerceiverDecoder(nn.Module):
 
         cross_attn = CrossAttentionLayer(
             num_heads=num_cross_attention_heads,
-            num_q_input_channels=output_adapter.num_output_query_channels,
+            num_q_input_channels=num_output_query_channels,
             num_kv_input_channels=num_latent_channels,
             num_qk_channels=num_cross_attention_qk_channels,
             num_v_channels=num_cross_attention_v_channels,
@@ -639,122 +469,17 @@ class PerceiverDecoder(nn.Module):
             cross_attn = checkpoint_wrapper(cross_attn, offload_to_cpu=activation_offloading)
 
         self.cross_attn = cross_attn
-        self.output_adapter = output_adapter
         self._init_parameters(init_scale)
 
     def _init_parameters(self, init_scale: float):
-        with torch.no_grad():
-            _init_parameters(self, init_scale)
+        _init_parameters(self, init_scale)
 
-    def forward(self, x):
-        output_query = self.output_adapter.output_query(x)
-        output = self.cross_attn(output_query, x)
-        return self.output_adapter(output)
-
-
-class PerceiverIO(Sequential):
-    def __init__(self, encoder: PerceiverEncoder, decoder: PerceiverDecoder):
-        super().__init__(encoder, decoder)
-
-    @property
-    def encoder(self):
-        return self[0]
-
-    @property
-    def decoder(self):
-        return self[1]
-
-
-class ImageInputAdapter(InputAdapter):
-    def __init__(self, image_shape: Tuple[int, ...], num_frequency_bands: int, include_positions: bool):
-        image_shape_down = (image_shape[0] // 4, image_shape[1] // 4, image_shape[2] * 4 * 4)
-        *spatial_shape, num_image_channels = image_shape_down
-
-        num_position_encoding_channels = len(spatial_shape) * (2 * num_frequency_bands + include_positions)
-
-        # create encodings for single example
-        pos = _positions(spatial_shape)
-        enc = _position_encodings(pos, num_frequency_bands=num_frequency_bands, include_positions=include_positions)
-
-        # flatten encodings along spatial dimensions
-        enc = rearrange(enc, "... c -> (...) c")
-
-        super().__init__(num_input_channels=num_image_channels + num_position_encoding_channels)
-        self.image_shape_down = image_shape_down
-        self.num_frequency_bands = num_frequency_bands
-        self.space2depth = nn.PixelUnshuffle(4)
-        self.register_buffer("position_encoding", enc)
-
-    def _num_position_encoding_channels(self, include_positions: bool = True) -> int:
-        return len(self.spatial_shape) * (2 * self.num_frequency_bands + include_positions)
-
-    def forward(self, x):
-        x = self.space2depth(x)
-        x = torch.moveaxis(x, 1, -1)  # Move BCHW to BHWC
-        b, *d = x.shape
-
-        if tuple(d) != self.image_shape_down:
-            raise ValueError(f"Input image shape {tuple(d)} different from required shape {self.image_shape_down}")
-
-        x_enc = repeat(self.position_encoding, "... -> b ...", b=b)
-        x = rearrange(x, "b ... c -> b (...) c")
-        return torch.cat([x, x_enc], dim=-1)
-
-
-class SegmentationOutputAdapter(nn.Module):
-    def __init__(
-        self,
-        num_classes: int,
-        num_frequency_bands: int,
-        include_positions: bool,
-        image_shape,
-        num_output_query_channels: Optional[int] = None,
-        init_scale: float = 0.02,
-    ):
-        image_shape_down = (image_shape[0] // 4, image_shape[1] // 4, image_shape[2] * 4 * 4)
-        *spatial_shape, num_image_channels = image_shape_down
-
-        num_position_encoding_channels = len(spatial_shape) * (2 * num_frequency_bands + include_positions)
-
-        # create encodings for single example
-        pos = _positions(spatial_shape)
-        enc = _position_encodings(pos, num_frequency_bands=num_frequency_bands, include_positions=include_positions)
-
-        # flatten encodings along spatial dimensions
-        enc = rearrange(enc, "... c -> (...) c")
-
-        super().__init__()
-        self.register_buffer("position_encoding", enc)
-        self.num_position_encoding_channels = num_position_encoding_channels
-        self.linear = nn.Linear(self.num_output_query_channels, num_classes * 4 * 4)
-        self.image_shape = image_shape
-        self.image_shape_down = (image_shape[0] // 4, image_shape[1] // 4, image_shape[2] * 4 * 4)
-        self.depth2space = nn.PixelShuffle(4)
-        *self.spatial_shape, num_image_channels = self.image_shape_down
-
-    @property
-    def num_output_query_channels(self):
-        return self.num_position_encoding_channels
-
-    def output_query(self, x):
-        b, *d = x.shape
-        # query = repeat(self._output_query, "... -> b ...", b=b)
-
-        position_encoding = repeat(self.position_encoding, "... -> b ...", b=b)
-        position_encoding = rearrange(position_encoding, "b ... c -> b (...) c")
-
-        return position_encoding
-
-    def forward(self, x):
-        y = self.linear(x)
-        b, spatial_flatten, channels = y.shape
-
-        output = torch.moveaxis(y.view([b] + self.spatial_shape + [channels]), -1, 1)
-        output = self.depth2space(output)
+    def forward(self, q: Tensor, kv: Tensor) -> Tensor:
+        output = self.cross_attn(q, kv)
         return output
 
 
-class PercieverIOForSegmentation(PerceiverIO):
+class PercieverIOForSegmentation(nn.Module):
     @classmethod
     def from_config(cls, config):
         train_size = as_tuple_of_two(config.train_size)
@@ -766,14 +491,17 @@ class PercieverIOForSegmentation(PerceiverIO):
                 activation_offloading=config.activation_offloading,
                 encoder=ImageEncoderConfig(
                     image_shape=tuple(image_shape),
-                    num_cross_attention_heads=1,
+                    num_cross_attention_heads=8,
                     num_self_attention_heads=config.num_self_attention_heads,
                     num_self_attention_layers_per_block=config.num_self_attends_per_block,
-                    init_scale=0.05,
+                    init_scale=0.02,
                     dropout=0.1,
+                    include_positions=True,
+                    image_channels_before_concat=256,
+                    num_output_channels=128,
                 ),
                 decoder=SegmentationDecoderConfig(
-                    init_scale=0.05, num_classes=config.num_classes, num_cross_attention_heads=1, dropout=0.1
+                    init_scale=0.02, num_classes=config.num_classes, num_cross_attention_heads=1, dropout=0.1
                 ),
                 num_latents=config.num_latents,
                 num_latent_channels=config.d_latents,
@@ -782,43 +510,51 @@ class PercieverIOForSegmentation(PerceiverIO):
         )
 
     def __init__(self, config: PerceiverConfig[ImageEncoderConfig, SegmentationDecoderConfig]):
-        input_adapter = ImageInputAdapter(
+        super().__init__()
+
+        self.input_adapter = FourierPEImageInputAdapter(
             image_shape=config.encoder.image_shape,
             num_frequency_bands=config.encoder.num_frequency_bands,
             include_positions=config.encoder.include_positions,
+            image_channels_before_concat=config.encoder.image_channels_before_concat,
+            num_output_channels=config.encoder.num_output_channels,
         )
 
         encoder_kwargs = config.encoder.base_kwargs()
         if encoder_kwargs["num_cross_attention_qk_channels"] is None:
-            encoder_kwargs["num_cross_attention_qk_channels"] = input_adapter.num_input_channels
+            encoder_kwargs["num_cross_attention_qk_channels"] = self.input_adapter.num_output_channels
 
-        encoder = PerceiverEncoder(
-            input_adapter=input_adapter,
+        self.encoder = PerceiverEncoder(
+            num_input_channels=self.input_adapter.num_output_channels,
             num_latents=config.num_latents,
             num_latent_channels=config.num_latent_channels,
             activation_checkpointing=config.activation_checkpointing,
             activation_offloading=config.activation_offloading,
             **encoder_kwargs,
         )
-        output_adapter = SegmentationOutputAdapter(
+        self.output_adapter = SameInputQuerySegmentationOutputAdapter(
             num_classes=config.decoder.num_classes,
-            num_frequency_bands=config.decoder.num_frequency_bands,
-            include_positions=config.decoder.include_positions,
-            init_scale=config.decoder.init_scale,
             image_shape=config.encoder.image_shape,
+            num_output_query_channels=self.input_adapter.num_output_channels,
         )
-        decoder = PerceiverDecoder(
-            output_adapter=output_adapter,
+        self.decoder = PerceiverDecoder(
+            num_output_query_channels=self.output_adapter.num_output_query_channels,
             num_latent_channels=config.num_latent_channels,
             activation_checkpointing=config.activation_checkpointing,
             activation_offloading=config.activation_offloading,
             **config.decoder.base_kwargs(),
         )
-        super().__init__(encoder, decoder)
         self.output_name = config.output_name
 
     def forward(self, x):
-        output = super().forward(x)
+        # encode task-specific input
+        input_enc = self.input_adapter(x)
+
+        z = self.encoder(input_enc)
+        q = self.output_adapter.output_query(x=input_enc, z=z)
+        z = self.decoder(q, z)
+        output = self.output_adapter(z)
+
         if self.output_name is not None:
             return {self.output_name: output}
         else:
@@ -830,12 +566,23 @@ if __name__ == "__main__":
         PercieverIOForSegmentation(
             PerceiverConfig(
                 encoder=ImageEncoderConfig(
-                    image_shape=(256, 384, 3), num_cross_attention_heads=1, dropout=0.1, include_positions=False
+                    image_shape=tuple((512, 512, 3)),
+                    num_cross_attention_heads=8,
+                    num_self_attention_heads=8,
+                    num_self_attention_layers_per_block=8,
+                    dropout=0.1,
+                    init_scale=0.05,
+                    include_positions=True,
+                    image_channels_before_concat=256,
+                    num_output_channels=64,
                 ),
                 decoder=SegmentationDecoderConfig(
-                    num_classes=7, num_cross_attention_heads=1, dropout=0.1, include_positions=False
+                    num_classes=1,
+                    num_cross_attention_heads=8,
+                    init_scale=0.05,
+                    dropout=0.1,
                 ),
-                num_latents=640,
+                num_latents=1024,
                 num_latent_channels=512,
                 activation_checkpointing=False,
                 activation_offloading=False,
@@ -850,11 +597,12 @@ if __name__ == "__main__":
     with torch.no_grad():
         with torch.cuda.amp.autocast(True):
             output = model(input)
-    print(count_parameters(model))
+    print(count_parameters(model, human_friendly=True, keys=["encoder", "decoder", "input_adapter", "output_adapter"]))
     print(describe_outputs(output))
 
-    traced_model = torch.jit.trace(
-        model.eval().cuda(),
-        example_inputs=input,
-        strict=False,
-    )
+    with torch.no_grad():
+        traced_model = torch.jit.trace(
+            model.eval().cuda(),
+            example_inputs=input,
+            strict=False,
+        )

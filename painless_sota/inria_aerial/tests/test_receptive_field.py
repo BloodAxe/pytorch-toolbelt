@@ -6,7 +6,7 @@ import pytest
 import torch
 from omegaconf import OmegaConf
 from painless_sota.inria_aerial.models import PercieverIOForSegmentation
-from painless_sota.inria_aerial.models.perciever_io import (
+from painless_sota.inria_aerial.models.perciever import (
     PerceiverConfig,
     ImageEncoderConfig,
     SegmentationDecoderConfig,
@@ -46,21 +46,22 @@ def test_receptive_field():
                     activation_offloading=False,
                     encoder=ImageEncoderConfig(
                         image_shape=tuple((512, 512, 3)),
-                        num_cross_attention_heads=1,
+                        num_cross_attention_heads=8,
                         num_self_attention_heads=8,
-                        num_self_attention_layers_per_block=4,
+                        num_self_attention_layers_per_block=8,
                         dropout=0.1,
-                        init_scale=0.05,
-                        include_positions=False,
+                        init_scale=0.2,
+                        include_positions=True,
+                        image_channels_before_concat=256,
+                        num_output_channels=64,
                     ),
                     decoder=SegmentationDecoderConfig(
                         num_classes=1,
                         num_cross_attention_heads=8,
-                        init_scale=0.05,
+                        init_scale=0.2,
                         dropout=0.1,
-                        include_positions=False,
                     ),
-                    num_latents=512,
+                    num_latents=1024,
                     num_latent_channels=512,
                     output_name=None,
                 )
