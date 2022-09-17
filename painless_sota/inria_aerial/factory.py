@@ -6,6 +6,7 @@ from pytorch_toolbelt.optimization.lr_schedules import (
     GradualWarmupScheduler,
     CosineAnnealingWarmRestartsWithDecay,
 )
+from pytorch_toolbelt.utils import master_print
 from pytorch_toolbelt.utils.catalyst.pipeline import get_optimizer_cls
 from torch import nn
 from torch.optim import Optimizer
@@ -127,6 +128,6 @@ def get_scheduler(
 
     if need_warmup:
         scheduler = GradualWarmupScheduler(optimizer, 1.0, 5, after_scheduler=scheduler)
-        print("Adding warmup")
+        master_print("Adding warmup")
 
     return scheduler
