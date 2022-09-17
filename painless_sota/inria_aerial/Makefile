@@ -22,7 +22,7 @@ seg_r200d_unet: pull
 	INRIA_AERIAL_DATA_DIR=/home/eugene/inria_dataset torchrun --standalone --nnodes=1 --nproc_per_node=4 train.py \
 	model=seg_r200d_unet \
 	dataset.train.loader.batch_size=20 \
-	dataset.train.dataset.num_samples=16536 \
+	dataset.train.dataset.num_samples=16384 \
 	dataset.validation.loader.batch_size=16 \
 	runner.show_batches=True
 
@@ -31,7 +31,7 @@ seg_r200d_unet_rdtsc: pull
 	INRIA_AERIAL_DATA_DIR=/home/eugene/inria_dataset torchrun --standalone --nnodes=1 --nproc_per_node=4 train.py \
 	model=seg_r200d_unet_rdtsc \
 	dataset.train.loader.batch_size=20 \
-	dataset.train.dataset.num_samples=16536 \
+	dataset.train.dataset.num_samples=16384 \
 	dataset.validation.loader.batch_size=16 \
 	runner.show_batches=True
 
@@ -40,7 +40,7 @@ seg_r200d_unet_rdtsc_s2: pull
 	INRIA_AERIAL_DATA_DIR=/home/eugene/inria_dataset torchrun --standalone --nnodes=1 --nproc_per_node=4 train.py \
 	model=seg_r200d_unet_rdtsc_s2 \
 	dataset.train.loader.batch_size=16 \
-	dataset.train.dataset.num_samples=16536 \
+	dataset.train.dataset.num_samples=16384 \
 	dataset.validation.loader.batch_size=16 \
 	loss=bce_iou2 \
 	runner.show_batches=False optimizer=sgd_perciever optimizer.fp16=True
@@ -50,7 +50,7 @@ b6_unet32_s2_rdtc: pull
 	INRIA_AERIAL_DATA_DIR=/home/eugene/inria_dataset torchrun --standalone --nnodes=1 --nproc_per_node=4 train.py \
 	model=b6_unet32_s2_rdtc \
 	dataset.train.loader.batch_size=20 \
-	dataset.train.dataset.num_samples=16536 \
+	dataset.train.dataset.num_samples=16384 \
 	dataset.validation.loader.batch_size=16 \
 	runner.show_batches=True
 
@@ -60,7 +60,7 @@ seg_repvgg_unet: pull
 	model=seg_repvgg_unet \
 	optimizer=adamw_scratch \
 	dataset.train.loader.batch_size=32 \
-	dataset.train.dataset.num_samples=16536 \
+	dataset.train.dataset.num_samples=16384 \
 	dataset.validation.loader.batch_size=16 \
 	runner.show_batches=True
 
@@ -70,7 +70,7 @@ seg_perciever_io: pull
 	INRIA_AERIAL_DATA_DIR=~/data/inria HYDRA_FULL_ERROR=1 torchrun --standalone --nnodes=1 --nproc_per_node=4 train.py \
 	model=seg_perciever_io \
 	dataset.train.dataset.image_size=512 \
-	dataset.train.dataset.num_samples=16536 \
+	dataset.train.dataset.num_samples=16384 \
 	dataset.validation.dataset.image_size=512 \
 	loss=bce \
 	batch_size=8 \
@@ -84,10 +84,10 @@ seg_perciever_io_1024: pull
 	INRIA_AERIAL_DATA_DIR=~/data/inria HYDRA_FULL_ERROR=1 torchrun --standalone --nnodes=1 --nproc_per_node=4 train.py \
 	model=seg_perciever_io \
 	dataset.train.dataset.image_size=1024 \
-	dataset.train.dataset.num_samples=16536 \
+	dataset.train.dataset.num_samples=16384 \
 	dataset.validation.dataset.image_size=1024 \
 	loss=bce \
-	batch_size=4 \
+	batch_size=2 \
 	num_workers=2 \
 	runner.show_batches=True \
 	optimizer=adamw2
