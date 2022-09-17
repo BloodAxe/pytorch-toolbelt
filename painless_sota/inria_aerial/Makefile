@@ -43,7 +43,7 @@ seg_r200d_unet_rdtsc_s2: pull
 	dataset.train.dataset.num_samples=16384 \
 	dataset.validation.loader.batch_size=16 \
 	loss=bce_iou2 \
-	runner.show_batches=False optimizer=sgd_perciever optimizer.fp16=True
+	runner.show_batches=False optimizer=adamw optimizer.fp16=True optimizer.accumulation=32
 
 b6_unet32_s2_rdtc: pull
 	export OMP_NUM_THREADS=4
@@ -90,4 +90,4 @@ seg_perciever_io_1024: pull
 	batch_size=2 \
 	num_workers=2 \
 	runner.show_batches=True \
-	optimizer=adamw2
+	optimizer=adamw2 optimizer.fp16=False
