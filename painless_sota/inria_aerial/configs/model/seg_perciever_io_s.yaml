@@ -1,0 +1,23 @@
+input_key: INPUT_IMAGE_KEY
+output_key:
+
+architecture:
+  _target_: painless_sota.inria_aerial.models.PercieverIOForSegmentation.from_config
+  config:
+    train_size: ${dataset.train.dataset.image_size}
+    num_classes: ${dataset.num_output_classes}
+    num_latent_channels: 512
+    num_latents: 1024
+    num_self_attention_heads: 8
+    num_self_attention_layers_per_block: 8
+    activation_checkpointing: True
+    activation_offloading: False
+    output_name: OUTPUT_MASK_KEY
+    init_scale: 0.02
+    dropout: 0.1
+
+    encoder_num_cross_attention_heads: 8
+    decoder_num_cross_attention_heads: 8
+
+    image_channels_before_concat: 256
+    num_output_channels: 64
