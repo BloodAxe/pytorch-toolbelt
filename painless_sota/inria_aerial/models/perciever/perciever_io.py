@@ -12,7 +12,10 @@ from painless_sota.inria_aerial.models.perciever.config import (
     SegmentationDecoderConfig,
 )
 from painless_sota.inria_aerial.models.perciever.input_adapter import FourierPEImageInputAdapter
-from painless_sota.inria_aerial.models.perciever.output_adapter import SameInputQuerySegmentationOutputAdapter
+from painless_sota.inria_aerial.models.perciever.output_adapter import (
+    SameInputQuerySegmentationOutputAdapter,
+    FourierPEQuerySegmentationOutputAdapter,
+)
 from pytorch_toolbelt.utils import count_parameters, describe_outputs
 from torch import Tensor
 
@@ -491,20 +494,23 @@ class PercieverIOForSegmentation(nn.Module):
                 activation_offloading=config.activation_offloading,
                 encoder=ImageEncoderConfig(
                     image_shape=tuple(image_shape),
-                    num_cross_attention_heads=8,
+                    num_cross_attention_heads=config.encoder_num_cross_attention_heads,
                     num_self_attention_heads=config.num_self_attention_heads,
-                    num_self_attention_layers_per_block=config.num_self_attends_per_block,
-                    init_scale=0.02,
-                    dropout=0.1,
+                    num_self_attention_layers_per_block=config.num_self_attention_layers_per_block,
+                    init_scale=config.init_scale,
+                    dropout=config.dropout,
                     include_positions=True,
-                    image_channels_before_concat=256,
-                    num_output_channels=128,
+                    image_channels_before_concat=config.image_channels_before_concat,
+                    num_output_channels=config.num_output_channels,
                 ),
                 decoder=SegmentationDecoderConfig(
-                    init_scale=0.02, num_classes=config.num_classes, num_cross_attention_heads=1, dropout=0.1
+                    init_scale=config.init_scale,
+                    num_classes=config.num_classes,
+                    num_cross_attention_heads=config.decoder_num_cross_attention_heads,
+                    dropout=config.dropout,
                 ),
                 num_latents=config.num_latents,
-                num_latent_channels=config.d_latents,
+                num_latent_channels=config.num_latents,
                 output_name=config.output_name,
             )
         )
@@ -537,6 +543,7 @@ class PercieverIOForSegmentation(nn.Module):
             image_shape=config.encoder.image_shape,
             num_output_query_channels=self.input_adapter.num_output_channels,
         )
+
         self.decoder = PerceiverDecoder(
             num_output_query_channels=self.output_adapter.num_output_query_channels,
             num_latent_channels=config.num_latent_channels,
@@ -566,15 +573,15 @@ if __name__ == "__main__":
         PercieverIOForSegmentation(
             PerceiverConfig(
                 encoder=ImageEncoderConfig(
-                    image_shape=tuple((512, 512, 3)),
+                    image_shape=tuple((256, 384, 3)),
                     num_cross_attention_heads=8,
-                    num_self_attention_heads=8,
-                    num_self_attention_layers_per_block=8,
+                    num_self_attention_heads=16,
+                    num_self_attention_layers_per_block=24,
                     dropout=0.1,
                     init_scale=0.05,
                     include_positions=True,
                     image_channels_before_concat=256,
-                    num_output_channels=64,
+                    num_output_channels=512,
                 ),
                 decoder=SegmentationDecoderConfig(
                     num_classes=1,

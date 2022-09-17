@@ -1,7 +1,6 @@
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, fields
 from typing import Generic, Optional, TypeVar
 from typing import Tuple
-from dataclasses import asdict, dataclass, fields
 
 
 def _base_kwargs(config, base_class, exclude):

@@ -79,10 +79,10 @@ seg_perciever_io: pull
 	optimizer=adamw_perciever
 
 
-seg_perciever_io_1024: pull
+seg_perciever_io_xl: pull
 	export OMP_NUM_THREADS=4
 	INRIA_AERIAL_DATA_DIR=~/data/inria HYDRA_FULL_ERROR=1 torchrun --standalone --nnodes=1 --nproc_per_node=4 train.py \
-	model=seg_perciever_io \
+	model=seg_perciever_io_xl \
 	dataset.train.dataset.image_size=1024 \
 	dataset.train.dataset.num_samples=16384 \
 	dataset.validation.dataset.image_size=1024 \
