@@ -12,9 +12,9 @@ architecture:
     num_self_attention_layers_per_block: 24
     activation_checkpointing: True
     activation_offloading: False
-    output_name: OUTPUT_MASK_KEY
     init_scale: 0.02
     dropout: 0.1
+    output_name:
 
     encoder_num_cross_attention_heads: 8
     decoder_num_cross_attention_heads: 8

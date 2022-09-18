@@ -9,7 +9,7 @@ architecture:
     num_latent_channels: 512
     num_latents: 1024
     num_self_attention_heads: 8
-    num_self_attention_layers_per_block: 8
+    num_self_attention_layers_per_block: 16
     activation_checkpointing: True
     activation_offloading: False
     init_scale: 0.02

@@ -91,3 +91,33 @@ seg_perciever_io_xl: pull
 	num_workers=2 \
 	runner.show_batches=True \
 	optimizer=radam
+
+
+
+seg_perciever_io_xl: pull
+	export OMP_NUM_THREADS=4
+	INRIA_AERIAL_DATA_DIR=~/data/inria HYDRA_FULL_ERROR=1 torchrun --standalone --nnodes=1 --nproc_per_node=4 train.py \
+	model=seg_perciever_io_xl \
+	dataset.train.dataset.image_size=512 \
+	dataset.train.dataset.num_samples=16384 \
+	dataset.validation.dataset.image_size=512 \
+	loss=bce_iou2 \
+	batch_size=6 \
+	num_workers=8 \
+	runner.show_batches=True \
+	optimizer=radam
+
+
+
+seg_perciever_io_s: pull
+	export OMP_NUM_THREADS=4
+	INRIA_AERIAL_DATA_DIR=~/data/inria HYDRA_FULL_ERROR=1 torchrun --standalone --nnodes=1 --nproc_per_node=4 train.py \
+	model=seg_perciever_io_s \
+	dataset.train.dataset.image_size=512 \
+	dataset.train.dataset.num_samples=16384 \
+	dataset.validation.dataset.image_size=512 \
+	loss=bce_iou2_dsv \
+	batch_size=16 \
+	num_workers=8 \
+	runner.show_batches=True \
+	optimizer=radam

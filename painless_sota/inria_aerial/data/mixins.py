@@ -10,12 +10,12 @@ from painless_sota.inria_aerial.data.functional import remove_small_instances, c
 from pytorch_toolbelt.datasets import (
     TARGET_MASK_KEY,
     TARGET_MASK_WEIGHT_KEY,
-    TARGET_MASK_2_KEY,
-    TARGET_MASK_16_KEY,
-    TARGET_MASK_32_KEY,
-    TARGET_MASK_4_KEY,
-    TARGET_MASK_8_KEY,
-    TARGET_MASK_64_KEY,
+    TARGET_MASK_KEY_STRIDE_64,
+    TARGET_MASK_KEY_STRIDE_8,
+    TARGET_MASK_KEY_STRIDE_2,
+    TARGET_MASK_KEY_STRIDE_4,
+    TARGET_MASK_KEY_STRIDE_16,
+    TARGET_MASK_KEY_STRIDE_32,
 )
 from pytorch_toolbelt.utils import image_to_tensor
 
@@ -92,12 +92,12 @@ class SegmentationTargetMixin(TargetMixin):
         if self.need_supervision_masks:
             mask_i = mask
             for key in [
-                TARGET_MASK_2_KEY,
-                TARGET_MASK_4_KEY,
-                TARGET_MASK_8_KEY,
-                TARGET_MASK_16_KEY,
-                TARGET_MASK_32_KEY,
-                TARGET_MASK_64_KEY,
+                TARGET_MASK_KEY_STRIDE_2,
+                TARGET_MASK_KEY_STRIDE_4,
+                TARGET_MASK_KEY_STRIDE_8,
+                TARGET_MASK_KEY_STRIDE_16,
+                TARGET_MASK_KEY_STRIDE_32,
+                TARGET_MASK_KEY_STRIDE_64,
             ]:
                 mask_i = cv2.pyrDown(mask_i)
                 _, mask_binary = cv2.threshold(mask_i, 0, 1, cv2.THRESH_BINARY)

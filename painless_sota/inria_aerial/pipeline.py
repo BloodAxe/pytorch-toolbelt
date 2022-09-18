@@ -4,8 +4,9 @@ import sys
 from datetime import datetime
 from functools import partial
 from time import sleep
-from typing import Tuple, Any, Optional, Dict, List, OrderedDict
+from typing import Tuple, Any, Optional, Dict, List, OrderedDict, Union, Callable
 
+import cv2
 import hydra.utils
 import numpy as np
 import pytorch_toolbelt.utils.catalyst
@@ -40,6 +41,9 @@ from pytorch_toolbelt.utils import (
     master_print,
     is_dist_avail_and_initialized,
     get_collate_for_dataset,
+    rgb_image_from_tensor,
+    to_numpy,
+    hstack_autopad,
 )
 from pytorch_toolbelt.utils.catalyst.pipeline import (
     scale_learning_rate_for_ddp,
@@ -455,7 +459,7 @@ class InriaAerialPipeline:
             if show_batches:
 
                 visualize_fn = partial(
-                    draw_binary_segmentation_predictions,
+                    draw_inria_segmentation_predictions,
                     image_key=INPUT_IMAGE_KEY,
                     image_id_key=INPUT_IMAGE_ID_KEY,
                     targets_key=TARGET_MASK_KEY,
@@ -481,3 +485,114 @@ class InriaAerialPipeline:
             )
 
         return callbacks
+
+
+def draw_inria_segmentation_predictions(
+    input: dict,
+    output: dict,
+    image_key="features",
+    image_id_key: Optional[str] = "image_id",
+    targets_key="targets",
+    outputs_key="logits",
+    mean=(0.485, 0.456, 0.406),
+    std=(0.229, 0.224, 0.225),
+    max_images=None,
+    targets_threshold=0.5,
+    logits_threshold=0,
+    image_format: Union[str, Callable] = "rgb",
+) -> List[np.ndarray]:
+    """
+    Render visualization of model's prediction for binary segmentation problem.
+    This function draws a color-coded overlay on top of the image, with color codes meaning:
+        - green: True positives
+        - red: False-negatives
+        - yellow: False-positives
+
+    :param input: Input batch (model's input batch)
+    :param output: Output batch (model predictions)
+    :param image_key: Key for getting image
+    :param image_id_key: Key for getting image id/fname
+    :param targets_key: Key for getting ground-truth mask
+    :param outputs_key: Key for getting model logits for predicted mask
+    :param mean: Mean vector user during normalization
+    :param std: Std vector user during normalization
+    :param max_images: Maximum number of images to visualize from batch
+        (If you have huge batch, saving hundreds of images may make TensorBoard slow)
+    :param targets_threshold: Threshold to convert target values to binary.
+        Default value 0.5 is safe for both smoothed and hard labels.
+    :param logits_threshold: Threshold to convert model predictions (raw logits) values to binary.
+        Default value 0.0 is equivalent to 0.5 after applying sigmoid activation
+    :param image_format: Source format of the image tensor to conver to RGB representation.
+        Can be string ("gray", "rgb", "brg") or function `convert(np.ndarray)->nd.ndarray`.
+    :return: List of images
+    """
+    images = []
+    num_samples = len(input[image_key])
+    if max_images is not None:
+        num_samples = min(num_samples, max_images)
+
+    assert output[outputs_key].size(1) == 1, "Mask must be single-channel tensor of shape [Nx1xHxW]"
+
+    for i in range(num_samples):
+        image = rgb_image_from_tensor(input[image_key][i], mean, std)
+
+        if image_format == "rgb":
+            pass
+        elif image_format == "bgr":
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        elif image_format == "gray":
+            image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+        elif isinstance(image_format, callable):
+            image = image_format(image)
+
+        target = to_numpy(input[targets_key][i]).squeeze(0)
+        logits = to_numpy(output[outputs_key][i]).squeeze(0)
+
+        overlay = image.copy()
+        true_mask = target > targets_threshold
+        pred_mask = logits > logits_threshold
+
+        overlay[true_mask & pred_mask] = np.array(
+            [0, 250, 0], dtype=overlay.dtype
+        )  # Correct predictions (Hits) painted with green
+        overlay[true_mask & ~pred_mask] = np.array([250, 0, 0], dtype=overlay.dtype)  # Misses painted with red
+        overlay[~true_mask & pred_mask] = np.array(
+            [250, 250, 0], dtype=overlay.dtype
+        )  # False alarm painted with yellow
+        overlay = cv2.addWeighted(image, 0.5, overlay, 0.5, 0, dtype=cv2.CV_8U)
+
+        if OUTPUT_MASK_KEY_STRIDE_4 in output and TARGET_MASK_KEY_STRIDE_4 in input:
+            target = to_numpy(input[TARGET_MASK_KEY_STRIDE_4][i]).squeeze(0)
+            logits = to_numpy(output[OUTPUT_MASK_KEY_STRIDE_4][i]).squeeze(0)
+
+            overlay2 = image.copy()
+            true_mask = (
+                cv2.resize(
+                    target, dst=None, dsize=(overlay.shape[1], overlay.shape[0]), interpolation=cv2.INTER_NEAREST
+                )
+                > targets_threshold
+            )
+            pred_mask = (
+                cv2.resize(
+                    logits, dst=None, dsize=(overlay.shape[1], overlay.shape[0]), interpolation=cv2.INTER_NEAREST
+                )
+                > logits_threshold
+            )
+
+            overlay2[true_mask & pred_mask] = np.array(
+                [0, 250, 0], dtype=overlay2.dtype
+            )  # Correct predictions (Hits) painted with green
+            overlay2[true_mask & ~pred_mask] = np.array([250, 0, 0], dtype=overlay2.dtype)  # Misses painted with red
+            overlay2[~true_mask & pred_mask] = np.array(
+                [250, 250, 0], dtype=overlay2.dtype
+            )  # False alarm painted with yellow
+            overlay2 = cv2.addWeighted(image, 0.5, overlay2, 0.5, 0, dtype=cv2.CV_8U)
+
+            overlay = hstack_autopad([overlay, overlay2])
+
+        if image_id_key is not None and image_id_key in input:
+            image_id = input[image_id_key][i]
+            cv2.putText(overlay, str(image_id), (10, 15), cv2.FONT_HERSHEY_PLAIN, 1, (250, 250, 250))
+
+        images.append(overlay)
+    return images

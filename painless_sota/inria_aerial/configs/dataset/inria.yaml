@@ -41,6 +41,8 @@ validation:
     _target_: painless_sota.inria_aerial.data.FixedCropFromImageDataset.from_dataframe
     image_size: 1024
     channels_last: ${torch.channels_last}
+    need_supervision_masks: False
+    need_weighting_mask: False
     transforms:
       augmentations:
 

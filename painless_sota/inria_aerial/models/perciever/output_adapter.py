@@ -8,6 +8,8 @@ from painless_sota.inria_aerial.models.perciever.input_adapter import (
 )
 from torch import nn, Tensor
 
+from pytorch_toolbelt.datasets import OUTPUT_MASK_KEY, OUTPUT_MASK_KEY_STRIDE_4
+
 
 class OutputAdapter(nn.Module):
     def __init__(self):
@@ -35,7 +37,12 @@ class SameInputQuerySegmentationOutputAdapter(nn.Module):
         super().__init__()
         self._num_output_query_channels = num_output_query_channels
         self.depth2space = nn.PixelShuffle(4)
-        self.linear = nn.Linear(num_output_query_channels, num_classes * 4 * 4)
+        self.output = nn.Sequential(
+            nn.Linear(num_output_query_channels, num_output_query_channels),
+            nn.GELU(),
+            nn.Linear(num_output_query_channels, num_classes * 4 * 4),
+        )
+        self.stride_4_output = nn.Linear(num_output_query_channels, num_classes)
 
         image_shape_down = (image_shape[0] // 4, image_shape[1] // 4, image_shape[2] * 4 * 4)
         *self.spatial_shape, num_image_channels = image_shape_down
@@ -48,12 +55,16 @@ class SameInputQuerySegmentationOutputAdapter(nn.Module):
         return x
 
     def forward(self, x):
-        y = self.linear(x)
-        b, spatial_flatten, channels = y.shape
+        dsv_output = self.stride_4_output(x)
 
-        output = torch.moveaxis(y.view([b] + self.spatial_shape + [channels]), -1, 1)
+        b, spatial_flatten, channels = dsv_output.shape
+        dsv_output = torch.moveaxis(dsv_output.view([b] + self.spatial_shape + [channels]), -1, 1)
+
+        output = self.output(x)
+        b, spatial_flatten, channels = output.shape
+        output = torch.moveaxis(output.view([b] + self.spatial_shape + [channels]), -1, 1)
         output = self.depth2space(output)
-        return output
+        return {OUTPUT_MASK_KEY: output, OUTPUT_MASK_KEY_STRIDE_4: dsv_output}
 
 
 class FourierPEQuerySegmentationOutputAdapter(nn.Module):
