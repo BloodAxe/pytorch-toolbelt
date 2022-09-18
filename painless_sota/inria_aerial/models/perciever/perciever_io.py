@@ -5,6 +5,8 @@ import torch
 import torch.nn as nn
 from einops import rearrange, repeat
 from fairscale.nn import checkpoint_wrapper
+from torch import Tensor
+
 from painless_sota.inria_aerial.data.functional import as_tuple_of_two
 from painless_sota.inria_aerial.models.perciever.config import (
     PerceiverConfig,
@@ -14,10 +16,8 @@ from painless_sota.inria_aerial.models.perciever.config import (
 from painless_sota.inria_aerial.models.perciever.input_adapter import FourierPEImageInputAdapter
 from painless_sota.inria_aerial.models.perciever.output_adapter import (
     SameInputQuerySegmentationOutputAdapter,
-    FourierPEQuerySegmentationOutputAdapter,
 )
 from pytorch_toolbelt.utils import count_parameters, describe_outputs
-from torch import Tensor
 
 __all__ = ["PercieverIOForSegmentation"]
 
@@ -441,9 +441,6 @@ class PerceiverDecoder(nn.Module):
     ):
         """Generic Perceiver IO decoder.
 
-        :param output_adapter: Transforms generic decoder cross-attention output of shape (B, O, F) to task-specific
-            output. B is the batch size, O the output sequence length and F the number of cross-attention output
-            channels. F is determined by the `num_output_query_channels` property of the `output_adapter`.
         :param num_latent_channels: Number of latent channels (C_latent) as produced by a Perceiver IO encoder.
         :param num_cross_attention_heads: Number of cross-attention heads.
         :param num_cross_attention_qk_channels: Number of query and key channels for cross-attention
