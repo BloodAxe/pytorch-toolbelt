@@ -117,6 +117,8 @@ seg_perciever_io_s: pull
 	dataset.train.dataset.num_samples=16384 \
 	dataset.validation.dataset.image_size=512 \
 	loss=bce_iou2_dsv \
+	dataset.train.dataset.need_supervision_masks=True \
+	dataset.validation.dataset.need_supervision_masks=True \
 	batch_size=16 \
 	num_workers=8 \
 	runner.show_batches=True \
