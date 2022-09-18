@@ -8,7 +8,7 @@ architecture:
     num_classes: ${dataset.num_output_classes}
     num_latent_channels: 512
     num_latents: 1024
-    num_self_attention_heads: 8
+    num_self_attention_heads: 16
     num_self_attention_layers_per_block: 16
     activation_checkpointing: True
     activation_offloading: False
@@ -16,8 +16,8 @@ architecture:
     dropout: 0.1
     output_name:
 
-    encoder_num_cross_attention_heads: 1
+    encoder_num_cross_attention_heads: 8
     decoder_num_cross_attention_heads: 1
 
     image_channels_before_concat: 256
-    num_output_channels: 64
+    num_output_channels: 128
