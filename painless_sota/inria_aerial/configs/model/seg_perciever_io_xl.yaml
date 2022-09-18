@@ -16,8 +16,8 @@ architecture:
     init_scale: 0.02
     dropout: 0.1
 
-    encoder_num_cross_attention_heads: 1
-    decoder_num_cross_attention_heads: 1
+    encoder_num_cross_attention_heads: 8
+    decoder_num_cross_attention_heads: 8
 
     image_channels_before_concat: 256
     num_output_channels: 256
