@@ -86,8 +86,8 @@ seg_perciever_io_xl: pull
 	dataset.train.dataset.image_size=1024 \
 	dataset.train.dataset.num_samples=16384 \
 	dataset.validation.dataset.image_size=1024 \
-	loss=bce \
+	loss=focal \
 	batch_size=2 \
 	num_workers=2 \
 	runner.show_batches=True \
-	optimizer=adamw2 optimizer.fp16=False
+	optimizer=radam
