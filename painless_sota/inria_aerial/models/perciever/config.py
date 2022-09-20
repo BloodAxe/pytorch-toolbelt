@@ -73,3 +73,4 @@ class PerceiverConfig(Generic[E, D]):
     activation_checkpointing: bool = False
     activation_offloading: bool = False
     output_name: Optional[str] = None
+    attention_residual: bool = True

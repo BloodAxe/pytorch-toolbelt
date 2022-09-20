@@ -310,6 +310,7 @@ class PerceiverEncoder(nn.Module):
         init_scale: float = 0.02,
         activation_checkpointing: bool = False,
         activation_offloading: bool = False,
+        attention_residual=True,
     ):
         """Generic Perceiver IO encoder.
 
@@ -369,6 +370,7 @@ class PerceiverEncoder(nn.Module):
                 num_v_channels=num_cross_attention_v_channels,
                 widening_factor=cross_attention_widening_factor,
                 dropout=dropout,
+                attention_residual=attention_residual,
             )
             return (
                 checkpoint_wrapper(layer, offload_to_cpu=activation_offloading) if activation_checkpointing else layer
@@ -438,6 +440,7 @@ class PerceiverDecoder(nn.Module):
         init_scale: float = 0.02,
         activation_checkpointing: bool = False,
         activation_offloading: bool = False,
+        attention_residual: bool = True,
     ):
         """Generic Perceiver IO decoder.
 
@@ -463,6 +466,7 @@ class PerceiverDecoder(nn.Module):
             num_v_channels=num_cross_attention_v_channels,
             widening_factor=cross_attention_widening_factor,
             dropout=dropout,
+            attention_residual=attention_residual,
         )
 
         if activation_checkpointing:
@@ -489,6 +493,7 @@ class PercieverIOForSegmentation(nn.Module):
             PerceiverConfig(
                 activation_checkpointing=config.activation_checkpointing,
                 activation_offloading=config.activation_offloading,
+                attention_residual=config.attention_residual,
                 encoder=ImageEncoderConfig(
                     image_shape=tuple(image_shape),
                     num_cross_attention_heads=config.encoder_num_cross_attention_heads,
@@ -505,7 +510,7 @@ class PercieverIOForSegmentation(nn.Module):
                     num_classes=config.num_classes,
                     num_cross_attention_heads=config.decoder_num_cross_attention_heads,
                     dropout=config.dropout,
-                    use_supervision=config.use_supervision
+                    use_supervision=config.use_supervision,
                 ),
                 num_latents=config.num_latents,
                 num_latent_channels=config.num_latents,
@@ -534,13 +539,14 @@ class PercieverIOForSegmentation(nn.Module):
             num_latent_channels=config.num_latent_channels,
             activation_checkpointing=config.activation_checkpointing,
             activation_offloading=config.activation_offloading,
+            attention_residual=config.attention_residual,
             **encoder_kwargs,
         )
         self.output_adapter = SameInputQuerySegmentationOutputAdapter(
             num_classes=config.decoder.num_classes,
             image_shape=config.encoder.image_shape,
             num_output_query_channels=self.input_adapter.num_output_channels,
-            use_supervision=config.decoder.use_supervision
+            use_supervision=config.decoder.use_supervision,
         )
 
         self.decoder = PerceiverDecoder(
@@ -548,6 +554,7 @@ class PercieverIOForSegmentation(nn.Module):
             num_latent_channels=config.num_latent_channels,
             activation_checkpointing=config.activation_checkpointing,
             activation_offloading=config.activation_offloading,
+            attention_residual=config.attention_residual,
             **config.decoder.base_kwargs(),
         )
         self.output_name = config.output_name
