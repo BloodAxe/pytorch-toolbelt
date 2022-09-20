@@ -9,7 +9,6 @@ architecture:
     activation_offloading: False
     num_latent_channels: 512
     num_latents: 2048
-    attention_residual: True
     output_name:
 
     encoder:
