@@ -1,0 +1,61 @@
+- _target_: ${A:RandomRotate90}
+  p: 1.0
+- _target_: ${A:Transpose}
+  p: 0.5
+
+- _target_: ${A:OneOf}
+  p: 0.1
+  transforms:
+  - _target_: ${A:PixelDropout}
+  - _target_: ${A:CoarseDropout}
+    max_height: 32
+    min_height: 16
+    max_width: 32
+    min_width: 16
+    max_holes: 8
+    min_holes: 1
+    fill_value: 0
+    mask_fill_value: 0
+
+- _target_: ${A:ShiftScaleRotate}
+  scale_limit: 0.2
+  rotate_limit: 10
+  value: 0
+  mask_value: 0
+  border_mode: 0 # cv2.BORDER_CONSTANT = 0
+  interpolation: 1 # cv2.INTER_LINEAR = 1
+  p: 0.5
+
+
+- _target_: ${A:RandomBrightnessContrast}
+  brightness_by_max: False
+  brightness_limit: 0.2
+  contrast_limit: 0.2
+  p: 0.25
+
+- _target_: ${A:RandomToneCurve}
+  p: 0.1
+
+- _target_: ${A:ISONoise}
+  intensity:
+    - 0.05
+    - 0.2
+  p: 0.1
+
+- _target_: ${A:CLAHE}
+  p: 0.2
+
+- _target_: ${A:RandomGamma}
+  p: 0.2
+
+- _target_: ${A:OneOf}
+  p: 0.5
+  transforms:
+    - _target_: ${A:FancyPCA}
+    - _target_: ${A:RGBShift}
+    - _target_: ${A:HueSaturationValue}
+
+- _target_: ${A:RandomFog}
+  fog_coef_lower: 0.01
+  fog_coef_upper: 0.1
+  p: 0.1

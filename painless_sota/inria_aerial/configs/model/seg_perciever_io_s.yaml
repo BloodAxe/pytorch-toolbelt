@@ -13,11 +13,11 @@ architecture:
     activation_checkpointing: True
     activation_offloading: False
     init_scale: 0.02
-    dropout: 0.1
+    dropout: 0.0
     output_name:
 
     encoder_num_cross_attention_heads: 1
     decoder_num_cross_attention_heads: 1
 
-    image_channels_before_concat: 256
-    num_output_channels: 64
+    image_channels_before_concat: 64
+    num_output_channels:

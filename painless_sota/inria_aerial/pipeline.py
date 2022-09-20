@@ -299,25 +299,7 @@ class InriaAerialPipeline:
             opt_callback = AMPOptimizerCallback(accumulation_steps=accumulation_steps)
         else:
             opt_callback = OptimizerCallback(accumulation_steps=accumulation_steps, decouple_weight_decay=False)
-
-        scheduler_params = self.config["optimizer"]["scheduler"]
-        num_epochs = self.config.runner.max_epochs
-
-        scheduler = get_scheduler(
-            optimizer,
-            learning_rate=optimizer_params["lr"],
-            num_epochs=num_epochs,
-            batches_in_epoch=len(loaders["train"]),
-            **scheduler_params,
-        )
-
         callbacks = [opt_callback]
-        if isinstance(scheduler, (CyclicLR, OneCycleLRWithWarmup)):
-            callbacks += [SchedulerCallback(mode="batch")]
-        else:
-            callbacks += [SchedulerCallback(mode="epoch")]
-
-        # fmt: off
         master_print("Optimizer        :", optimizer_config.name)
         master_print("  Parameters     :", count_parameters(model, human_friendly=True))
         master_print("  FP16           :", use_fp16)
@@ -328,8 +310,27 @@ class InriaAerialPipeline:
         master_print("Params           :")
         for k, v in optimizer_params.items():
             master_print(f"  {k}:", v)
-        master_print("Scheduler        :", scheduler_params.name)
-        # fmt: on
+
+        scheduler_params = self.config["optimizer"]["scheduler"]
+        if scheduler_params is not None:
+            num_epochs = self.config.runner.max_epochs
+
+            scheduler = get_scheduler(
+                optimizer,
+                learning_rate=optimizer_params["lr"],
+                num_epochs=num_epochs,
+                batches_in_epoch=len(loaders["train"]),
+                **scheduler_params,
+            )
+
+            if isinstance(scheduler, (CyclicLR, OneCycleLRWithWarmup)):
+                callbacks += [SchedulerCallback(mode="batch")]
+            else:
+                callbacks += [SchedulerCallback(mode="epoch")]
+
+            master_print("Scheduler        :", scheduler_params.name)
+        else:
+            scheduler = None
 
         return optimizer, scheduler, callbacks
 

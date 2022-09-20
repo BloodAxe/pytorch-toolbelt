@@ -1,0 +1,11 @@
+fp16: False
+wd_on_bias: True
+accumulation: 1
+
+optimizer:
+  name: Lamb
+  params:
+    lr: 2.5e-4
+    weight_decay: 1e-4
+
+scheduler:
