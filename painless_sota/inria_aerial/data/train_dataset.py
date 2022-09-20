@@ -80,6 +80,7 @@ class RandomCropFromImageDataset(Dataset, TransformationsMixin):
         self.channels_last = channels_last
         self.min_instance_size = min_instance_size
         self.image_size = image_size
+        self.image_size_with_extra = int(image_size[0] * 1.5), int(image_size[1] * 1.5)
 
     def __len__(self):
         return len(self.annotations)
@@ -90,11 +91,11 @@ class RandomCropFromImageDataset(Dataset, TransformationsMixin):
         cx = random.randint(self.image_size[0] // 2, scene_cols - self.image_size[0] // 2)
         cy = random.randint(self.image_size[1] // 2, scene_rows - self.image_size[1] // 2)
 
-        start_row = max(0, cy - self.image_size[1] // 2)
-        start_col = max(0, cx - self.image_size[0] // 2)
+        start_row = max(0, cy - self.image_size_with_extra[1] // 2)
+        start_col = max(0, cx - self.image_size_with_extra[0] // 2)
 
-        end_row = min(scene_rows, start_row + self.image_size[1])
-        end_col = min(scene_cols, start_col + self.image_size[0])
+        end_row = min(scene_rows, start_row + self.image_size_with_extra[1])
+        end_col = min(scene_cols, start_col + self.image_size_with_extra[0])
 
         crop_coords = (start_row, end_row), (start_col, end_col)
         return crop_coords

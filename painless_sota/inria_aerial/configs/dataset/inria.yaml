@@ -27,6 +27,10 @@ train:
           mask_value: 0
           value: 0
 
+        - _target_: ${A:CenterCrop}
+          height: ${dataset.train.dataset.image_size}
+          width: ${dataset.train.dataset.image_size}
+
       normalization:
         - _target_: ${A:Normalize}
           mean: [ 0.485, 0.456, 0.406 ]
