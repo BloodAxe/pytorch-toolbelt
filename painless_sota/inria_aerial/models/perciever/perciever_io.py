@@ -535,7 +535,6 @@ class PercieverIOForSegmentation(nn.Module):
             num_latent_channels=config.num_latent_channels,
             activation_checkpointing=config.activation_checkpointing,
             activation_offloading=config.activation_offloading,
-            attention_residual=config.decoder.attention_residual,
             **config.decoder.base_kwargs(),
         )
         self.output_name = config.output_name
