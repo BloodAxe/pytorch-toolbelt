@@ -8,29 +8,36 @@ architecture:
     activation_checkpointing: True
     activation_offloading: False
     num_latent_channels: 512
-    num_latents: 1024
+    num_latents: 2048
     attention_residual: True
     output_name:
 
     encoder:
       _target_: painless_sota.inria_aerial.models.ImageEncoderConfig
-      type: learnable
-      init_scale: 0.02
-      num_cross_attention_heads: 1
-      num_self_attention_heads: 8
-      num_self_attention_layers_per_block: 8
-      dropout: 0.0
-
       image_size: ${dataset.train.dataset.image_size}
       input_channels: 3
-
+      num_frequency_bands: 64
+      include_positions: True
       image_channels_before_concat: 64
       num_output_channels:
 
+      type: space2depth
+
+      num_cross_attention_heads: 1
+      num_cross_attention_layers: 1
+
+      num_self_attention_heads: 8
+      num_self_attention_layers_per_block: 8
+      num_self_attention_blocks: 1
+
+      dropout: 0.0
+      init_scale: 0.02
+
     decoder:
       _target_: painless_sota.inria_aerial.models.SegmentationDecoderConfig
+      num_classes: ${dataset.num_output_classes}
+      use_supervision: True
+
       init_scale: 0.02
       num_cross_attention_heads: 1
       dropout: 0.0
-      use_supervision: True
-      num_classes: ${dataset.num_output_classes}

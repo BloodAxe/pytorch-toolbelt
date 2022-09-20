@@ -557,7 +557,7 @@ if __name__ == "__main__":
         PercieverIOForSegmentation(
             PerceiverConfig(
                 encoder=ImageEncoderConfig(
-                    image_shape=tuple((256, 384, 3)),
+                    image_size=(256, 384),
                     num_cross_attention_heads=8,
                     num_self_attention_heads=16,
                     num_self_attention_layers_per_block=24,
