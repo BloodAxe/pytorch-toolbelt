@@ -505,6 +505,7 @@ class PercieverIOForSegmentation(nn.Module):
                     num_classes=config.num_classes,
                     num_cross_attention_heads=config.decoder_num_cross_attention_heads,
                     dropout=config.dropout,
+                    use_supervision=config.use_supervision
                 ),
                 num_latents=config.num_latents,
                 num_latent_channels=config.num_latents,
@@ -539,6 +540,7 @@ class PercieverIOForSegmentation(nn.Module):
             num_classes=config.decoder.num_classes,
             image_shape=config.encoder.image_shape,
             num_output_query_channels=self.input_adapter.num_output_channels,
+            use_supervision=config.decoder.use_supervision
         )
 
         self.decoder = PerceiverDecoder(

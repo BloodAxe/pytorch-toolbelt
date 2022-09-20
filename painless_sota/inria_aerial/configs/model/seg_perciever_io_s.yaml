@@ -21,3 +21,5 @@ architecture:
 
     image_channels_before_concat: 64
     num_output_channels:
+
+    use_supervision: True

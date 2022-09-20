@@ -33,6 +33,7 @@ class SameInputQuerySegmentationOutputAdapter(nn.Module):
         num_classes: int,
         image_shape: Tuple[int, int, int],
         num_output_query_channels: int,
+        use_supervision: bool,
     ):
         super().__init__()
         self._num_output_query_channels = num_output_query_channels
@@ -42,7 +43,10 @@ class SameInputQuerySegmentationOutputAdapter(nn.Module):
             nn.GELU(),
             nn.Linear(num_output_query_channels, num_classes * 4 * 4),
         )
-        self.stride_4_output = nn.Linear(num_output_query_channels, num_classes)
+        if use_supervision:
+            self.stride_4_output = nn.Linear(num_output_query_channels, num_classes)
+        else:
+            self.stride_4_output = None
 
         image_shape_down = (image_shape[0] // 4, image_shape[1] // 4, image_shape[2] * 4 * 4)
         *self.spatial_shape, num_image_channels = image_shape_down
@@ -55,16 +59,20 @@ class SameInputQuerySegmentationOutputAdapter(nn.Module):
         return x
 
     def forward(self, x):
-        dsv_output = self.stride_4_output(x)
+        outputs = {}
 
-        b, spatial_flatten, channels = dsv_output.shape
-        dsv_output = torch.moveaxis(dsv_output.view([b] + self.spatial_shape + [channels]), -1, 1)
+        if self.stride_4_output is not None:
+            dsv_output = self.stride_4_output(x)
+            b, spatial_flatten, channels = dsv_output.shape
+            dsv_output = torch.moveaxis(dsv_output.view([b] + self.spatial_shape + [channels]), -1, 1)
+            outputs[OUTPUT_MASK_KEY_STRIDE_4] = dsv_output
 
         output = self.output(x)
         b, spatial_flatten, channels = output.shape
         output = torch.moveaxis(output.view([b] + self.spatial_shape + [channels]), -1, 1)
         output = self.depth2space(output)
-        return {OUTPUT_MASK_KEY: output, OUTPUT_MASK_KEY_STRIDE_4: dsv_output}
+        outputs[OUTPUT_MASK_KEY] = output
+        return outputs
 
 
 class FourierPEQuerySegmentationOutputAdapter(nn.Module):

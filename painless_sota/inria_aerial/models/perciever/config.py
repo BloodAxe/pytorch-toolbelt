@@ -57,6 +57,7 @@ class DecoderConfig:
 @dataclass
 class SegmentationDecoderConfig(DecoderConfig):
     num_classes: int = 10
+    use_supervision: bool = True
 
 
 E = TypeVar("E", bound=EncoderConfig)
