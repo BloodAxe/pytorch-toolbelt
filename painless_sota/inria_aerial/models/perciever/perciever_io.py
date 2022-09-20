@@ -520,7 +520,6 @@ class PercieverIOForSegmentation(nn.Module):
             num_latent_channels=config.num_latent_channels,
             activation_checkpointing=config.activation_checkpointing,
             activation_offloading=config.activation_offloading,
-            attention_residual=config.encoder.attention_residual,
             **encoder_kwargs,
         )
         self.output_adapter = SameInputQuerySegmentationOutputAdapter(
