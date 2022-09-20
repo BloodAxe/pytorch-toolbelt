@@ -9,3 +9,5 @@ optimizer:
     weight_decay: 1e-4
 
 scheduler:
+  name: cos
+  min_learning_rate: 5e-6
