@@ -28,6 +28,7 @@ class EncoderConfig:
     dropout: float = 0.0
     init_scale: float = 0.02
     freeze: bool = False
+    attention_residual: bool = True
 
     def base_kwargs(self, exclude=("freeze",)):
         return _base_kwargs(self, EncoderConfig, exclude)
@@ -59,6 +60,7 @@ class DecoderConfig:
     dropout: float = 0.0
     init_scale: float = 0.02
     freeze: bool = False
+    attention_residual: bool = False
 
     def base_kwargs(self, exclude=("freeze",)):
         return _base_kwargs(self, DecoderConfig, exclude)
@@ -83,4 +85,3 @@ class PerceiverConfig(Generic[E, D]):
     activation_checkpointing: bool = False
     activation_offloading: bool = False
     output_name: Optional[str] = None
-    attention_residual: bool = True

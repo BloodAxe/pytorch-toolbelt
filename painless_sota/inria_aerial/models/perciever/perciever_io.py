@@ -15,7 +15,10 @@ from painless_sota.inria_aerial.models.perciever.config import (
     ImageEncoderConfig,
     SegmentationDecoderConfig,
 )
-from painless_sota.inria_aerial.models.perciever.input_adapter import FourierPELearnableConvImageInputAdapter,FourierPESpace2DepthImageInputAdapter
+from painless_sota.inria_aerial.models.perciever.input_adapter import (
+    FourierPELearnableConvImageInputAdapter,
+    FourierPESpace2DepthImageInputAdapter,
+)
 from painless_sota.inria_aerial.models.perciever.output_adapter import (
     SameInputQuerySegmentationOutputAdapter,
 )
@@ -492,7 +495,7 @@ class PercieverIOForSegmentation(nn.Module):
 
     def __init__(self, config: PerceiverConfig[ImageEncoderConfig, SegmentationDecoderConfig]):
         super().__init__()
-        pprint(config,indent=2)
+        pprint(config, indent=2)
 
         if config.encoder.type == "space2depth":
             cls = FourierPESpace2DepthImageInputAdapter
@@ -517,7 +520,7 @@ class PercieverIOForSegmentation(nn.Module):
             num_latent_channels=config.num_latent_channels,
             activation_checkpointing=config.activation_checkpointing,
             activation_offloading=config.activation_offloading,
-            attention_residual=config.attention_residual,
+            attention_residual=config.encoder.attention_residual,
             **encoder_kwargs,
         )
         self.output_adapter = SameInputQuerySegmentationOutputAdapter(
@@ -532,7 +535,7 @@ class PercieverIOForSegmentation(nn.Module):
             num_latent_channels=config.num_latent_channels,
             activation_checkpointing=config.activation_checkpointing,
             activation_offloading=config.activation_offloading,
-            attention_residual=config.attention_residual,
+            attention_residual=config.decoder.attention_residual,
             **config.decoder.base_kwargs(),
         )
         self.output_name = config.output_name
