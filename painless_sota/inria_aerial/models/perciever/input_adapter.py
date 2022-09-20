@@ -6,7 +6,13 @@ import torch
 from pytorch_toolbelt.utils import count_parameters, describe_outputs
 from torch import nn, Tensor
 
-__all__ = ["normalized_spatial_coordinates", "fourier_position_encodings", "InputAdapter"]
+__all__ = [
+    "normalized_spatial_coordinates",
+    "fourier_position_encodings",
+    "InputAdapter",
+    "FourierPESpace2DepthImageInputAdapter",
+    "FourierPELearnableConvImageInputAdapter",
+]
 
 
 def normalized_spatial_coordinates(spatial_shape: Tuple[int, ...], v_min=-1.0, v_max=1.0) -> Tensor:
@@ -69,7 +75,7 @@ class InputAdapter(nn.Module):
         raise NotImplementedError()
 
 
-class FourierPEImageInputAdapter(InputAdapter):
+class FourierPESpace2DepthImageInputAdapter(InputAdapter):
     def __init__(
         self,
         image_shape: Tuple[int, ...],
@@ -139,6 +145,70 @@ class FourierPEImageInputAdapter(InputAdapter):
         return x
 
 
+class FourierPELearnableConvImageInputAdapter(InputAdapter):
+    def __init__(
+        self,
+        image_shape: Tuple[int, ...],
+        num_frequency_bands: int,
+        include_positions: bool,
+        image_channels_before_concat: int = None,
+        num_output_channels: Optional[int] = None,
+    ):
+        image_shape_down = (image_shape[0] // 4, image_shape[1] // 4, image_channels_before_concat)
+        *spatial_shape, num_image_channels = image_shape_down
+
+        num_position_encoding_channels = len(spatial_shape) * (2 * num_frequency_bands + include_positions)
+
+        # create encodings for single example
+        pos = normalized_spatial_coordinates(spatial_shape)
+        enc = fourier_position_encodings(
+            pos, num_frequency_bands=num_frequency_bands, include_positions=include_positions
+        )
+        # flatten encodings along spatial dimensions
+        enc = einops.rearrange(enc, "... c -> (...) c")
+
+        super().__init__()
+        self.image_shape_down = image_shape_down
+        self.num_frequency_bands = num_frequency_bands
+        self.space2depth = nn.Conv2d(3, image_channels_before_concat, kernel_size=4, stride=4)
+        self.register_buffer("position_encoding", enc)
+
+        num_image_channels = image_channels_before_concat
+
+        # Figure out output number of channels (image + position encoding)
+        _num_output_channels = num_image_channels + num_position_encoding_channels
+        if num_output_channels is not None:
+            self.project = nn.Linear(_num_output_channels, num_output_channels)
+            _num_output_channels = num_output_channels
+        else:
+            self.project = nn.Identity()
+
+        self._num_output_channels = _num_output_channels
+
+    @property
+    def num_output_channels(self):
+        return self._num_output_channels
+
+    @property
+    def num_position_encoding_channels(self, include_positions: bool = True) -> int:
+        return len(self.spatial_shape) * (2 * self.num_frequency_bands + include_positions)
+
+    def forward(self, x: Tensor) -> Tensor:
+        x = self.space2depth(x)
+        x = torch.moveaxis(x, 1, -1)  # Move BCHW to BHWC
+        b, *d = x.shape
+
+        if tuple(d) != self.image_shape_down:
+            raise ValueError(f"Input image shape {tuple(d)} different from required shape {self.image_shape_down}")
+
+        x = einops.rearrange(x, "b ... c -> b (...) c")
+
+        x_enc = einops.repeat(self.position_encoding, "... -> b ...", b=b)
+        x = torch.cat([x, x_enc], dim=-1)
+        x = self.project(x)
+        return x
+
+
 if __name__ == "__main__":
     adapter = (
         FourierPEImageInputAdapter(
@@ -147,6 +217,25 @@ if __name__ == "__main__":
             include_positions=True,
             image_channels_before_concat=256,
             num_output_channels=128,
+        )
+        .cuda()
+        .eval()
+    )
+
+    print(count_parameters(adapter))
+    input = torch.randn((4, 3, 512, 384)).cuda()
+
+    y = adapter(input)
+    print(describe_outputs(y))
+
+    assert y.size(-1) == adapter.num_output_channels
+
+    adapter = (
+        FourierPELearnableConvImageInputAdapter(
+            image_shape=(512, 384, 3),
+            num_frequency_bands=64,
+            include_positions=True,
+            image_channels_before_concat=64,
         )
         .cuda()
         .eval()

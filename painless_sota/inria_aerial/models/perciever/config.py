@@ -2,6 +2,8 @@ from dataclasses import asdict, dataclass, fields
 from typing import Generic, Optional, TypeVar
 from typing import Tuple
 
+from painless_sota.inria_aerial.data.functional import as_tuple_of_two
+
 
 def _base_kwargs(config, base_class, exclude):
     base_field_names = [field.name for field in fields(base_class) if field.name not in exclude]
@@ -33,11 +35,19 @@ class EncoderConfig:
 
 @dataclass
 class ImageEncoderConfig(EncoderConfig):
-    image_shape: Tuple[int, int, int] = (224, 224, 3)
+    image_size: Tuple[int, int] = (224, 224)
+    input_channels: int = 3
     num_frequency_bands: int = 64
     include_positions: bool = False
     image_channels_before_concat: Optional[int] = None
     num_output_channels: Optional[int] = None
+
+    type: str = "learnable"
+
+    @property
+    def image_shape(self):
+        image_size = as_tuple_of_two(self.image_size)
+        return tuple([*image_size, self.input_channels])
 
 
 @dataclass

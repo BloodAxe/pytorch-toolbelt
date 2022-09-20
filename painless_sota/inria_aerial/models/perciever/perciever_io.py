@@ -1,6 +1,8 @@
+from pprint import pprint
 from typing import Optional
 from typing import Tuple
 
+import hydra
 import torch
 import torch.nn as nn
 from einops import rearrange, repeat
@@ -13,7 +15,7 @@ from painless_sota.inria_aerial.models.perciever.config import (
     ImageEncoderConfig,
     SegmentationDecoderConfig,
 )
-from painless_sota.inria_aerial.models.perciever.input_adapter import FourierPEImageInputAdapter
+from painless_sota.inria_aerial.models.perciever.input_adapter import FourierPELearnableConvImageInputAdapter,FourierPESpace2DepthImageInputAdapter
 from painless_sota.inria_aerial.models.perciever.output_adapter import (
     SameInputQuerySegmentationOutputAdapter,
 )
@@ -280,7 +282,6 @@ class Residual(nn.Module):
         super().__init__()
         self.module = module
         self.dropout = nn.Dropout(p=dropout)
-        self.dropout_p = dropout
 
     def forward(self, *args, **kwargs):
         x = self.module(*args, **kwargs)
@@ -486,42 +487,19 @@ class PerceiverDecoder(nn.Module):
 class PercieverIOForSegmentation(nn.Module):
     @classmethod
     def from_config(cls, config):
-        train_size = as_tuple_of_two(config.train_size)
-
-        image_shape: Tuple[int, int, int] = list(train_size) + [3]
-        return cls(
-            PerceiverConfig(
-                activation_checkpointing=config.activation_checkpointing,
-                activation_offloading=config.activation_offloading,
-                attention_residual=config.attention_residual,
-                encoder=ImageEncoderConfig(
-                    image_shape=tuple(image_shape),
-                    num_cross_attention_heads=config.encoder_num_cross_attention_heads,
-                    num_self_attention_heads=config.num_self_attention_heads,
-                    num_self_attention_layers_per_block=config.num_self_attention_layers_per_block,
-                    init_scale=config.init_scale,
-                    dropout=config.dropout,
-                    include_positions=True,
-                    image_channels_before_concat=config.image_channels_before_concat,
-                    num_output_channels=config.num_output_channels,
-                ),
-                decoder=SegmentationDecoderConfig(
-                    init_scale=config.init_scale,
-                    num_classes=config.num_classes,
-                    num_cross_attention_heads=config.decoder_num_cross_attention_heads,
-                    dropout=config.dropout,
-                    use_supervision=config.use_supervision,
-                ),
-                num_latents=config.num_latents,
-                num_latent_channels=config.num_latents,
-                output_name=config.output_name,
-            )
-        )
+        config = hydra.utils.instantiate(config)
+        return cls(config)
 
     def __init__(self, config: PerceiverConfig[ImageEncoderConfig, SegmentationDecoderConfig]):
         super().__init__()
+        pprint(config,indent=2)
 
-        self.input_adapter = FourierPEImageInputAdapter(
+        if config.encoder.type == "space2depth":
+            cls = FourierPESpace2DepthImageInputAdapter
+        elif config.encoder.type == "learnable":
+            cls = FourierPELearnableConvImageInputAdapter
+
+        self.input_adapter = cls(
             image_shape=config.encoder.image_shape,
             num_frequency_bands=config.encoder.num_frequency_bands,
             include_positions=config.encoder.include_positions,

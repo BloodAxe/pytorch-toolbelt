@@ -335,7 +335,7 @@ class InriaAerialPipeline:
         return optimizer, scheduler, callbacks
 
     def build_model(self, config: DictConfig) -> nn.Module:
-        model = instantiate(config.model.architecture, _recursive_=False)
+        model = instantiate(config.model.architecture)
 
         if self.config.transfer:
             transfer_checkpoint = fs.auto_file(self.config.transfer)
