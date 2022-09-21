@@ -1,15 +1,12 @@
+from functools import partial
 from pprint import pprint
 from typing import Optional
-from typing import Tuple
 
 import hydra
 import torch
 import torch.nn as nn
 from einops import rearrange, repeat
 from fairscale.nn import checkpoint_wrapper
-from torch import Tensor
-
-from painless_sota.inria_aerial.data.functional import as_tuple_of_two
 from painless_sota.inria_aerial.models.perciever.config import (
     PerceiverConfig,
     ImageEncoderConfig,
@@ -21,8 +18,10 @@ from painless_sota.inria_aerial.models.perciever.input_adapter import (
 )
 from painless_sota.inria_aerial.models.perciever.output_adapter import (
     SameInputQuerySegmentationOutputAdapter,
+    FourierPEQuerySegmentationOutputAdapter,
 )
 from pytorch_toolbelt.utils import count_parameters, describe_outputs
+from torch import Tensor
 
 __all__ = ["PercieverIOForSegmentation"]
 
@@ -498,11 +497,20 @@ class PercieverIOForSegmentation(nn.Module):
         pprint(config, indent=2)
 
         if config.encoder.type == "space2depth":
-            cls = FourierPESpace2DepthImageInputAdapter
+            encoder_cls = FourierPESpace2DepthImageInputAdapter
         elif config.encoder.type == "learnable":
-            cls = FourierPELearnableConvImageInputAdapter
+            encoder_cls = FourierPELearnableConvImageInputAdapter
 
-        self.input_adapter = cls(
+        if config.decoder.type == "same_input":
+            decoder_cls = SameInputQuerySegmentationOutputAdapter
+        elif config.decoder.type == "fourier_only":
+            decoder_cls = partial(
+                FourierPEQuerySegmentationOutputAdapter,
+                num_frequency_bands=config.encoder.num_frequency_bands,
+                include_positions=config.encoder.include_positions,
+            )
+
+        self.input_adapter = encoder_cls(
             image_shape=config.encoder.image_shape,
             num_frequency_bands=config.encoder.num_frequency_bands,
             include_positions=config.encoder.include_positions,
@@ -522,7 +530,7 @@ class PercieverIOForSegmentation(nn.Module):
             activation_offloading=config.activation_offloading,
             **encoder_kwargs,
         )
-        self.output_adapter = SameInputQuerySegmentationOutputAdapter(
+        self.output_adapter = decoder_cls(
             num_classes=config.decoder.num_classes,
             image_shape=config.encoder.image_shape,
             num_output_query_channels=self.input_adapter.num_output_channels,

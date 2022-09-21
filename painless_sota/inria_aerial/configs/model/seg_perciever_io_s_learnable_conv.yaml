@@ -17,7 +17,7 @@ architecture:
       input_channels: 3
       num_frequency_bands: 64
       include_positions: True
-      image_channels_before_concat: 64
+      image_channels_before_concat: 256
       num_output_channels:
 
       type: space2depth
@@ -29,7 +29,7 @@ architecture:
       num_self_attention_layers_per_block: 8
       num_self_attention_blocks: 1
 
-      dropout: 0.0
+      dropout: 0.05
       init_scale: 0.02
 
     decoder:
@@ -39,4 +39,6 @@ architecture:
 
       init_scale: 0.02
       num_cross_attention_heads: 1
-      dropout: 0.0
+      dropout: 0.05
+
+      type: same_input

@@ -71,6 +71,8 @@ class SegmentationDecoderConfig(DecoderConfig):
     num_classes: int = 10
     use_supervision: bool = True
 
+    type: str = "same_input"
+
 
 E = TypeVar("E", bound=EncoderConfig)
 D = TypeVar("D", bound=DecoderConfig)

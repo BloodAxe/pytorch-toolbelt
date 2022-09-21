@@ -90,3 +90,16 @@ seg_perciever_io_s_space2depth: pull
 	num_workers=8 \
 	runner.show_batches=True \
 	optimizer=lamb_perciever augmentations=light runner.max_epochs=999
+
+seg_perciever_io_s_space2depth_1024: pull
+	export OMP_NUM_THREADS=4
+	INRIA_AERIAL_DATA_DIR=~/data/inria HYDRA_FULL_ERROR=1 torchrun --standalone --nnodes=1 --nproc_per_node=4 train.py \
+	model=seg_perciever_io_s_space2depth model.architecture.config.decoder.use_supervision=False \
+	dataset.train.dataset.image_size=1024 \
+	dataset.train.dataset.num_samples=16384 \
+	dataset.validation.dataset.image_size=1024 \
+	loss=bce_iou2 \
+	batch_size=6 \
+	num_workers=8 \
+	runner.show_batches=True \
+	optimizer=lamb_perciever augmentations=light runner.max_epochs=999 checkpoint=/home/bloodaxe/develop/pytorch-toolbelt/painless_sota/inria_aerial/runs/220920_17_56_inria_seg_perciever_io_s_space2depth_bce_iou2/checkpoints_metric_jaccard/last.pth

@@ -1,3 +1,4 @@
+
 input_key: INPUT_IMAGE_KEY
 output_key:
 
@@ -17,7 +18,7 @@ architecture:
       input_channels: 3
       num_frequency_bands: 64
       include_positions: True
-      image_channels_before_concat: 64
+      image_channels_before_concat: 256
       num_output_channels:
 
       type: space2depth
@@ -41,4 +42,4 @@ architecture:
       num_cross_attention_heads: 1
       dropout: 0.05
 
-      type: same_input
+      type: fourier_only

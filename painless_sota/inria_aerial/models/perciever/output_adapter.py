@@ -11,6 +11,9 @@ from torch import nn, Tensor
 from pytorch_toolbelt.datasets import OUTPUT_MASK_KEY, OUTPUT_MASK_KEY_STRIDE_4
 
 
+__all__ = ["OutputAdapter", "FourierPEQuerySegmentationOutputAdapter", "SameInputQuerySegmentationOutputAdapter"]
+
+
 class OutputAdapter(nn.Module):
     def __init__(self):
         """Transforms generic decoder cross-attention output to task-specific output."""
@@ -83,6 +86,7 @@ class FourierPEQuerySegmentationOutputAdapter(nn.Module):
         image_shape: Tuple[int, int, int],
         num_output_query_channels: Optional[int],
         include_positions: bool,
+        use_supervision: bool,
     ):
         super().__init__()
 
@@ -126,4 +130,4 @@ class FourierPEQuerySegmentationOutputAdapter(nn.Module):
 
         output = torch.moveaxis(y.view([b] + self.spatial_shape + [channels]), -1, 1)
         output = self.depth2space(output)
-        return output
+        return {OUTPUT_MASK_KEY: output}
