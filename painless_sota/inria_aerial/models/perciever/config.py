@@ -1,17 +1,76 @@
+from abc import abstractmethod
 from dataclasses import asdict, dataclass, fields
-from typing import Generic, Optional, TypeVar
+from typing import Optional
 from typing import Tuple
 
-from painless_sota.inria_aerial.data.functional import as_tuple_of_two
+from pytorch_toolbelt.modules import ACT_GELU
+
+__all__ = [
+    "PostprocessorConfig",
+    "PerceiverConfig",
+    "EncoderConfig",
+    "PositionEncodingConfig",
+    "LearnablePositionEncodingConfig",
+    "DecoderConfig",
+    "DecoderQueryConfig",
+    "EncoderInputQueryConfig",
+    "FourierPositionEncodingQueryConfig",
+    "LearnableConvPreprocessorConfig",
+    "Depth2SpacePostprocessorConfig",
+    "Space2DepthPreprocessorConfig",
+    "FourierPositionEncodingConfig",
+    "PreprocessorConfig",
+]
 
 
-def _base_kwargs(config, base_class, exclude):
-    base_field_names = [field.name for field in fields(base_class) if field.name not in exclude]
-    return {k: v for k, v in asdict(config).items() if k in base_field_names}
+@dataclass
+class PreprocessorConfig:
+    spatial_shape: Tuple[int, int]
+    num_input_channels: int
+    num_output_channels: Optional[int] = None
+
+    @property
+    @abstractmethod
+    def output_spatial_shape(self) -> Tuple[int, int]:
+        raise NotImplementedError()
+
+
+@dataclass
+class Space2DepthPreprocessorConfig(PreprocessorConfig):
+    factor: int = 4
+    with_bn: bool = True
+    activation: Optional[str] = ACT_GELU
+    kernel_size: int = 3
+
+
+@dataclass
+class LearnableConvPreprocessorConfig(PreprocessorConfig):
+    activation: Optional[str] = ACT_GELU
+
+
+@dataclass
+class PositionEncodingConfig:
+    pass
+
+
+@dataclass
+class FourierPositionEncodingConfig(PositionEncodingConfig):
+    num_frequency_bands: int = 64
+    include_positions: bool = True
+    num_output_channels: Optional[int] = None
+
+
+@dataclass
+class LearnablePositionEncodingConfig(PositionEncodingConfig):
+    num_output_channels: int
+    init_scale: float = 0.02
 
 
 @dataclass
 class EncoderConfig:
+    num_latents: int = 1024
+    num_latent_channels: int = 512
+
     num_cross_attention_heads: int = 8
     num_cross_attention_qk_channels: Optional[int] = None
     num_cross_attention_v_channels: Optional[int] = None
@@ -27,28 +86,11 @@ class EncoderConfig:
     self_attention_widening_factor: int = 1
     dropout: float = 0.0
     init_scale: float = 0.02
-    freeze: bool = False
     attention_residual: bool = True
 
-    def base_kwargs(self, exclude=("freeze",)):
-        return _base_kwargs(self, EncoderConfig, exclude)
-
-
-@dataclass
-class ImageEncoderConfig(EncoderConfig):
-    image_size: Tuple[int, int] = (224, 224)
-    input_channels: int = 3
-    num_frequency_bands: int = 64
-    include_positions: bool = False
-    image_channels_before_concat: Optional[int] = None
-    num_output_channels: Optional[int] = None
-
-    type: str = "learnable"
-
-    @property
-    def image_shape(self):
-        image_size = as_tuple_of_two(self.image_size)
-        return tuple([*image_size, self.input_channels])
+    activation: str = ACT_GELU
+    activation_checkpointing: bool = True
+    activation_offloading: bool = False
 
 
 @dataclass
@@ -59,31 +101,46 @@ class DecoderConfig:
     cross_attention_widening_factor: int = 1
     dropout: float = 0.0
     init_scale: float = 0.02
-    freeze: bool = False
     attention_residual: bool = False
 
-    def base_kwargs(self, exclude=("freeze",)):
-        return _base_kwargs(self, DecoderConfig, exclude)
-
-
-@dataclass
-class SegmentationDecoderConfig(DecoderConfig):
-    num_classes: int = 10
-    use_supervision: bool = True
-
-    type: str = "same_input"
-
-
-E = TypeVar("E", bound=EncoderConfig)
-D = TypeVar("D", bound=DecoderConfig)
-
-
-@dataclass
-class PerceiverConfig(Generic[E, D]):
-    encoder: E
-    decoder: D
-    num_latents: int
-    num_latent_channels: int
-    activation_checkpointing: bool = False
+    activation: str = ACT_GELU
+    activation_checkpointing: bool = True
     activation_offloading: bool = False
+
+
+@dataclass
+class DecoderQueryConfig:
+    pass
+
+
+@dataclass
+class EncoderInputQueryConfig(DecoderQueryConfig):
+    pass
+
+
+@dataclass
+class FourierPositionEncodingQueryConfig(DecoderQueryConfig):
+    pass
+
+
+@dataclass
+class PostprocessorConfig:
+    pass
+
+
+@dataclass
+class Depth2SpacePostprocessorConfig(PostprocessorConfig):
+    num_output_channels: int
+    factor: int = 4
     output_name: Optional[str] = None
+    activation: str = ACT_GELU
+
+
+@dataclass
+class PerceiverConfig:
+    preprocessor: PreprocessorConfig
+    position_encoding: PositionEncodingConfig
+    encoder: EncoderConfig
+    decoder: DecoderConfig
+    output_query: DecoderQueryConfig
+    postprocessor: PostprocessorConfig

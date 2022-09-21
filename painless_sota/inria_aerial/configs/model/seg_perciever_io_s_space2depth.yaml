@@ -5,40 +5,61 @@ architecture:
   _target_: painless_sota.inria_aerial.models.PercieverIOForSegmentation
   config:
     _target_: painless_sota.inria_aerial.models.PerceiverConfig
-    activation_checkpointing: True
-    activation_offloading: False
-    num_latent_channels: 512
-    num_latents: 2048
-    output_name:
 
-    encoder:
-      _target_: painless_sota.inria_aerial.models.ImageEncoderConfig
-      image_size: ${dataset.train.dataset.image_size}
-      input_channels: 3
+    preprocessor:
+      _target_: painless_sota.inria_aerial.models.Space2DepthPreprocessorConfig
+      num_input_channels: 3
+      spatial_shape: ${dataset.train.dataset.image_size}
+      factor: 4
+      with_bn: True
+      activation: gelu
+      kernel_size: 3
+      num_output_channels: 64
+
+    position_encoding:
+      _target_: painless_sota.inria_aerial.models.FourierPositionEncodingConfig
       num_frequency_bands: 64
       include_positions: True
-      image_channels_before_concat: 64
       num_output_channels:
 
-      type: space2depth
+    encoder:
+      _target_: painless_sota.inria_aerial.models.EncoderConfig
+
+      num_latent_channels: 512
+      num_latents: 2048
 
       num_cross_attention_heads: 1
       num_cross_attention_layers: 1
+      num_cross_attention_qk_channels: 512
 
       num_self_attention_heads: 8
-      num_self_attention_layers_per_block: 8
+      num_self_attention_layers_per_block: 16
       num_self_attention_blocks: 1
 
       dropout: 0.05
       init_scale: 0.02
 
+      attention_residual: True
+      activation: gelu
+      activation_checkpointing: True
+
     decoder:
-      _target_: painless_sota.inria_aerial.models.SegmentationDecoderConfig
-      num_classes: ${dataset.num_output_classes}
-      use_supervision: True
+      _target_: painless_sota.inria_aerial.models.DecoderConfig
 
       init_scale: 0.02
       num_cross_attention_heads: 1
       dropout: 0.05
 
-      type: same_input
+      activation: gelu
+      attention_residual: False
+      activation_checkpointing: True
+
+    output_query:
+      _target_: painless_sota.inria_aerial.models.EncoderInputQueryConfig
+
+    postprocessor:
+      _target_: painless_sota.inria_aerial.models.Depth2SpacePostprocessorConfig
+      num_output_channels: ${dataset.num_output_classes}
+      factor: ${model.architecture.config.preprocessor.factor}
+      output_name: OUTPUT_MASK_KEY
+      activation: gelu

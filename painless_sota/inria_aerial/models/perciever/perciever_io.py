@@ -1,293 +1,48 @@
-from functools import partial
+from dataclasses import asdict
 from pprint import pprint
 from typing import Optional
 
-import hydra
 import torch
 import torch.nn as nn
-from einops import rearrange, repeat
+from einops import repeat
 from fairscale.nn import checkpoint_wrapper
+from painless_sota.inria_aerial.models.perciever.attention import (
+    CrossAttentionLayer,
+    SelfAttentionBlock,
+    _init_parameters,
+)
 from painless_sota.inria_aerial.models.perciever.config import (
     PerceiverConfig,
-    ImageEncoderConfig,
-    SegmentationDecoderConfig,
+    Space2DepthPreprocessorConfig,
+    LearnableConvPreprocessorConfig,
+    FourierPositionEncodingConfig,
+    Depth2SpacePostprocessorConfig,
+    DecoderConfig,
+    EncoderConfig,
+    FourierPositionEncodingQueryConfig,
+    EncoderInputQueryConfig,
 )
-from painless_sota.inria_aerial.models.perciever.input_adapter import (
-    FourierPELearnableConvImageInputAdapter,
-    FourierPESpace2DepthImageInputAdapter,
+from painless_sota.inria_aerial.models.perciever.decoder_query import (
+    DecoderQuery,
+    FourierPositionEncodingQuery,
+    EncoderInputQuery,
 )
-from painless_sota.inria_aerial.models.perciever.output_adapter import (
-    SameInputQuerySegmentationOutputAdapter,
-    FourierPEQuerySegmentationOutputAdapter,
+from painless_sota.inria_aerial.models.perciever.position_encoding import (
+    FourierPositionEncoding,
+    PositionEncoding,
+    PositionEncodingOutput,
 )
-from pytorch_toolbelt.utils import count_parameters, describe_outputs
+from painless_sota.inria_aerial.models.perciever.postprocessor import Depth2SpacePostprocessor
+from painless_sota.inria_aerial.models.perciever.preprocessors import (
+    LearnableConvPreprocessor,
+    Space2DepthPreprocessor,
+    ImagePreprocessor,
+)
+from pytorch_toolbelt.modules import ACT_GELU
+from pytorch_toolbelt.utils import count_parameters, describe_outputs, master_print
 from torch import Tensor
 
 __all__ = ["PercieverIOForSegmentation"]
-
-
-def _init_parameters(module, init_scale):
-    for m in module.modules():
-        if isinstance(m, nn.Linear):
-            torch.nn.init.trunc_normal_(m.weight, mean=0.0, std=init_scale)
-            if m.bias is not None:
-                torch.nn.init.zeros_(m.bias)
-
-
-class Sequential(nn.Sequential):
-    def forward(self, *x):
-        for module in self:
-            if type(x) == tuple:
-                x = module(*x)
-            else:
-                x = module(x)
-        return x
-
-
-class MultiHeadAttention(nn.Module):
-    def __init__(
-        self,
-        num_heads: int,
-        num_q_input_channels: int,
-        num_kv_input_channels: int,
-        num_qk_channels: Optional[int] = None,
-        num_v_channels: Optional[int] = None,
-        num_output_channels: Optional[int] = None,
-        dropout: float = 0.0,
-    ):
-        """Multi-head attention as described in https://arxiv.org/abs/2107.14795 Appendix E.
-
-        :param num_heads: Number of attention heads.
-        :param num_q_input_channels: Number of query input channels.
-        :param num_kv_input_channels: Number of key/value input channels.
-        :param num_qk_channels: Number of channels query and key input channels are projected to,
-            for computing the attention matrix. Defaults to number `num_q_input_channels`
-        :param num_v_channels: Number of channels value input channels are projected to.
-            Defaults to `num_qk_channels`.
-        :param num_output_channels: Number of output channels attention result channels are projected to.
-            Defaults to `num_q_input_channels`
-        :param dropout: Dropout probability for attention matrix values. Defaults to `0.0`
-        """
-        super().__init__()
-
-        if num_qk_channels is None:
-            num_qk_channels = num_q_input_channels
-
-        if num_v_channels is None:
-            num_v_channels = num_qk_channels
-
-        if num_output_channels is None:
-            num_output_channels = num_q_input_channels
-
-        if num_qk_channels % num_heads != 0:
-            raise ValueError(f"num_qk_channels {num_qk_channels} must be divisible by num_heads {num_heads}")
-
-        if num_v_channels % num_heads != 0:
-            raise ValueError(f"num_v_channels {num_v_channels} must be divisible by num_heads {num_heads}")
-
-        num_qk_channels_per_head = num_qk_channels // num_heads
-
-        self.dp_scale = num_qk_channels_per_head**-0.5
-        self.num_heads = num_heads
-
-        self.q_proj = nn.Linear(num_q_input_channels, num_qk_channels)
-        self.k_proj = nn.Linear(num_kv_input_channels, num_qk_channels)
-        self.v_proj = nn.Linear(num_kv_input_channels, num_v_channels)
-        self.o_proj = nn.Linear(num_v_channels, num_output_channels)
-        self.dropout = nn.Dropout(dropout)
-
-    def forward(self, x_q, x_kv, pad_mask=None, attn_mask=None):
-        """
-        :param x_q: Query input of shape (B, N, D) where B is the batch size, N the query sequence length
-            and D the number of query input channels (= `num_q_input_channels`)
-        :param x_kv: Key/value input of shape (B, L, C) where B is the batch size, L the key/value sequence
-            length and C are the number of key/value input channels (= `num_kv_input_channels`)
-        :param pad_mask: Boolean key padding mask. `True` values indicate padding tokens.
-        :param attn_mask: Boolean attention mask. Not needed/supported yet.
-        :return: attention result of shape (B, N, F) where B is the batch size, N the query sequence length
-            and F the number of output channels (= `num_output_channels`)
-        """
-        if attn_mask is not None:
-            raise NotImplementedError("attention masks not supported yet")
-
-        q = self.q_proj(x_q)
-        k = self.k_proj(x_kv)
-        v = self.v_proj(x_kv)
-
-        q, k, v = (rearrange(x, "b n (h c) -> (b h) n c", h=self.num_heads) for x in [q, k, v])
-        attn = torch.einsum("b i c, b j c -> b i j", q, k) * self.dp_scale
-
-        if pad_mask is not None:
-            pad_mask = repeat(pad_mask, "b j -> (b h) () j", h=self.num_heads)
-            attn_max_neg = -torch.finfo(attn.dtype).max
-            attn.masked_fill_(pad_mask, attn_max_neg)
-
-        attn = attn.softmax(dim=-1)
-        attn = self.dropout(attn)
-
-        o = torch.einsum("b i j, b j c -> b i c", attn, v)
-        o = rearrange(o, "(b h) n c -> b n (h c)", h=self.num_heads)
-
-        return self.o_proj(o)
-
-
-class CrossAttention(nn.Module):
-    def __init__(
-        self,
-        num_heads: int,
-        num_q_input_channels: int,
-        num_kv_input_channels: int,
-        num_qk_channels: Optional[int] = None,
-        num_v_channels: Optional[int] = None,
-        dropout: float = 0.0,
-    ):
-        """Multi-head cross-attention (see `MultiHeadAttention` for details)."""
-        super().__init__()
-        self.q_norm = nn.LayerNorm(num_q_input_channels)
-        self.kv_norm = nn.LayerNorm(num_kv_input_channels)
-        self.attention = MultiHeadAttention(
-            num_heads=num_heads,
-            num_q_input_channels=num_q_input_channels,
-            num_kv_input_channels=num_kv_input_channels,
-            num_qk_channels=num_qk_channels,
-            num_v_channels=num_v_channels,
-            dropout=dropout,
-        )
-
-    def forward(self, x_q, x_kv, pad_mask=None, attn_mask=None):
-        """Multi-head attention of query input `x_q` to key/value input (`x_kv`) after (separately) applying layer
-        normalization to these inputs."""
-        x_q = self.q_norm(x_q)
-        x_kv = self.kv_norm(x_kv)
-        return self.attention(x_q, x_kv, pad_mask=pad_mask, attn_mask=attn_mask)
-
-
-class SelfAttention(nn.Module):
-    def __init__(
-        self,
-        num_heads: int,
-        num_channels: int,
-        num_qk_channels: Optional[int] = None,
-        num_v_channels: Optional[int] = None,
-        dropout: float = 0.0,
-    ):
-        """Multi-head self-attention (see `MultiHeadAttention` and for details)."""
-        super().__init__()
-        self.norm = nn.LayerNorm(num_channels)
-        self.attention = MultiHeadAttention(
-            num_heads=num_heads,
-            num_q_input_channels=num_channels,
-            num_kv_input_channels=num_channels,
-            num_qk_channels=num_qk_channels,
-            num_v_channels=num_v_channels,
-            dropout=dropout,
-        )
-
-    def forward(self, x, pad_mask=None, attn_mask=None):
-        """Multi-head attention of input `x` to itself after applying layer normalization to the input."""
-        x = self.norm(x)
-        return self.attention(x, x, pad_mask=pad_mask, attn_mask=attn_mask)
-
-
-class CrossAttentionLayer(Sequential):
-    def __init__(
-        self,
-        num_heads: int,
-        num_q_input_channels: int,
-        num_kv_input_channels: int,
-        num_qk_channels: Optional[int] = None,
-        num_v_channels: Optional[int] = None,
-        widening_factor: int = 1,
-        dropout: float = 0.0,
-        attention_residual: bool = True,
-    ):
-        cross_attn = CrossAttention(
-            num_heads=num_heads,
-            num_q_input_channels=num_q_input_channels,
-            num_kv_input_channels=num_kv_input_channels,
-            num_qk_channels=num_qk_channels,
-            num_v_channels=num_v_channels,
-            dropout=dropout,
-        )
-        super().__init__(
-            Residual(cross_attn, dropout) if attention_residual else cross_attn,
-            Residual(MLP(num_q_input_channels, widening_factor), dropout),
-        )
-
-
-class SelfAttentionLayer(Sequential):
-    def __init__(
-        self,
-        num_heads: int,
-        num_channels: int,
-        num_qk_channels: Optional[int] = None,
-        num_v_channels: Optional[int] = None,
-        widening_factor: int = 1,
-        dropout: float = 0.0,
-    ):
-        self_attn = SelfAttention(
-            num_heads=num_heads,
-            num_channels=num_channels,
-            num_qk_channels=num_qk_channels,
-            num_v_channels=num_v_channels,
-            dropout=dropout,
-        )
-        super().__init__(
-            Residual(self_attn, dropout),
-            Residual(MLP(num_channels, widening_factor), dropout),
-        )
-
-
-class SelfAttentionBlock(Sequential):
-    def __init__(
-        self,
-        num_layers: int,
-        num_heads: int,
-        num_channels: int,
-        num_qk_channels: Optional[int] = None,
-        num_v_channels: Optional[int] = None,
-        widening_factor: int = 1,
-        dropout: float = 0.0,
-        activation_checkpointing: bool = False,
-        activation_offloading: bool = False,
-    ):
-        layers = [
-            SelfAttentionLayer(
-                num_heads=num_heads,
-                num_channels=num_channels,
-                num_qk_channels=num_qk_channels,
-                num_v_channels=num_v_channels,
-                widening_factor=widening_factor,
-                dropout=dropout,
-            )
-            for _ in range(num_layers)
-        ]
-
-        if activation_checkpointing:
-            layers = [checkpoint_wrapper(layer, offload_to_cpu=activation_offloading) for layer in layers]
-
-        super().__init__(*layers)
-
-
-class MLP(Sequential):
-    def __init__(self, num_channels: int, widening_factor: int):
-        super().__init__(
-            nn.LayerNorm(num_channels),
-            nn.Linear(num_channels, widening_factor * num_channels),
-            nn.GELU(),
-            nn.Linear(widening_factor * num_channels, num_channels),
-        )
-
-
-class Residual(nn.Module):
-    def __init__(self, module: nn.Module, dropout: float):
-        super().__init__()
-        self.module = module
-        self.dropout = nn.Dropout(p=dropout)
-
-    def forward(self, *args, **kwargs):
-        x = self.module(*args, **kwargs)
-        return self.dropout(x) + args[0]
 
 
 class PerceiverEncoder(nn.Module):
@@ -311,6 +66,7 @@ class PerceiverEncoder(nn.Module):
         self_attention_widening_factor: int = 1,
         dropout: float = 0.0,
         init_scale: float = 0.02,
+        activation: str = ACT_GELU,
         activation_checkpointing: bool = False,
         activation_offloading: bool = False,
         attention_residual=True,
@@ -374,6 +130,7 @@ class PerceiverEncoder(nn.Module):
                 widening_factor=cross_attention_widening_factor,
                 dropout=dropout,
                 attention_residual=attention_residual,
+                activation=activation,
             )
             return (
                 checkpoint_wrapper(layer, offload_to_cpu=activation_offloading) if activation_checkpointing else layer
@@ -390,6 +147,7 @@ class PerceiverEncoder(nn.Module):
                 dropout=dropout,
                 activation_checkpointing=activation_checkpointing,
                 activation_offloading=activation_offloading,
+                activation=activation,
             )
 
         self.cross_attn_n = cross_attn()
@@ -441,6 +199,7 @@ class PerceiverDecoder(nn.Module):
         cross_attention_widening_factor: int = 1,
         dropout: float = 0.0,
         init_scale: float = 0.02,
+        activation: str = ACT_GELU,
         activation_checkpointing: bool = False,
         activation_offloading: bool = False,
         attention_residual: bool = True,
@@ -470,6 +229,7 @@ class PerceiverDecoder(nn.Module):
             widening_factor=cross_attention_widening_factor,
             dropout=dropout,
             attention_residual=attention_residual,
+            activation=activation,
         )
 
         if activation_checkpointing:
@@ -477,6 +237,11 @@ class PerceiverDecoder(nn.Module):
 
         self.cross_attn = cross_attn
         self._init_parameters(init_scale)
+        self._num_output_query_channels = num_output_query_channels
+
+    @property
+    def num_output_query_channels(self) -> int:
+        return self._num_output_query_channels
 
     def _init_parameters(self, init_scale: float):
         _init_parameters(self, init_scale)
@@ -487,117 +252,124 @@ class PerceiverDecoder(nn.Module):
 
 
 class PercieverIOForSegmentation(nn.Module):
-    @classmethod
-    def from_config(cls, config):
-        config = hydra.utils.instantiate(config)
-        return cls(config)
-
-    def __init__(self, config: PerceiverConfig[ImageEncoderConfig, SegmentationDecoderConfig]):
+    def __init__(self, config: PerceiverConfig):
         super().__init__()
-        pprint(config, indent=2)
 
-        if config.encoder.type == "space2depth":
-            encoder_cls = FourierPESpace2DepthImageInputAdapter
-        elif config.encoder.type == "learnable":
-            encoder_cls = FourierPELearnableConvImageInputAdapter
+        if isinstance(config.preprocessor, Space2DepthPreprocessorConfig):
+            preprocessor = Space2DepthPreprocessor(**asdict(config.preprocessor))
+        elif isinstance(config.preprocessor, LearnableConvPreprocessorConfig):
+            preprocessor = LearnableConvPreprocessor(**asdict(config.preprocessor))
+        else:
+            raise RuntimeError("Unsupported preprocessor type")
 
-        if config.decoder.type == "same_input":
-            decoder_cls = SameInputQuerySegmentationOutputAdapter
-        elif config.decoder.type == "fourier_only":
-            decoder_cls = partial(
-                FourierPEQuerySegmentationOutputAdapter,
-                num_frequency_bands=config.encoder.num_frequency_bands,
-                include_positions=config.encoder.include_positions,
+        if isinstance(config.position_encoding, FourierPositionEncodingConfig):
+            position_encoding = FourierPositionEncoding(
+                spatial_shape=preprocessor.output_spatial_shape,
+                num_input_channels=preprocessor.num_output_channels,
+                **asdict(config.position_encoding),
+            )
+        else:
+            raise RuntimeError("Unsupported position encoding type")
+
+        # Infer number of query channels
+        if config.encoder.num_cross_attention_qk_channels is None:
+            config.encoder.num_cross_attention_qk_channels = position_encoding.num_output_channels
+            master_print(
+                f"Using value of position_encoding.num_output_channels ({position_encoding.num_output_channels}) "
+                "to set config.encoder.num_cross_attention_qk_channels"
             )
 
-        self.input_adapter = encoder_cls(
-            image_shape=config.encoder.image_shape,
-            num_frequency_bands=config.encoder.num_frequency_bands,
-            include_positions=config.encoder.include_positions,
-            image_channels_before_concat=config.encoder.image_channels_before_concat,
-            num_output_channels=config.encoder.num_output_channels,
-        )
+        encoder = PerceiverEncoder(num_input_channels=position_encoding.num_output_channels, **asdict(config.encoder))
 
-        encoder_kwargs = config.encoder.base_kwargs()
-        if encoder_kwargs["num_cross_attention_qk_channels"] is None:
-            encoder_kwargs["num_cross_attention_qk_channels"] = self.input_adapter.num_output_channels
-
-        self.encoder = PerceiverEncoder(
-            num_input_channels=self.input_adapter.num_output_channels,
-            num_latents=config.num_latents,
-            num_latent_channels=config.num_latent_channels,
-            activation_checkpointing=config.activation_checkpointing,
-            activation_offloading=config.activation_offloading,
-            **encoder_kwargs,
-        )
-        self.output_adapter = decoder_cls(
-            num_classes=config.decoder.num_classes,
-            image_shape=config.encoder.image_shape,
-            num_output_query_channels=self.input_adapter.num_output_channels,
-            use_supervision=config.decoder.use_supervision,
-        )
-
-        self.decoder = PerceiverDecoder(
-            num_output_query_channels=self.output_adapter.num_output_query_channels,
-            num_latent_channels=config.num_latent_channels,
-            activation_checkpointing=config.activation_checkpointing,
-            activation_offloading=config.activation_offloading,
-            **config.decoder.base_kwargs(),
-        )
-        self.output_name = config.output_name
-
-    def forward(self, x):
-        # encode task-specific input
-        input_enc = self.input_adapter(x)
-
-        z = self.encoder(input_enc)
-        q = self.output_adapter.output_query(x=input_enc, z=z)
-        z = self.decoder(q, z)
-        output = self.output_adapter(z)
-
-        if self.output_name is not None:
-            return {self.output_name: output}
+        if isinstance(config.output_query, FourierPositionEncodingQueryConfig):
+            output_query = FourierPositionEncodingQuery(
+                num_position_encoding_channels=position_encoding.num_position_encoding_channels,
+                **asdict(config.output_query),
+            )
+        elif isinstance(config.output_query, EncoderInputQueryConfig):
+            output_query = EncoderInputQuery(
+                num_input_channels=position_encoding.num_output_channels, **asdict(config.output_query)
+            )
         else:
-            return output
+            raise RuntimeError("Unsupported postprocessor config")
+
+        decoder = PerceiverDecoder(
+            num_latent_channels=config.encoder.num_latent_channels,
+            num_output_query_channels=output_query.num_output_channels,
+            **asdict(config.decoder),
+        )
+
+        if isinstance(config.postprocessor, Depth2SpacePostprocessorConfig):
+            postprocessor = Depth2SpacePostprocessor(
+                num_input_channels=output_query.num_output_channels,
+                spatial_shape=preprocessor.output_spatial_shape,
+                **asdict(config.postprocessor),
+            )
+        else:
+            raise RuntimeError("Unsupported postprocessor config")
+
+        self.preprocessor: ImagePreprocessor = preprocessor
+        self.position_encoding: PositionEncoding = position_encoding
+        self.encoder = encoder
+        self.decoder = decoder
+        self.output_query: DecoderQuery = output_query
+        self.postprocessor = postprocessor
+        pprint(config, indent=2)
+
+    def forward(self, x: Tensor):
+        x_pre = self.preprocessor(x)
+        x: PositionEncodingOutput = self.position_encoding(x_pre)
+
+        z = self.encoder(x.encoded_input)
+        q = self.output_query(x=x, z=z)
+        z = self.decoder(q, z)
+        output = self.postprocessor(z)
+        return output
 
 
 if __name__ == "__main__":
-    model = (
-        PercieverIOForSegmentation(
-            PerceiverConfig(
-                encoder=ImageEncoderConfig(
-                    image_size=(256, 384),
-                    num_cross_attention_heads=8,
-                    num_self_attention_heads=16,
-                    num_self_attention_layers_per_block=24,
-                    dropout=0.1,
-                    init_scale=0.05,
-                    include_positions=True,
-                    image_channels_before_concat=256,
-                    num_output_channels=512,
-                ),
-                decoder=SegmentationDecoderConfig(
-                    num_classes=1,
-                    num_cross_attention_heads=8,
-                    init_scale=0.05,
-                    dropout=0.1,
-                ),
-                num_latents=1024,
-                num_latent_channels=512,
-                activation_checkpointing=False,
-                activation_offloading=False,
-            )
-        )
-        .eval()
-        .cuda()
+    config = PerceiverConfig(
+        preprocessor=Space2DepthPreprocessorConfig(
+            spatial_shape=(512, 384), num_input_channels=3, factor=4, num_output_channels=64
+        ),
+        position_encoding=FourierPositionEncodingConfig(
+            num_output_channels=256,
+        ),
+        encoder=EncoderConfig(
+            num_latents=1024,
+            num_latent_channels=512,
+            num_cross_attention_qk_channels=512,
+            num_cross_attention_heads=8,
+            num_self_attention_heads=16,
+            num_self_attention_layers_per_block=24,
+            dropout=0.1,
+            init_scale=0.02,
+        ),
+        decoder=DecoderConfig(
+            num_cross_attention_heads=8,
+            init_scale=0.02,
+            dropout=0.1,
+        ),
+        output_query=EncoderInputQueryConfig(),
+        postprocessor=Depth2SpacePostprocessorConfig(
+            num_output_channels=1,
+            factor=4,
+        ),
     )
+    model = PercieverIOForSegmentation(config).eval().cuda()
 
-    input = torch.randn((2, 3, 256, 384)).cuda()
+    input = torch.randn((2, 3, 512, 384)).cuda()
 
     with torch.no_grad():
         with torch.cuda.amp.autocast(True):
             output = model(input)
-    print(count_parameters(model, human_friendly=True, keys=["encoder", "decoder", "input_adapter", "output_adapter"]))
+    print(
+        count_parameters(
+            model,
+            human_friendly=True,
+            keys=["encoder", "decoder", "preprocessor", "postprocessor", "position_encoding", "output_query"],
+        )
+    )
     print(describe_outputs(output))
 
     with torch.no_grad():
