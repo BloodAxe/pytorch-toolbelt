@@ -102,4 +102,4 @@ seg_perciever_io_s_space2depth_1024: pull
 	batch_size=6 \
 	num_workers=8 \
 	runner.show_batches=True \
-	optimizer=lamb_perciever augmentations=light runner.max_epochs=999 checkpoint=/home/bloodaxe/develop/pytorch-toolbelt/painless_sota/inria_aerial/runs/220920_17_56_inria_seg_perciever_io_s_space2depth_bce_iou2/checkpoints_metric_jaccard/last.pth
+	optimizer=adamw_perciever augmentations=light runner.max_epochs=999 checkpoint=/home/bloodaxe/develop/pytorch-toolbelt/painless_sota/inria_aerial/runs/220920_17_56_inria_seg_perciever_io_s_space2depth_bce_iou2/checkpoints_metric_jaccard/last.pth
