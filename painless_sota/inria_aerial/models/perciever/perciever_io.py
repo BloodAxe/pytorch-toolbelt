@@ -330,24 +330,40 @@ class PercieverIOForSegmentation(nn.Module):
 if __name__ == "__main__":
     config = PerceiverConfig(
         preprocessor=Space2DepthPreprocessorConfig(
-            spatial_shape=(512, 384), num_input_channels=3, factor=4, num_output_channels=64
+            spatial_shape=(512, 512),
+            num_input_channels=3,
+            factor=4,
+            num_output_channels=64,
+            with_bn=True,
+            activation=ACT_GELU,
+            kernel_size=3,
         ),
         position_encoding=FourierPositionEncodingConfig(
             num_output_channels=None,
+            num_frequency_bands=64,
+            include_positions=True,
         ),
         encoder=EncoderConfig(
-            num_latents=1024,
+            num_latents=2048,
             num_latent_channels=512,
             num_cross_attention_heads=1,
+            num_cross_attention_layers=1,
             num_self_attention_heads=16,
             num_self_attention_layers_per_block=24,
+            num_self_attention_blocks=1,
             dropout=0.1,
             init_scale=0.05,
+            attention_residual=True,
+            activation=ACT_GELU,
+            activation_checkpointing=True,
         ),
         decoder=DecoderConfig(
             num_cross_attention_heads=1,
             init_scale=0.05,
             dropout=0.1,
+            attention_residual=False,
+            activation=ACT_GELU,
+            activation_checkpointing=True,
         ),
         output_query=EncoderInputQueryConfig(),
         postprocessor=Depth2SpacePostprocessorConfig(
@@ -357,7 +373,7 @@ if __name__ == "__main__":
     )
     model = PercieverIOForSegmentation(config).eval().cuda()
 
-    input = torch.randn((2, 3, 512, 384)).cuda()
+    input = torch.randn((2, 3, 512, 512)).cuda()
 
     with torch.no_grad():
         with torch.cuda.amp.autocast(True):

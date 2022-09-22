@@ -74,7 +74,7 @@ seg_perciever_io_s_space2depth_inp_query: pull
 	dataset.train.dataset.num_samples=16384 \
 	dataset.validation.dataset.image_size=512 \
 	loss=bce \
-	batch_size=22 \
+	batch_size=16 \
 	num_workers=8 \
 	runner.show_batches=True \
 	optimizer=adamw_perciever augmentations=light runner.max_epochs=999
