@@ -342,11 +342,11 @@ if __name__ == "__main__":
             num_self_attention_heads=16,
             num_self_attention_layers_per_block=24,
             dropout=0.1,
-            init_scale=0.02,
+            init_scale=0.05,
         ),
         decoder=DecoderConfig(
             num_cross_attention_heads=1,
-            init_scale=0.02,
+            init_scale=0.05,
             dropout=0.1,
         ),
         output_query=EncoderInputQueryConfig(),

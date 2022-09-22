@@ -36,7 +36,7 @@ architecture:
       num_self_attention_blocks: 1
 
       dropout: 0.1
-      init_scale: 0.02
+      init_scale: 0.05
 
       attention_residual: True
       activation: gelu
