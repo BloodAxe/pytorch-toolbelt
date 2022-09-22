@@ -74,7 +74,21 @@ seg_perciever_io_s_space2depth_inp_query: pull
 	dataset.train.dataset.num_samples=16384 \
 	dataset.validation.dataset.image_size=512 \
 	loss=bce \
-	batch_size=16 \
+	batch_size=12 \
+	num_workers=8 \
+	runner.show_batches=True \
+	optimizer=adamw_perciever augmentations=light runner.max_epochs=999
+
+
+seg_perciever_io_s_space2depth_fpe_query: pull
+	export OMP_NUM_THREADS=4
+	INRIA_AERIAL_DATA_DIR=~/data/inria HYDRA_FULL_ERROR=1 torchrun --standalone --nnodes=1 --nproc_per_node=4 train.py \
+	model=seg_perciever_io_s_space2depth_fpe_query \
+	dataset.train.dataset.image_size=512 \
+	dataset.train.dataset.num_samples=16384 \
+	dataset.validation.dataset.image_size=512 \
+	loss=bce \
+	batch_size=12 \
 	num_workers=8 \
 	runner.show_batches=True \
 	optimizer=adamw_perciever augmentations=light runner.max_epochs=999

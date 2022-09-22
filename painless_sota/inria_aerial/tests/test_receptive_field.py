@@ -1,17 +1,19 @@
-import glob
-
 import cv2
 import numpy as np
-import pytest
 import torch
-from omegaconf import OmegaConf
-from painless_sota.inria_aerial.models import PercieverIOForSegmentation
+
+from painless_sota.inria_aerial.models import (
+    PercieverIOForSegmentation,
+    DecoderConfig,
+    EncoderConfig,
+    Space2DepthPreprocessorConfig,
+    FourierPositionEncodingConfig, EncoderInputQueryConfig, Depth2SpacePostprocessorConfig,
+)
 from painless_sota.inria_aerial.models.perciever import (
     PerceiverConfig,
-    ImageEncoderConfig,
-    SegmentationDecoderConfig,
 )
 from pytorch_toolbelt.datasets import OUTPUT_MASK_KEY
+from pytorch_toolbelt.modules import ACT_GELU, ACT_NONE
 from pytorch_toolbelt.utils import to_numpy, fs, vstack_header
 
 
@@ -38,54 +40,67 @@ def visualize_activations(image, activations):
 def test_receptive_field():
     averaged_acts = []
 
-    for _ in range(10):
-        net = (
-            PercieverIOForSegmentation(
-                PerceiverConfig(
-                    activation_checkpointing=False,
-                    activation_offloading=False,
-                    encoder=ImageEncoderConfig(
-                        image_shape=tuple((512, 512, 3)),
-                        num_cross_attention_heads=8,
-                        num_self_attention_heads=8,
-                        num_self_attention_layers_per_block=8,
-                        dropout=0.1,
-                        init_scale=0.2,
-                        include_positions=True,
-                        image_channels_before_concat=256,
-                        num_output_channels=64,
-                    ),
-                    decoder=SegmentationDecoderConfig(
-                        num_classes=1,
-                        num_cross_attention_heads=8,
-                        init_scale=0.2,
-                        dropout=0.1,
-                    ),
-                    num_latents=1024,
-                    num_latent_channels=512,
-                    output_name=None,
-                )
-            )
-            .cuda()
-            .eval()
-        )
+    config = PerceiverConfig(
+        preprocessor=Space2DepthPreprocessorConfig(
+            spatial_shape=(256, 256),
+            num_input_channels=3,
+            factor=4,
+            num_output_channels=64,
+            with_bn=True,
+            activation=ACT_NONE,
+            kernel_size=3,
+        ),
+        position_encoding=FourierPositionEncodingConfig(
+            num_output_channels=None,
+            num_frequency_bands=64,
+            include_positions=True,
+        ),
+        encoder=EncoderConfig(
+            num_latents=2048,
+            num_latent_channels=512,
+            num_cross_attention_heads=1,
+            num_cross_attention_layers=1,
+            num_self_attention_heads=16,
+            num_self_attention_layers_per_block=16,
+            num_self_attention_blocks=1,
+            dropout=0.0,
+            init_scale=0.05,
+            attention_residual=True,
+            activation=ACT_NONE,
+            activation_checkpointing=False,
+        ),
+        decoder=DecoderConfig(
+            num_cross_attention_heads=1,
+            init_scale=0.05,
+            dropout=0.0,
+            attention_residual=False,
+            activation=ACT_NONE,
+            activation_checkpointing=False,
+        ),
+        output_query=EncoderInputQueryConfig(),
+        postprocessor=Depth2SpacePostprocessorConfig(
+            num_output_channels=1,
+            factor=4,
+            activation=ACT_NONE
+        ),
+    )
 
-        input = torch.ones(((1, 3, 512, 512)), requires_grad=True).cuda()
+    for _ in range(1):
+        net = PercieverIOForSegmentation(config).cuda().eval()
+
+        input = torch.ones(((1, 3, 256, 256)), requires_grad=True).cuda()
 
         with torch.cuda.amp.autocast(True):
             outputs = net(input)
 
-        if torch.is_tensor(outputs):
-            mask = outputs
-        else:
-            mask = outputs[OUTPUT_MASK_KEY]
+            if torch.is_tensor(outputs):
+                mask = outputs
+            else:
+                mask = outputs[OUTPUT_MASK_KEY]
 
-        grad = torch.zeros_like(mask)
-        grad[:, :, 257, 257] = 1
-        grad[:, :, 258, 258] = 1
-        grad[:, :, 257, 258] = 1
-        grad[:, :, 258, 257] = 1
-        mask.backward(gradient=grad, inputs=[input])
+            grad = torch.zeros_like(mask)
+            grad[:, :, 128, 128] = 1
+            mask.backward(gradient=grad, inputs=[input])
 
         normalized_acts = normalize(to_numpy(input.grad.abs().sum(dim=1)[0]))
         averaged_acts.append(normalized_acts)
@@ -95,10 +110,7 @@ def test_receptive_field():
 
     image = averaged_acts.copy()
 
-    image[257, 257, 1] = 255
-    image[257, 258, 1] = 255
-    image[258, 257, 1] = 255
-    image[258, 258, 1] = 255
+    image[128, 128, 1] = 255
 
     config_filename = "perciever_io"
     activation = "relu"
