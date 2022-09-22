@@ -3,6 +3,7 @@ output_key:
 
 architecture:
   _target_: painless_sota.inria_aerial.models.SegmentationUNet.from_config
+  _recursive_: False
   config:
     activation: relu
     num_channels: ${dataset.num_input_channels}

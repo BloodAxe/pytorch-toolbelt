@@ -43,7 +43,8 @@ seg_r200d_unet_rdtsc_s2: pull
 	dataset.train.dataset.num_samples=16384 \
 	dataset.validation.loader.batch_size=16 \
 	loss=bce_iou2 \
-	runner.show_batches=False optimizer=adamw optimizer.fp16=True optimizer.accumulation=32
+	runner.show_batches=False optimizer=adamw optimizer.fp16=True \
+	optimizer=adamw augmentations=light runner.max_epochs=999
 
 b6_unet32_s2_rdtc: pull
 	export OMP_NUM_THREADS=4
