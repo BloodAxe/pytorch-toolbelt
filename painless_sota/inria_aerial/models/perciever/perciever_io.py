@@ -272,12 +272,12 @@ class PercieverIOForSegmentation(nn.Module):
             raise RuntimeError("Unsupported position encoding type")
 
         # Infer number of query channels
-        if config.encoder.num_cross_attention_qk_channels is None:
-            config.encoder.num_cross_attention_qk_channels = position_encoding.num_output_channels
-            master_print(
-                f"Using value of position_encoding.num_output_channels ({position_encoding.num_output_channels}) "
-                "to set config.encoder.num_cross_attention_qk_channels"
-            )
+        # if config.encoder.num_cross_attention_qk_channels is None:
+        #     config.encoder.num_cross_attention_qk_channels = position_encoding.num_output_channels
+        #     master_print(
+        #         f"Using value of position_encoding.num_output_channels ({position_encoding.num_output_channels}) "
+        #         "to set config.encoder.num_cross_attention_qk_channels"
+        #     )
 
         encoder = PerceiverEncoder(num_input_channels=position_encoding.num_output_channels, **asdict(config.encoder))
 
@@ -333,20 +333,19 @@ if __name__ == "__main__":
             spatial_shape=(512, 384), num_input_channels=3, factor=4, num_output_channels=64
         ),
         position_encoding=FourierPositionEncodingConfig(
-            num_output_channels=256,
+            num_output_channels=None,
         ),
         encoder=EncoderConfig(
             num_latents=1024,
             num_latent_channels=512,
-            num_cross_attention_qk_channels=512,
-            num_cross_attention_heads=8,
+            num_cross_attention_heads=1,
             num_self_attention_heads=16,
             num_self_attention_layers_per_block=24,
             dropout=0.1,
             init_scale=0.02,
         ),
         decoder=DecoderConfig(
-            num_cross_attention_heads=8,
+            num_cross_attention_heads=1,
             init_scale=0.02,
             dropout=0.1,
         ),
@@ -363,6 +362,8 @@ if __name__ == "__main__":
     with torch.no_grad():
         with torch.cuda.amp.autocast(True):
             output = model(input)
+
+    print(model)
     print(
         count_parameters(
             model,
@@ -371,10 +372,3 @@ if __name__ == "__main__":
         )
     )
     print(describe_outputs(output))
-
-    with torch.no_grad():
-        traced_model = torch.jit.trace(
-            model.eval().cuda(),
-            example_inputs=input,
-            strict=False,
-        )

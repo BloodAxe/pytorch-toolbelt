@@ -73,7 +73,7 @@ class MultiHeadAttention(nn.Module):
         super().__init__()
 
         if num_qk_channels is None:
-            num_qk_channels = num_q_input_channels
+            num_qk_channels = num_kv_input_channels  # num_q_input_channels
 
         if num_v_channels is None:
             num_v_channels = num_qk_channels
@@ -92,11 +92,11 @@ class MultiHeadAttention(nn.Module):
         self.dp_scale = num_qk_channels_per_head**-0.5
         self.num_heads = num_heads
 
-        self.q_proj = nn.Linear(num_q_input_channels, num_qk_channels)
-        self.k_proj = nn.Linear(num_kv_input_channels, num_qk_channels)
-        self.v_proj = nn.Linear(num_kv_input_channels, num_v_channels)
-        self.o_proj = nn.Linear(num_v_channels, num_output_channels)
-        self.dropout = nn.Dropout(dropout)
+        self.query = nn.Linear(num_q_input_channels, num_qk_channels)
+        self.key = nn.Linear(num_kv_input_channels, num_qk_channels)
+        self.value = nn.Linear(num_kv_input_channels, num_v_channels)
+        self.output = nn.Linear(num_v_channels, num_output_channels)
+        self.attn_dropout = nn.Dropout(dropout)
 
     def forward(self, x_q, x_kv, pad_mask=None, attn_mask=None):
         """
@@ -112,9 +112,9 @@ class MultiHeadAttention(nn.Module):
         if attn_mask is not None:
             raise NotImplementedError("attention masks not supported yet")
 
-        q = self.q_proj(x_q)
-        k = self.k_proj(x_kv)
-        v = self.v_proj(x_kv)
+        q = self.query(x_q)
+        k = self.key(x_kv)
+        v = self.value(x_kv)
 
         q, k, v = (rearrange(x, "b n (h c) -> (b h) n c", h=self.num_heads) for x in [q, k, v])
         attn = torch.einsum("b i c, b j c -> b i j", q, k) * self.dp_scale
@@ -125,12 +125,12 @@ class MultiHeadAttention(nn.Module):
             attn.masked_fill_(pad_mask, attn_max_neg)
 
         attn = attn.softmax(dim=-1)
-        attn = self.dropout(attn)
+        attn = self.attn_dropout(attn)
 
         o = torch.einsum("b i j, b j c -> b i c", attn, v)
         o = rearrange(o, "(b h) n c -> b n (h c)", h=self.num_heads)
 
-        return self.o_proj(o)
+        return self.output(o)
 
 
 class CrossAttention(nn.Module):
@@ -213,8 +213,8 @@ class CrossAttentionLayer(Sequential):
             dropout=dropout,
         )
         super().__init__(
-            Residual(cross_attn, dropout) if attention_residual else cross_attn,
-            Residual(MLP(num_q_input_channels, widening_factor, activation), dropout),
+            Residual(cross_attn, dropout=0) if attention_residual else cross_attn,
+            Residual(MLP(num_q_input_channels, widening_factor, activation), dropout=0),
         )
 
 
@@ -237,8 +237,8 @@ class SelfAttentionLayer(Sequential):
             dropout=dropout,
         )
         super().__init__(
-            Residual(self_attn, dropout=dropout),
-            Residual(MLP(num_channels, widening_factor=widening_factor, activation=activation), dropout),
+            Residual(self_attn, dropout=0),
+            Residual(MLP(num_channels, widening_factor=widening_factor, activation=activation), dropout=0),
         )
 
 
@@ -252,7 +252,7 @@ class SelfAttentionBlock(Sequential):
         num_v_channels: Optional[int] = None,
         widening_factor: int = 1,
         dropout: float = 0.0,
-        activation:str=ACT_GELU,
+        activation: str = ACT_GELU,
         activation_checkpointing: bool = False,
         activation_offloading: bool = False,
     ):

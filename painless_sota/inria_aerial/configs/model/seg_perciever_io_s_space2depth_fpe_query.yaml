@@ -30,13 +30,12 @@ architecture:
 
       num_cross_attention_heads: 1
       num_cross_attention_layers: 1
-      num_cross_attention_qk_channels: 512
 
-      num_self_attention_heads: 8
-      num_self_attention_layers_per_block: 16
+      num_self_attention_heads: 16
+      num_self_attention_layers_per_block: 24
       num_self_attention_blocks: 1
 
-      dropout: 0.05
+      dropout: 0.1
       init_scale: 0.02
 
       attention_residual: True
@@ -48,7 +47,7 @@ architecture:
 
       init_scale: 0.02
       num_cross_attention_heads: 1
-      dropout: 0.05
+      dropout: 0.1
 
       activation: gelu
       attention_residual: False
