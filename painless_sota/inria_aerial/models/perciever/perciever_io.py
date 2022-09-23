@@ -165,7 +165,8 @@ class PerceiverEncoder(nn.Module):
 
         # learnable initial latent vectors
         self.latent = nn.Parameter(torch.empty(num_latents, num_latent_channels))
-        self._init_parameters(init_scale)
+        if init_scale is not None:
+            self._init_parameters(init_scale)
 
     def _init_parameters(self, init_scale: float):
         torch.nn.init.trunc_normal_(self.latent, 0.0, init_scale)
@@ -236,8 +237,10 @@ class PerceiverDecoder(nn.Module):
             cross_attn = checkpoint_wrapper(cross_attn, offload_to_cpu=activation_offloading)
 
         self.cross_attn = cross_attn
-        self._init_parameters(init_scale)
         self._num_output_query_channels = num_output_query_channels
+
+        if init_scale is not None:
+            self._init_parameters(init_scale)
 
     @property
     def num_output_query_channels(self) -> int:
@@ -352,14 +355,14 @@ if __name__ == "__main__":
             num_self_attention_layers_per_block=24,
             num_self_attention_blocks=1,
             dropout=0.1,
-            init_scale=0.05,
+            init_scale=None,
             attention_residual=True,
             activation=ACT_GELU,
             activation_checkpointing=True,
         ),
         decoder=DecoderConfig(
             num_cross_attention_heads=1,
-            init_scale=0.05,
+            init_scale=None,
             dropout=0.1,
             attention_residual=False,
             activation=ACT_GELU,
