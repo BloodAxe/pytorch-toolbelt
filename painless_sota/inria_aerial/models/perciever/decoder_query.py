@@ -37,7 +37,7 @@ class EncoderInputQuery(DecoderQuery):
         self.num_input_channels = num_input_channels
 
     def forward(self, x: PositionEncodingOutput, z: Tensor) -> Tensor:
-        return x.encoded_input
+        return x.encoded_input.detach()
 
     @property
     @abstractmethod
