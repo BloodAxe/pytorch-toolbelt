@@ -4,7 +4,8 @@ from typing import List, Optional, Callable
 
 import numpy as np
 import torch
-from catalyst.dl import Callback, MetricCallback, CallbackOrder, IRunner
+from catalyst.core import Callback, CallbackOrder, IRunner
+from catalyst.callbacks import MetricCallback
 from sklearn.metrics import multilabel_confusion_matrix, confusion_matrix
 from torch import Tensor
 

@@ -1,7 +1,8 @@
 import math
 
 import torch
-from catalyst.dl import IRunner, CriterionCallback
+from catalyst.core import IRunner
+from catalyst.callbacks import CriterionCallback
 from torch import nn
 from torch.nn import functional as F
 
