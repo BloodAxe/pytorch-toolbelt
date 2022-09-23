@@ -3,9 +3,12 @@ from abc import abstractmethod
 from typing import Tuple, Optional
 
 import dataclasses
+
+import cv2
 import einops
+import numpy as np
 import torch
-from pytorch_toolbelt.utils import count_parameters, describe_outputs
+from pytorch_toolbelt.utils import count_parameters, describe_outputs, to_numpy, grid_stack
 from torch import nn, Tensor
 
 __all__ = [
@@ -22,11 +25,11 @@ def normalized_spatial_coordinates(spatial_shape: Tuple[int, ...], v_min=-1.0, v
     :param spatial_shape:
     :param v_min: minimum coordinate value per dimension.
     :param v_max: maximum coordinate value per dimension.
-    :return: position coordinates tensor of shape (*shape, len(shape)).
+    :return: position coordinates tensor of shape (*shape, len(spatial_shape)).
     """
     coords = [torch.linspace(v_min, v_max, steps=s) for s in spatial_shape]
-    return torch.stack(torch.meshgrid(*coords, indexing="ij"), dim=len(spatial_shape))
-
+    grid = torch.stack(torch.meshgrid(*coords, indexing="ij"), dim=len(spatial_shape))
+    return grid
 
 def fourier_position_encodings(
     p: Tensor,
@@ -104,6 +107,18 @@ class FourierPositionEncoding(PositionEncoding):
         # create encodings for single example
         pos = normalized_spatial_coordinates(spatial_shape)
         enc = fourier_position_encodings(pos, num_frequency_bands, include_positions=include_positions)
+
+        # p_rgbs = []
+        # for i in range(enc.size(-1)):
+        #     p = to_numpy(enc[..., i])
+        #     p_rgb = cv2.applyColorMap( (255 * (p + 1) / 2).astype(np.uint8)  ,  cv2.COLORMAP_JET)
+        #     p_rgb = cv2.resize(p_rgb, dsize=None, fx=2,fy=2,interpolation=cv2.INTER_NEAREST)
+        #     cv2.imwrite(f"position_encoding_{i:03d}.png",p_rgb)
+        #
+        #     p_rgbs.append(p_rgb)
+        #
+        # cv2.imwrite(f"position_encoding.png", grid_stack(p_rgbs, cols=16))
+
         # flatten encodings along spatial dimensions
         enc = einops.rearrange(enc, "... c -> (...) c")
 
@@ -172,6 +187,3 @@ if __name__ == "__main__":
     ]:
         outputs = pe.cuda()(input)
         print(count_parameters(pe, human_friendly=True))
-        print(describe_outputs(outputs))
-
-        assert outputs.size(-1) == pe.num_output_channels
