@@ -165,7 +165,7 @@ class PerceiverEncoder(nn.Module):
 
         # learnable initial latent vectors
         self.latent = nn.Parameter(torch.empty(num_latents, num_latent_channels))
-        if init_scale is not None:
+        if init_scale is not None and init_scale > 0:
             self._init_parameters(init_scale)
 
     def _init_parameters(self, init_scale: float):
@@ -239,7 +239,7 @@ class PerceiverDecoder(nn.Module):
         self.cross_attn = cross_attn
         self._num_output_query_channels = num_output_query_channels
 
-        if init_scale is not None:
+        if init_scale is not None and init_scale > 0:
             self._init_parameters(init_scale)
 
     @property
