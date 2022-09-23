@@ -70,6 +70,8 @@ seg_perciever_io_s_space2depth_inp_query: pull
 	export OMP_NUM_THREADS=4
 	INRIA_AERIAL_DATA_DIR=~/data/inria HYDRA_FULL_ERROR=1 torchrun --standalone --nnodes=1 --nproc_per_node=4 train.py \
 	model=seg_perciever_io_s_space2depth_inp_query \
+	model.architecture.config.encoder.init_scale=0 \
+	model.architecture.config.decoder.init_scale=0 \
 	dataset.train.dataset.image_size=512 \
 	dataset.train.dataset.num_samples=16384 \
 	dataset.validation.dataset.image_size=512 \

@@ -283,6 +283,7 @@ class InriaAerialPipeline:
         accumulation_steps = int(self.config.optimizer.get("accumulation", 1))
 
         optimizer_config = self.config.optimizer.optimizer
+        grad_clip_params = self.config.optimizer.get("grad_clip_params", None)
 
         optimizer_params = optimizer_config["params"]
         optimizer_params = scale_learning_rate_for_ddp(optimizer_params)
@@ -298,7 +299,10 @@ class InriaAerialPipeline:
         if use_fp16:
             opt_callback = AMPOptimizerCallback(accumulation_steps=accumulation_steps, log_grad_norm=True)
         else:
-            opt_callback = OptimizerCallback(accumulation_steps=accumulation_steps, log_grad_norm=True)
+            opt_callback = OptimizerCallback(accumulation_steps=accumulation_steps,
+                                             log_grad_norm=True,
+                                             grad_clip_params=grad_clip_params
+                                             )
 
         callbacks = [opt_callback]
         master_print("Optimizer        :", optimizer_config.name)
@@ -308,6 +312,7 @@ class InriaAerialPipeline:
         master_print("  Weight decay   :", optimizer_params.get("weight_decay", 0))
         master_print("  WD on bias     :", use_decay_on_bias)
         master_print("  Accumulation   :", accumulation_steps)
+        master_print("  Grad Clip      :", grad_clip_params)
         master_print("Params           :")
         for k, v in optimizer_params.items():
             master_print(f"  {k}:", v)
