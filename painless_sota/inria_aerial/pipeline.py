@@ -296,9 +296,10 @@ class InriaAerialPipeline:
         )
 
         if use_fp16:
-            opt_callback = AMPOptimizerCallback(accumulation_steps=accumulation_steps)
+            opt_callback = AMPOptimizerCallback(accumulation_steps=accumulation_steps, log_grad_norm=True)
         else:
-            opt_callback = OptimizerCallback(accumulation_steps=accumulation_steps, decouple_weight_decay=False)
+            opt_callback = OptimizerCallback(accumulation_steps=accumulation_steps, log_grad_norm=True)
+
         callbacks = [opt_callback]
         master_print("Optimizer        :", optimizer_config.name)
         master_print("  Parameters     :", count_parameters(model, human_friendly=True))
