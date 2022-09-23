@@ -9,6 +9,7 @@ from pytorch_toolbelt.optimization.lr_schedules import (
 from pytorch_toolbelt.utils import master_print
 from pytorch_toolbelt.utils.catalyst.pipeline import get_optimizer_cls
 from torch import nn
+from torch.distributed.optim import ZeroRedundancyOptimizer
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import (
     CyclicLR,
@@ -28,6 +29,7 @@ def get_optimizer(
     optimizer_params: Mapping[str, Any],
     apply_weight_decay_to_bias: bool = True,
     layerwise_params=None,
+    use_zero: bool = False,
 ) -> Optimizer:
     """
     Construct an Optimizer for given model
@@ -66,10 +68,18 @@ def get_optimizer(
                 parameters = default_pg
 
     optimizer_cls = get_optimizer_cls(optimizer_name)
-    optimizer: Optimizer = optimizer_cls(
-        parameters,
-        **optimizer_params,
-    )
+    if use_zero:
+        optimizer = ZeroRedundancyOptimizer(
+            parameters,
+            optimizer_class=optimizer_cls,
+            **optimizer_params,
+        )
+        master_print("Using Zero-redundancy optimizer")
+    else:
+        optimizer: Optimizer = optimizer_cls(
+            parameters,
+            **optimizer_params,
+        )
 
     if not apply_weight_decay_to_bias:
         optimizer.add_param_group({"params": biases_pg, "weight_decay": 0.0})

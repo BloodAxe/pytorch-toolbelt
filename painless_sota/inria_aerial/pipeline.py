@@ -288,12 +288,14 @@ class InriaAerialPipeline:
         optimizer_params = optimizer_config["params"]
         optimizer_params = scale_learning_rate_for_ddp(optimizer_params)
 
+        use_zero_redundancy_optimizer = self.config.optimizer.get("use_zero", False)
         optimizer = get_optimizer(
             model=model,
             optimizer_name=optimizer_config.name,
             optimizer_params=optimizer_params,
             apply_weight_decay_to_bias=use_decay_on_bias,
             layerwise_params=optimizer_config.get("layerwise_params", None),
+            use_zero=use_zero_redundancy_optimizer and self.distributed,
         )
 
         if use_fp16:
@@ -314,6 +316,7 @@ class InriaAerialPipeline:
         master_print("  WD on bias     :", use_decay_on_bias)
         master_print("  Accumulation   :", accumulation_steps)
         master_print("  Grad Clip      :", grad_clip_params)
+        master_print("  Zero DDP       :", use_zero_redundancy_optimizer)
         master_print("Params           :")
         for k, v in optimizer_params.items():
             master_print(f"  {k}:", v)

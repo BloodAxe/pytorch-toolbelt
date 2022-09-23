@@ -1,6 +1,7 @@
 fp16: False
 wd_on_bias: True
 accumulation: 64
+use_zero: True
 
 optimizer:
   name: AdamW
