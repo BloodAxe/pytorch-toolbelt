@@ -87,7 +87,7 @@ seg_perciever_io_s_space2depth_fpe_query_1024: pull
 	dataset.train.dataset.image_size=1024 \
 	dataset.train.dataset.num_samples=16384 \
 	dataset.validation.dataset.image_size=1024 \
-	loss=bce_dice2 \
+	loss=bce_iou2 \
 	batch_size=4 \
 	num_workers=8 \
 	runner.show_batches=True \
