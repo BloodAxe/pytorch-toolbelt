@@ -1,8 +1,0 @@
-aggregation: sum
-losses:
-  - loss:
-      _target_: pytorch_toolbelt.losses.BinaryFocalLoss
-    prefix: loss/focal
-    target_key: TARGET_MASK_KEY
-    output_key: OUTPUT_MASK_KEY
-    weight: 1.0

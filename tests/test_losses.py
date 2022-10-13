@@ -5,8 +5,10 @@ import torch
 from pytorch_toolbelt import losses as L
 from torch import nn
 
+from pytorch_toolbelt.losses import SigmoidFocalLoss, SoftmaxFocalLoss
 
-def test_focal_loss_with_logits():
+
+def test_sigmoid_focal_loss_with_logits():
     input_good = torch.tensor([10, -10, 10]).float()
     input_bad = torch.tensor([-1, 2, 0]).float()
     target = torch.tensor([1, 0, 1])
@@ -14,6 +16,9 @@ def test_focal_loss_with_logits():
     loss_good = F.focal_loss_with_logits(input_good, target)
     loss_bad = F.focal_loss_with_logits(input_bad, target)
     assert loss_good < loss_bad
+
+    loss_cls = SigmoidFocalLoss()
+    assert loss_cls(input_good, target) < loss_cls(input_bad, target)
 
 
 def test_softmax_focal_loss_with_logits():
@@ -24,6 +29,9 @@ def test_softmax_focal_loss_with_logits():
     loss_good = F.softmax_focal_loss_with_logits(input_good, target)
     loss_bad = F.softmax_focal_loss_with_logits(input_bad, target)
     assert loss_good < loss_bad
+
+    loss_cls = SoftmaxFocalLoss()
+    assert loss_cls(input_good, target) < loss_cls(input_bad, target)
 
 
 @pytest.mark.parametrize(

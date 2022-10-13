@@ -91,10 +91,11 @@ def softmax_focal_loss_with_logits(
     output: torch.Tensor,
     target: torch.Tensor,
     gamma: float = 2.0,
-    reduction="mean",
-    normalized=False,
+    reduction: str = "mean",
+    normalized: bool = False,
     reduced_threshold: Optional[float] = None,
     eps: float = 1e-6,
+    ignore_index: int = -100,
 ) -> torch.Tensor:
     """
     Softmax version of focal loss between target and output logits.
@@ -103,6 +104,7 @@ def softmax_focal_loss_with_logits(
     Args:
         output: Tensor of shape [B, C, *] (Similar to nn.CrossEntropyLoss)
         target: Tensor of shape [B, *] (Similar to nn.CrossEntropyLoss)
+        gamma: Focal loss power factor
         reduction (string, optional): Specifies the reduction to apply to the output:
             'none' | 'mean' | 'sum' | 'batchwise_mean'. 'none': no reduction will be applied,
             'mean': the sum of the output will be divided by the number of
@@ -115,7 +117,7 @@ def softmax_focal_loss_with_logits(
     """
     log_softmax = F.log_softmax(output, dim=1)
 
-    loss = F.nll_loss(log_softmax, target, reduction="none")
+    loss = F.nll_loss(log_softmax, target, reduction="none", ignore_index=ignore_index)
     pt = torch.exp(-loss)
 
     # compute the loss

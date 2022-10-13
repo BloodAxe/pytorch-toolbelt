@@ -1,5 +1,0 @@
-hydra-core==1.2
-omegaconf
-timm=0.6.7
-numpy
-opencv-python

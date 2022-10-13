@@ -1,6 +1,0 @@
-main_metric: metric/jaccard
-main_metric_minimize: False
-
-show_batches: True
-early_stopping: 0
-max_epochs: 250
