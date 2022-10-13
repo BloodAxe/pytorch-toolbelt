@@ -5,31 +5,32 @@ __all__ = ["DatasetMeanStdCalculator"]
 
 
 class DatasetMeanStdCalculator:
-    __slots__ = ["global_mean", "global_var", "n_items", "num_channels", "global_max", "global_min"]
+    __slots__ = ["global_mean", "global_var", "n_items", "num_channels", "global_max", "global_min", "dtype"]
 
     """
     Class to calculate running mean and std of the dataset. It helps when whole dataset does not fit entirely in RAM.
     """
 
-    def __init__(self, num_channels: int = 3):
+    def __init__(self, num_channels: int = 3, dtype=np.float64):
         """
         Create a new instance of DatasetMeanStdCalculator
 
         Args:
             num_channels: Number of channels in the image. Default value is 3
         """
-        super(DatasetMeanStdCalculator, self).__init__()
+        super().__init__()
         self.num_channels = num_channels
         self.global_mean = None
         self.global_var = None
         self.global_max = None
         self.global_min = None
         self.n_items = 0
+        self.dtype = dtype
         self.reset()
 
     def reset(self):
-        self.global_mean = np.zeros(self.num_channels, dtype=np.float64)
-        self.global_var = np.zeros(self.num_channels, dtype=np.float64)
+        self.global_mean = np.zeros(self.num_channels, dtype=self.dtype)
+        self.global_var = np.zeros(self.num_channels, dtype=self.dtype)
         self.global_max = np.ones_like(self.global_mean) * float("-inf")
         self.global_min = np.ones_like(self.global_mean) * float("+inf")
         self.n_items = 0
