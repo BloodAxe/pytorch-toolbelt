@@ -1,7 +1,7 @@
 from functools import partial
 from typing import Optional
 import torch
-from torch import Tensor
+from torch import Tensor, nn
 from torch.nn.modules.loss import _Loss
 
 from .functional import focal_loss_with_logits, softmax_focal_loss_with_logits
@@ -41,8 +41,8 @@ class BinaryFocalLoss(nn.Module):
             reduction=reduction,
             normalized=normalized,
             ignore_index=ignore_index,
-            activation=self.activation,
-            softmax_dim=self.softmax_dim,
+            activation=activation,
+            softmax_dim=softmax_dim,
         )
 
     def forward(self, inputs: Tensor, targets: Tensor) -> Tensor:
