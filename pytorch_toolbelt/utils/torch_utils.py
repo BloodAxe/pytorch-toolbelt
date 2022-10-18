@@ -99,7 +99,7 @@ def count_parameters(
     :return: Tuple (total, trainable)
     """
     if keys is None:
-        keys = ["encoder", "decoder", "logits", "head", "final"]
+        keys = [key for key, child in model.named_children()]
     total = int(sum(p.numel() for p in model.parameters()))
     trainable = int(sum(p.numel() for p in model.parameters() if p.requires_grad))
     parameters = {"total": total, "trainable": trainable}
