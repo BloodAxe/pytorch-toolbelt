@@ -131,7 +131,7 @@ class EncoderModule(nn.Module):
             param.requires_grad = bool(trainable)
 
     @torch.jit.unused
-    def change_input_channels(self, input_channels: int, mode="auto"):
+    def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
         """
         Change number of channels expected in the input tensor. By default,
         all encoders assume 3-channel image in BCHW notation with C=3.

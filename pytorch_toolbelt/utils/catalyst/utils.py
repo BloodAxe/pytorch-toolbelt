@@ -6,7 +6,7 @@ import math
 import torch
 from catalyst import utils
 from catalyst.callbacks import BaseCheckpointCallback
-from catalyst.dl import IRunner, Callback, CallbackOrder
+from catalyst.core import IRunner, Callback, CallbackOrder
 
 
 __all__ = [

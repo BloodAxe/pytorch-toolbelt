@@ -1,8 +1,6 @@
 import torch
-from catalyst.callbacks import CriterionCallback
 from catalyst.core import IRunner
-from torch import nn, Tensor
-from torch.nn.functional import mse_loss, smooth_l1_loss
+from catalyst.callbacks import CriterionCallback
 
 __all__ = ["TrainOnlyCriterionCallback"]
 

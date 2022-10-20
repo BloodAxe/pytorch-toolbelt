@@ -3,7 +3,7 @@ from typing import List, Optional, Union, Any
 
 import torch
 import numpy as np
-from catalyst.dl import IRunner, Callback, CallbackOrder
+from catalyst.core import IRunner, Callback, CallbackOrder
 
 __all__ = ["StopIfNanCallback"]
 

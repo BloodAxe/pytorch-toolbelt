@@ -7,11 +7,11 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import Tensor
-from catalyst.dl import Callback, CallbackOrder, IRunner, CallbackNode
-from catalyst.dl.callbacks import TensorboardLogger
-from catalyst.contrib.tools.tensorboard import SummaryWriter
+from catalyst.core import Callback, CallbackOrder, IRunner, CallbackNode
+from catalyst.callbacks import TensorboardLogger
 from pytorch_toolbelt.utils import render_figure_to_tensor
 from pytorch_toolbelt.utils.distributed import all_gather
+from torch.utils.tensorboard import SummaryWriter
 
 from ..torch_utils import rgb_image_from_tensor, to_numpy, image_to_tensor
 

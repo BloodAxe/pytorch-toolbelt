@@ -22,7 +22,7 @@ class MobilenetV2Encoder(EncoderModule):
     def encoder_layers(self):
         return [self.layer0, self.layer1, self.layer2, self.layer3, self.layer4, self.layer5, self.layer6, self.layer7]
 
-    def change_input_channels(self, input_channels: int, mode="auto"):
+    def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
         self.layer0.conv1 = make_n_channel_input(self.layer0.conv1, input_channels, mode)
         return self
 

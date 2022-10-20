@@ -688,7 +688,7 @@ class SwinTransformer(EncoderModule):
         return _take(outs, self._layers)
 
     @torch.jit.unused
-    def change_input_channels(self, input_channels: int, mode="auto"):
+    def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
         self.patch_embed.proj = make_n_channel_input(self.patch_embed.proj, input_channels)
         return self
 

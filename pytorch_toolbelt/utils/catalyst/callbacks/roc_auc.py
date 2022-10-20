@@ -57,12 +57,20 @@ class RocAucMetricCallback(Callback):
     def on_batch_end(self, runner):
         pred_probas = runner.output[self.output_key].float()
         true_labels = runner.input[self.input_key].float()
-        if self.outputs_to_probas:
+        if self.outputs_to_probas is not None:
             pred_probas = self.outputs_to_probas(pred_probas)
 
+        y_trues = to_numpy(true_labels).reshape(-1)
+        y_preds = to_numpy(pred_probas).reshape(-1)
+
+        if self.ignore_index is not None:
+            include_mask = y_trues != self.ignore_index
+            y_trues = y_trues[include_mask]
+            y_preds = y_preds[include_mask]
+
         # Aggregate flattened labels
-        self.y_trues.extend(to_numpy(true_labels).reshape(-1))
-        self.y_preds.extend(to_numpy(pred_probas).reshape(-1))
+        self.y_trues.extend(y_trues)
+        self.y_preds.extend(y_preds)
 
     def on_loader_end(self, runner):
         y_trues = np.concatenate(all_gather(self.y_trues))

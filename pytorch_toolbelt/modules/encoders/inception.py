@@ -37,6 +37,6 @@ class InceptionV4Encoder(EncoderModule):
     def encoder_layers(self):
         return [self.layer0, self.layer1, self.layer2, self.layer3, self.layer4]
 
-    def change_input_channels(self, input_channels: int, mode="auto"):
+    def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
         self.layer0[0].conv = make_n_channel_input(self.layer0[0].conv, input_channels, mode)
         return self

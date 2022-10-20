@@ -136,65 +136,65 @@ class SWSLResNeXt101Encoder(EncoderModule):
 
 
 class TimmResnet152D(GenericTimmEncoder):
-    def __init__(self, pretrained=True, layers=None, activation=ACT_RELU):
+    def __init__(self, pretrained=True, layers=None, activation=ACT_RELU, **kwargs):
         from timm.models.resnet import resnet152d
 
         act_layer = get_activation_block(activation)
-        encoder = resnet152d(features_only=True, pretrained=pretrained, act_layer=act_layer)
+        encoder = resnet152d(features_only=True, pretrained=pretrained, act_layer=act_layer, **kwargs)
         super().__init__(encoder, layers)
 
-    def change_input_channels(self, input_channels: int, mode="auto"):
-        self.encoder.conv1[0] = make_n_channel_input(self.encoder.conv1[0], input_channels, mode=mode)
+    def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
+        self.encoder.conv1[0] = make_n_channel_input(self.encoder.conv1[0], input_channels, mode=mode, **kwargs)
         return self
 
 
 class TimmSEResnet152D(GenericTimmEncoder):
-    def __init__(self, pretrained=True, layers=None, activation=ACT_RELU):
+    def __init__(self, pretrained=True, layers=None, activation=ACT_RELU, **kwargs):
         from timm.models.resnet import seresnet152d
 
         act_layer = get_activation_block(activation)
-        encoder = seresnet152d(features_only=True, pretrained=pretrained, act_layer=act_layer)
+        encoder = seresnet152d(features_only=True, pretrained=pretrained, act_layer=act_layer, **kwargs)
         super().__init__(encoder, layers)
 
-    def change_input_channels(self, input_channels: int, mode="auto"):
-        self.encoder.conv1[0] = make_n_channel_input(self.encoder.conv1[0], input_channels, mode=mode)
+    def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
+        self.encoder.conv1[0] = make_n_channel_input(self.encoder.conv1[0], input_channels, mode=mode, **kwargs)
         return self
 
 
 class TimmResnet50D(GenericTimmEncoder):
-    def __init__(self, pretrained=True, layers=None, activation=ACT_RELU):
+    def __init__(self, pretrained=True, layers=None, activation=ACT_RELU, **kwargs):
         from timm.models.resnet import resnet50d
 
         act_layer = get_activation_block(activation)
-        encoder = resnet50d(features_only=True, pretrained=pretrained, act_layer=act_layer)
+        encoder = resnet50d(features_only=True, pretrained=pretrained, act_layer=act_layer, **kwargs)
         super().__init__(encoder, layers)
 
-    def change_input_channels(self, input_channels: int, mode="auto"):
-        self.encoder.conv1[0] = make_n_channel_input(self.encoder.conv1[0], input_channels, mode=mode)
+    def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
+        self.encoder.conv1[0] = make_n_channel_input(self.encoder.conv1[0], input_channels, mode=mode, **kwargs)
         return self
 
 
 class TimmResnet101D(GenericTimmEncoder):
-    def __init__(self, pretrained=True, layers=None, activation=ACT_RELU):
+    def __init__(self, pretrained=True, layers=None, activation=ACT_RELU, **kwargs):
         from timm.models.resnet import resnet101d
 
         act_layer = get_activation_block(activation)
-        encoder = resnet101d(features_only=True, pretrained=pretrained, act_layer=act_layer)
+        encoder = resnet101d(features_only=True, pretrained=pretrained, act_layer=act_layer, **kwargs)
         super().__init__(encoder, layers)
 
-    def change_input_channels(self, input_channels: int, mode="auto"):
-        self.encoder.conv1[0] = make_n_channel_input(self.encoder.conv1[0], input_channels, mode=mode)
+    def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
+        self.encoder.conv1[0] = make_n_channel_input(self.encoder.conv1[0], input_channels, mode=mode, **kwargs)
         return self
 
 
 class TimmResnet200D(GenericTimmEncoder):
-    def __init__(self, pretrained=True, layers=None, activation=ACT_RELU):
+    def __init__(self, pretrained=True, layers=None, activation=ACT_RELU, **kwargs):
         from timm.models.resnet import resnet200d
 
         act_layer = get_activation_block(activation)
-        encoder = resnet200d(features_only=True, pretrained=pretrained, act_layer=act_layer)
+        encoder = resnet200d(features_only=True, pretrained=pretrained, act_layer=act_layer, **kwargs)
         super().__init__(encoder, layers)
 
-    def change_input_channels(self, input_channels: int, mode="auto"):
-        self.encoder.conv1[0] = make_n_channel_input(self.encoder.conv1[0], input_channels, mode=mode)
+    def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
+        self.encoder.conv1[0] = make_n_channel_input(self.encoder.conv1[0], input_channels, mode=mode, **kwargs)
         return self

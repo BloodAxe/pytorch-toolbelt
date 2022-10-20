@@ -1,10 +1,8 @@
 from typing import Dict
 
 import torch
-from catalyst.dl import (
-    CriterionCallback,
-    IRunner,
-)
+from catalyst.core import IRunner
+from catalyst.callbacks import CriterionCallback
 from torch import nn, Tensor
 
 __all__ = [
@@ -75,7 +73,7 @@ class LossWrapper(nn.Module):
     their values. The point of this wrapper is that loss computed on each GPU node in parallel.
 
     Usage:
-    >>> from catalyst.dl import SupervisedRunner
+    >>> from catalyst.runners import SupervisedRunner
     >>> runner = SupervisedRunner(input_key=None, output_key=None, device="cuda")
     >>> runner._default_experiment = ParallelLossSupervisedExperiment
     >>> loss_modules = {

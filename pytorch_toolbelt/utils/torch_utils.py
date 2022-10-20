@@ -2,11 +2,15 @@
 
 """
 import collections
-from typing import Optional, Sequence, Union, Dict, List, Any, Iterable
+import warnings
+from typing import Optional, Sequence, Union, Dict, List, Any, Iterable, Callable
 
 import numpy as np
 import torch
 from torch import nn, Tensor
+from torch.utils.data import Dataset, ConcatDataset
+from torch.utils.data.dataloader import default_collate
+
 from .support import pytorch_toolbelt_deprecated
 
 __all__ = [
@@ -35,6 +39,7 @@ __all__ = [
     "transfer_weights",
     "move_to_device_non_blocking",
     "describe_outputs",
+    "get_collate_for_dataset",
 ]
 
 
@@ -97,7 +102,7 @@ def count_parameters(
     :return: Tuple (total, trainable)
     """
     if keys is None:
-        keys = ["encoder", "decoder", "logits", "head", "final"]
+        keys = [key for key, child in model.named_children()]
     total = int(sum(p.numel() for p in model.parameters()))
     trainable = int(sum(p.numel() for p in model.parameters() if p.requires_grad))
     parameters = {"total": total, "trainable": trainable}
@@ -315,5 +320,35 @@ def describe_outputs(outputs: Union[Tensor, Dict[str, Tensor], Iterable[Tensor]]
         for index, output in enumerate(outputs):
             desc.append(describe_outputs(output))
     else:
-        raise NotImplementedError
+        warnings.warn(f"describe_outputs is not implemeted for type {type(outputs)}")
+        return str(outputs)
     return desc
+
+
+def get_collate_for_dataset(dataset: Union[Dataset, ConcatDataset]) -> Callable:
+    """
+    Return collate_fn function for dataset. By default, default_collate returned.
+    If the dataset has method get_collate_fn() we will use it's return value instead.
+    If the dataset is ConcatDataset, we will check whether all get_collate_fn() returns
+    the same function.
+
+    Args:
+        dataset: Input dataset
+
+    Returns:
+        Collate function to put into DataLoader
+    """
+    collate_fn = default_collate
+
+    if hasattr(dataset, "get_collate_fn"):
+        collate_fn = dataset.get_collate_fn()
+
+    if isinstance(dataset, ConcatDataset):
+        collates = set(get_collate_for_dataset(ds) for ds in dataset.datasets)
+        if len(collates) != 1:
+            raise RuntimeError(
+                "Detected ConcatDataset with datasets having different collate functions. " "This is not supported."
+            )
+        collate_fn = collates[0]
+
+    return collate_fn
