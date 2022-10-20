@@ -116,7 +116,7 @@ def load_readme():
 
 
 def get_test_requirements():
-    requirements = ["pytest", "onnx==1.9.0", "black==22.10.0", "timm==0.6.7", "matplotlib"]
+    requirements = ["pytest", "onnx==1.9.0", "black==22.8.0", "timm==0.6.7", "matplotlib"]
     if sys.version_info < (3, 3):
         requirements.append("mock")
     return requirements
