@@ -13,9 +13,9 @@ jobs:
       fail-fast: false
     steps:
     - name: Checkout
-      uses: actions/checkout
+      uses: actions/checkout@v2
     - name: Set up Python
-      uses: actions/setup-python
+      uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
     - name: Update pip
@@ -51,9 +51,9 @@ jobs:
         python-version: [3.8, 3.9]
     steps:
     - name: Checkout
-      uses: actions/checkout
+      uses: actions/checkout@v2
     - name: Set up Python
-      uses: actions/setup-python
+      uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
     - name: Update pip
