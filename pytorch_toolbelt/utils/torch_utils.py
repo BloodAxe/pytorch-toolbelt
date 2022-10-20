@@ -7,7 +7,9 @@ from typing import Optional, Sequence, Union, Dict, List, Any, Iterable, Callabl
 import numpy as np
 import torch
 from torch import nn, Tensor
-from torch.utils.data import Dataset, ConcatDataset, default_collate
+from torch.utils.data import Dataset, ConcatDataset
+from torch.utils.data.dataloader import default_collate
+
 from .support import pytorch_toolbelt_deprecated
 
 __all__ = [
