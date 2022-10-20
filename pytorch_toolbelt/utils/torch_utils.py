@@ -2,6 +2,7 @@
 
 """
 import collections
+import warnings
 from typing import Optional, Sequence, Union, Dict, List, Any, Iterable, Callable
 
 import numpy as np
@@ -319,7 +320,8 @@ def describe_outputs(outputs: Union[Tensor, Dict[str, Tensor], Iterable[Tensor]]
         for index, output in enumerate(outputs):
             desc.append(describe_outputs(output))
     else:
-        raise NotImplementedError
+        warnings.warn(f"describe_outputs is not implemeted for type {type(outputs)}")
+        return str(outputs)
     return desc
 
 
