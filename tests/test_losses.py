@@ -5,7 +5,7 @@ import torch
 from pytorch_toolbelt import losses as L
 from torch import nn
 
-from pytorch_toolbelt.losses import SigmoidFocalLoss, SoftmaxFocalLoss
+from pytorch_toolbelt.losses import BinaryFocalLoss, CrossEntropyFocalLoss
 
 
 def test_sigmoid_focal_loss_with_logits():
@@ -17,7 +17,7 @@ def test_sigmoid_focal_loss_with_logits():
     loss_bad = F.focal_loss_with_logits(input_bad, target)
     assert loss_good < loss_bad
 
-    loss_cls = SigmoidFocalLoss()
+    loss_cls = BinaryFocalLoss()
     assert loss_cls(input_good, target) < loss_cls(input_bad, target)
 
 
@@ -30,7 +30,7 @@ def test_softmax_focal_loss_with_logits():
     loss_bad = F.softmax_focal_loss_with_logits(input_bad, target)
     assert loss_good < loss_bad
 
-    loss_cls = SoftmaxFocalLoss()
+    loss_cls = CrossEntropyFocalLoss()
     assert loss_cls(input_good, target) < loss_cls(input_bad, target)
 
 
