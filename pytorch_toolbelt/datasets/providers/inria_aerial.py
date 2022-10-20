@@ -41,7 +41,7 @@ class InriaAerialImageDataset:
     def download_and_extract(cls, data_dir: Union[str, Path]) -> bool:
         try:
             from py7zr import py7zr
-        except ImportError as e:
+        except ImportError:
             print("You need to install py7zr to extract 7z-archive: `pip install py7zr`.")
             return False
 

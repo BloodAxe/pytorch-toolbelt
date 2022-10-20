@@ -327,7 +327,7 @@ def describe_outputs(outputs: Union[Tensor, Dict[str, Tensor], Iterable[Tensor]]
 
 def get_collate_for_dataset(dataset: Union[Dataset, ConcatDataset]) -> Callable:
     """
-    Returns collate_fn function for dataset. By default, default_collate returned.
+    Return collate_fn function for dataset. By default, default_collate returned.
     If the dataset has method get_collate_fn() we will use it's return value instead.
     If the dataset is ConcatDataset, we will check whether all get_collate_fn() returns
     the same function.
