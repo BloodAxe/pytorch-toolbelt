@@ -88,9 +88,9 @@ REQUIRES_PYTHON = ">=3.6.0"
 
 DEPENDENCIES = [
     # We rely on particular activation functions that were added in 1.8.1
-    "torch>=1.8.1",
+    "torch>=1.11.0",
     # We use some pretrained models from torchvision
-    "torchvision>=0.9.1",
+    "torchvision",
     # Library uses scipy for linear_sum_assignment for match_bboxes.
     # 1.4.0 is the first release where `maximize` argument gets introduced to this function
     "scipy>=1.4.0",
