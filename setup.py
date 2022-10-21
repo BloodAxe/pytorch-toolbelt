@@ -5,7 +5,7 @@ import os
 import sys
 
 from setuptools import find_packages, setup
-
+from packaging import version
 
 def is_docker() -> bool:
     """
@@ -88,7 +88,7 @@ REQUIRES_PYTHON = ">=3.6.0"
 
 DEPENDENCIES = [
     # We rely on particular activation functions that were added in 1.8.1
-    "torch>=1.11.0",
+    "torch>=1.11.0" if version.parse(sys.version) >= version.parse("3.7") else "torch>=1.10.0",
     # We use some pretrained models from torchvision
     "torchvision",
     # Library uses scipy for linear_sum_assignment for match_bboxes.
@@ -116,9 +116,7 @@ def load_readme():
 
 
 def get_test_requirements():
-    requirements = ["pytest", "onnx==1.9.0", "black==22.8.0", "timm==0.6.7", "matplotlib"]
-    if sys.version_info < (3, 3):
-        requirements.append("mock")
+    requirements = ["pytest", "onnx==1.12.0", "black==22.8.0", "timm==0.6.7", "matplotlib"]
     return requirements
 
 
