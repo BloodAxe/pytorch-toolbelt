@@ -311,11 +311,11 @@ def describe_outputs(outputs: Union[Tensor, Dict[str, Tensor], Iterable[Tensor]]
     """
     if torch.is_tensor(outputs):
         desc = dict(size=tuple(outputs.size()), mean=outputs.mean().item(), std=outputs.std().item())
-    elif isinstance(outputs, collections.Mapping):
+    elif isinstance(outputs, collections.abc.Mapping):
         desc = {}
         for key, value in outputs.items():
             desc[key] = describe_outputs(value)
-    elif isinstance(outputs, collections.Iterable):
+    elif isinstance(outputs, collections.abc.Iterable):
         desc = []
         for index, output in enumerate(outputs):
             desc.append(describe_outputs(output))
