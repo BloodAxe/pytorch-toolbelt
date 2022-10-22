@@ -1,7 +1,37 @@
-from typing import Optional, Iterator, Dict
+from typing import Optional, Iterator, Dict, Union, List
 from torch import nn
 
 __all__ = ["get_lr_decay_parameters", "get_optimizable_parameters", "freeze_model"]
+
+
+def build_optimizer_param_groups(model: nn.Module,
+                                 learning_rate:Union[float, Dict[str,float]],
+                                 weight_decay:Union[float, Dict[str,float]],
+                                 apply_weight_decay_on_bias:bool,
+                                 apply_weight_decay_on_norm:bool) -> List:
+    """
+    
+    Args:
+        model:
+        learning_rate:
+        weight_decay:
+        apply_weight_decay_on_bias: If True, weight decay is applied to bias on Linear & Conv layers
+        apply_weight_decay_on_norm: If True, weight decay is applied normalization layers
+
+    Returns:
+
+    """
+    default_pg = []
+    
+    for module_name, module in model.named_modules():
+        
+        if apply_weight_decay_on_norm and isinstance(module, (nn._BatchNorm, nn._InstanceNorm)):
+            pass
+        elif apply_weight_decay_on_bias and isinstance(module)
+        else:
+            default_pg.append((module_name, get_optimizable_parameters(module)))
+    
+            
 
 
 def get_lr_decay_parameters(model: nn.Module, learning_rate: float, lr_multipliers: Dict[str, float]):
