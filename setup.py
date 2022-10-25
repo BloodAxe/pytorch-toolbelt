@@ -117,7 +117,7 @@ def load_readme():
 
 
 def get_test_requirements():
-    requirements = ["pytest", "onnx==1.12.0", "black==22.8.0", "timm==0.6.7", "matplotlib"]
+    requirements = ["pytest", "black==22.8.0", "timm==0.6.7", "matplotlib"]
     return requirements
 
 
