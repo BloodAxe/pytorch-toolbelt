@@ -11,7 +11,7 @@ def build_optimizer_param_groups(
     weight_decay: Union[float, Dict[str, float]],
     apply_weight_decay_on_bias: bool,
     apply_weight_decay_on_norm: bool,
-) -> List:
+) -> collections.OrderedDict:
     """
 
     Args:
@@ -24,16 +24,27 @@ def build_optimizer_param_groups(
     Returns:
 
     """
+    parameter_groups = collections.OrderedDict()
     default_pg = []
-
+    no_wd_on_bias_pg = []
+    no_wd_on_norm_pg = []
+    
     for module_name, module in model.named_modules():
-
         if apply_weight_decay_on_norm and isinstance(module, (nn._BatchNorm, nn._InstanceNorm)):
             pass
         elif apply_weight_decay_on_bias and isinstance(module):
             pass
         else:
             default_pg.append((module_name, get_optimizable_parameters(module)))
+        
+    if len(default_pg):
+        parameter_groups["default"] = default_pg
+
+    if len(no_wd_on_bias_pg):
+        parameter_groups["no_wd_on_bias_pg"] = no_wd_on_bias_pg
+
+    if len(no_wd_on_norm_pg):
+        parameter_groups["no_wd_on_norm_pg"] = no_wd_on_norm_pg
 
     return default_pg
 
