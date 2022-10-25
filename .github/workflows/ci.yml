@@ -8,7 +8,7 @@ jobs:
     strategy:
       matrix:
         operating-system: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: [3.6, 3.7, 3.8, 3.9]
+        python-version: ['3.6', '3.7', '3.8', '3.9', '3.10']
         pytorch-toolbelt-version: [tests]
       fail-fast: false
     steps:
@@ -20,16 +20,8 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Update pip
       run: python -m pip install --upgrade pip
-    - name: Install PyTorch on Linux and Windows
-      if: >
-        matrix.operating-system == 'ubuntu-latest' ||
-        matrix.operating-system == 'windows-latest'
-      run: >
-        pip install torch==1.10.1+cpu torchvision==0.11.2+cpu
-        -f https://download.pytorch.org/whl/torch_stable.html
-    - name: Install PyTorch on MacOS
-      if: matrix.operating-system == 'macos-latest'
-      run: pip install torch==1.10.1 torchvision==0.11.2
+    - name: Install PyTorch
+      run: pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cpu
     - name: Install dependencies
       run: pip install .[${{ matrix.pytorch-toolbelt-version }}]
     - name: Install linters
@@ -48,7 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.8, 3.9]
+        python-version: ['3.6', '3.7', '3.8', '3.9', '3.10']
     steps:
     - name: Checkout
       uses: actions/checkout@v2

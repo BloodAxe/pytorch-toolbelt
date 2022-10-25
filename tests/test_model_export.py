@@ -6,7 +6,18 @@ from pytorch_toolbelt.modules.backbone.inceptionv4 import inceptionv4
 from pytorch_toolbelt.utils.torch_utils import maybe_cuda, count_parameters
 from pytorch_toolbelt.modules.encoders import timm
 
-skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="Cuda is not available")
+
+def is_onnx_available():
+    try:
+        import onnx
+
+        return True
+    except ImportError:
+        return False
+
+
+skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA is not available")
+skip_if_no_onnx = pytest.mark.skipif(not is_onnx_available, reason="ONNX is not available")
 
 
 @pytest.mark.parametrize(
@@ -26,6 +37,7 @@ skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="Cuda
     ],
 )
 @skip_if_no_cuda
+@skip_if_no_onnx
 def test_onnx_export(encoder, encoder_params):
     import onnx
 

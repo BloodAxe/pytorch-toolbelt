@@ -51,8 +51,8 @@ class DatasetMeanStdCalculator:
         image = image.reshape((-1, self.num_channels))
 
         if mask is not None:
-            mask = mask.reshape((mask.shape[0] * mask.shape[1], 1))
-            image = image[mask]
+            mask = mask.reshape((mask.shape[0] * mask.shape[1]))
+            image = image[mask, :]
 
             # In case the whole image is masked out, we exclude it entirely
             if len(image) == 0:

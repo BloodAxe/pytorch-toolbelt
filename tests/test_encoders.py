@@ -3,7 +3,7 @@ import torch
 
 import pytorch_toolbelt.modules.encoders as E
 from pytorch_toolbelt.modules.backbone.inceptionv4 import inceptionv4
-from pytorch_toolbelt.utils.torch_utils import maybe_cuda, count_parameters
+from pytorch_toolbelt.utils.torch_utils import maybe_cuda, count_parameters, describe_outputs
 from pytorch_toolbelt.modules.encoders import timm
 
 skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA is not available")
@@ -248,6 +248,8 @@ def test_timm_encoders(encoder, encoder_params):
         assert feature_map.size(1) == expected_channels
         assert feature_map.size(2) * expected_stride == x.size(2)
         assert feature_map.size(3) * expected_stride == x.size(3)
+
+    print(describe_outputs(output))
 
 
 @pytest.mark.parametrize(
