@@ -17,7 +17,7 @@ def is_onnx_available():
 
 
 skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA is not available")
-skip_if_no_cuda = pytest.mark.skipif(not is_onnx_available, reason="ONNX is not available")
+skip_if_no_onnx = pytest.mark.skipif(not is_onnx_available, reason="ONNX is not available")
 
 
 @pytest.mark.parametrize(
@@ -37,6 +37,7 @@ skip_if_no_cuda = pytest.mark.skipif(not is_onnx_available, reason="ONNX is not 
     ],
 )
 @skip_if_no_cuda
+@skip_if_no_onnx
 def test_onnx_export(encoder, encoder_params):
     import onnx
 
