@@ -3,24 +3,26 @@ from typing import Optional, Iterator, Dict, Union, List
 from torch import nn
 import itertools
 
-__all__ = ["get_lr_decay_parameters", "get_optimizable_parameters", "freeze_model"]
+__all__ = ["get_lr_decay_parameters", "get_optimizable_parameters", "freeze_model", "build_optimizer_param_groups"]
 
 
 def build_optimizer_param_groups(
     model: nn.Module,
     learning_rate: Union[float, Dict[str, float]],
     weight_decay: Union[float, Dict[str, float]],
-    apply_weight_decay_on_bias: bool,
-    apply_weight_decay_on_norm: bool,
+    apply_weight_decay_on_bias: bool = True,
+    apply_weight_decay_on_norm: bool = True,
 ) -> collections.OrderedDict:
     """
 
     Args:
         model:
-        learning_rate:
-        weight_decay:
-        apply_weight_decay_on_bias: If True, weight decay is applied to bias on Linear & Conv layers
-        apply_weight_decay_on_norm: If True, weight decay is applied normalization layers
+        learning_rate: A single number of dictionary of layerwise learning rate parameters.
+        weight_decay: A single number of dictionary of layerwise weight decay parameters.
+        apply_weight_decay_on_bias: If True, weight decay is applied to bias on Linear & Conv layers (default).
+            This parameter is False, it overrule the matching layerwise weight-decay parameter.
+        apply_weight_decay_on_norm: If True, weight decay is applied normalization layers (default).
+            This parameter is False, it overrule the matching layerwise weight-decay parameter.
 
     Returns:
 
