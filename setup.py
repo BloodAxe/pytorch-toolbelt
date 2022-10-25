@@ -5,7 +5,7 @@ import os
 import sys
 
 from setuptools import find_packages, setup
-from packaging import version
+from distutils.version import Version
 
 def is_docker() -> bool:
     """
@@ -88,7 +88,7 @@ REQUIRES_PYTHON = ">=3.6.0"
 
 DEPENDENCIES = [
     # We rely on particular activation functions that were added in 1.8.1
-    "torch>=1.11.0" if version.parse(sys.version) >= version.parse("3.7") else "torch>=1.10.0",
+    "torch>=1.11.0" if Version.parse(sys.version) >= Version.parse("3.7") else "torch>=1.10.0",
     # We use some pretrained models from torchvision
     "torchvision",
     # Library uses scipy for linear_sum_assignment for match_bboxes.
