@@ -7,10 +7,13 @@ __all__ = ["get_lr_decay_parameters", "get_optimizable_parameters", "freeze_mode
 
 def build_optimizer_param_groups(
     model: nn.Module,
+    
     learning_rate: Union[float, Dict[str, float]],
     weight_decay: Union[float, Dict[str, float]],
     apply_weight_decay_on_bias: bool,
     apply_weight_decay_on_norm: bool,
+    layerwise_learning_rate: Dict[str, float],
+    layerwise_weight_decay: Dict[str,float]
 ) -> collections.OrderedDict:
     """
 
@@ -28,15 +31,15 @@ def build_optimizer_param_groups(
     default_pg = []
     no_wd_on_bias_pg = []
     no_wd_on_norm_pg = []
-    
+
     for module_name, module in model.named_modules():
-        if apply_weight_decay_on_norm and isinstance(module, (nn._BatchNorm, nn._InstanceNorm)):
-            pass
-        elif apply_weight_decay_on_bias and isinstance(module):
-            pass
+        if isinstance(module, (nn._BatchNorm, nn._InstanceNorm)) and not apply_weight_decay_on_norm:
+            no_wd_on_bias_pg.append((module_name, get_optimizable_parameters(module)))
+        elif isinstance(module, (nn.Linear, nn._ConvNd, nn._ConvTransposeNd)) and not apply_weight_decay_on_bias:
+            no_wd_on_norm_pg.append()
         else:
             default_pg.append((module_name, get_optimizable_parameters(module)))
-        
+
     if len(default_pg):
         parameter_groups["default"] = default_pg
 
@@ -124,9 +127,13 @@ def freeze_model(
 def test_optimizer_groups():
     def conv_bn_relu(in_channels, out_channels):
         return nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True),
+            collections.OrderedDict(
+                [
+                    ("conv", nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1)),
+                    ("bn", nn.BatchNorm2d(out_channels)),
+                    ("relu", nn.ReLU(inplace=True)),
+                ]
+            )
         )
 
     model = nn.Sequential(
@@ -141,6 +148,16 @@ def test_optimizer_groups():
 
     pg = build_optimizer_param_groups(
         model, learning_rate=1e-4, weight_decay=0, apply_weight_decay_on_bias=False, apply_weight_decay_on_norm=False
+    )
+
+    pg = build_optimizer_param_groups(
+        model,
+        learning_rate=1e-2,
+        weight_decay=0,
+        layerwise_learning_rate={"encoder": 1e-3, "neck": 1e-4, "decoder": 1e-5},
+        layerwise_weight_decay={"encoder.0": 1e-5, "encoder.1": 1e-55, },
+        apply_weight_decay_on_bias=False,
+        apply_weight_decay_on_norm=False,
     )
 
     assert len(pg) == 1
