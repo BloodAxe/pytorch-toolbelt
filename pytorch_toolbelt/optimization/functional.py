@@ -1,16 +1,19 @@
+import collections
 from typing import Optional, Iterator, Dict, Union, List
 from torch import nn
 
 __all__ = ["get_lr_decay_parameters", "get_optimizable_parameters", "freeze_model"]
 
 
-def build_optimizer_param_groups(model: nn.Module,
-                                 learning_rate:Union[float, Dict[str,float]],
-                                 weight_decay:Union[float, Dict[str,float]],
-                                 apply_weight_decay_on_bias:bool,
-                                 apply_weight_decay_on_norm:bool) -> List:
+def build_optimizer_param_groups(
+    model: nn.Module,
+    learning_rate: Union[float, Dict[str, float]],
+    weight_decay: Union[float, Dict[str, float]],
+    apply_weight_decay_on_bias: bool,
+    apply_weight_decay_on_norm: bool,
+) -> List:
     """
-    
+
     Args:
         model:
         learning_rate:
@@ -22,16 +25,17 @@ def build_optimizer_param_groups(model: nn.Module,
 
     """
     default_pg = []
-    
+
     for module_name, module in model.named_modules():
-        
+
         if apply_weight_decay_on_norm and isinstance(module, (nn._BatchNorm, nn._InstanceNorm)):
             pass
-        elif apply_weight_decay_on_bias and isinstance(module)
+        elif apply_weight_decay_on_bias and isinstance(module):
+            pass
         else:
             default_pg.append((module_name, get_optimizable_parameters(module)))
-    
-            
+
+    return default_pg
 
 
 def get_lr_decay_parameters(model: nn.Module, learning_rate: float, lr_multipliers: Dict[str, float]):
@@ -104,3 +108,28 @@ def freeze_model(
                 module.track_running_stats = not freeze_bn
 
     return module
+
+
+def test_optimizer_groups():
+    def conv_bn_relu(in_channels, out_channels):
+        return nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True),
+        )
+
+    model = nn.Sequential(
+        collections.OrderedDict(
+            [
+                ("encoder", nn.Sequential(conv_bn_relu(3, 32), conv_bn_relu(32, 64))),
+                ("neck", nn.Sequential(conv_bn_relu(64, 64), conv_bn_relu(64, 64))),
+                ("decoder", nn.Sequential(conv_bn_relu(64, 32), conv_bn_relu(32, 1))),
+            ]
+        )
+    )
+
+    pg = build_optimizer_param_groups(
+        model, learning_rate=1e-4, weight_decay=0, apply_weight_decay_on_bias=False, apply_weight_decay_on_norm=False
+    )
+
+    assert len(pg) == 1
