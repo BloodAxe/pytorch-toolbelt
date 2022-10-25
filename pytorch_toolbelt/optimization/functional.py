@@ -42,7 +42,8 @@ def build_optimizer_param_groups(
     for lr_prefix, wd_prefix in layerwise_groups:
         remaining_params = []
         for module_name, module in all_params:
-            if module_name.startswith(lr_prefix) and module_name.startswith(wd_prefix)
+            if module_name.startswith(lr_prefix) and module_name.startswith(wd_prefix):
+                pass
             else:
                 remaining_params.append((module_name, module))
 
