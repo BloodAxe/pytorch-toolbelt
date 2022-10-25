@@ -1,19 +1,17 @@
 import collections
 from typing import Optional, Iterator, Dict, Union, List
 from torch import nn
+import itertools
 
 __all__ = ["get_lr_decay_parameters", "get_optimizable_parameters", "freeze_model"]
 
 
 def build_optimizer_param_groups(
     model: nn.Module,
-    
     learning_rate: Union[float, Dict[str, float]],
     weight_decay: Union[float, Dict[str, float]],
     apply_weight_decay_on_bias: bool,
     apply_weight_decay_on_norm: bool,
-    layerwise_learning_rate: Dict[str, float],
-    layerwise_weight_decay: Dict[str,float]
 ) -> collections.OrderedDict:
     """
 
@@ -27,6 +25,28 @@ def build_optimizer_param_groups(
     Returns:
 
     """
+    if isinstance(learning_rate) and "_default_" not in learning_rate:
+        raise RuntimeError("When using layerwise learning rate, a key _default_ must be present to indicate default LR")
+
+    if isinstance(weight_decay) and "_default_" not in weight_decay:
+        raise RuntimeError("When using layerwise weight decay, a key _default_ must be present to indicate default LR")
+
+    all_params:List[Tuple[str,nn.Module]] = list(model.named_modules())
+    layerwise_groups = itertools.product(
+        [k for k in learning_rate.keys() if k != "_default_"],
+        [k for k in weight_decay.keys() if k != "_default"]
+    )
+
+    for lr_prefix, wd_prefix in layerwise_groups:
+        remaining_params = []
+        for module_name, module in all_params:
+            if module_name.startswith(lr_prefix) and module_name.startswith(wd_prefix)
+            else:
+                remaining_params.append((module_name, module))
+
+        all_params = remaining_params
+
+
     parameter_groups = collections.OrderedDict()
     default_pg = []
     no_wd_on_bias_pg = []
@@ -122,42 +142,3 @@ def freeze_model(
                 module.track_running_stats = not freeze_bn
 
     return module
-
-
-def test_optimizer_groups():
-    def conv_bn_relu(in_channels, out_channels):
-        return nn.Sequential(
-            collections.OrderedDict(
-                [
-                    ("conv", nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1)),
-                    ("bn", nn.BatchNorm2d(out_channels)),
-                    ("relu", nn.ReLU(inplace=True)),
-                ]
-            )
-        )
-
-    model = nn.Sequential(
-        collections.OrderedDict(
-            [
-                ("encoder", nn.Sequential(conv_bn_relu(3, 32), conv_bn_relu(32, 64))),
-                ("neck", nn.Sequential(conv_bn_relu(64, 64), conv_bn_relu(64, 64))),
-                ("decoder", nn.Sequential(conv_bn_relu(64, 32), conv_bn_relu(32, 1))),
-            ]
-        )
-    )
-
-    pg = build_optimizer_param_groups(
-        model, learning_rate=1e-4, weight_decay=0, apply_weight_decay_on_bias=False, apply_weight_decay_on_norm=False
-    )
-
-    pg = build_optimizer_param_groups(
-        model,
-        learning_rate=1e-2,
-        weight_decay=0,
-        layerwise_learning_rate={"encoder": 1e-3, "neck": 1e-4, "decoder": 1e-5},
-        layerwise_weight_decay={"encoder.0": 1e-5, "encoder.1": 1e-55, },
-        apply_weight_decay_on_bias=False,
-        apply_weight_decay_on_norm=False,
-    )
-
-    assert len(pg) == 1
