@@ -5,6 +5,7 @@ import os
 import sys
 
 from setuptools import find_packages, setup
+from distutils.version import LooseVersion
 
 
 def is_docker() -> bool:
@@ -88,9 +89,9 @@ REQUIRES_PYTHON = ">=3.6.0"
 
 DEPENDENCIES = [
     # We rely on particular activation functions that were added in 1.8.1
-    "torch>=1.8.1",
+    "torch>=1.11.0" if LooseVersion(sys.version) >= LooseVersion("3.7") else "torch>=1.10.0",
     # We use some pretrained models from torchvision
-    "torchvision>=0.9.1",
+    "torchvision",
     # Library uses scipy for linear_sum_assignment for match_bboxes.
     # 1.4.0 is the first release where `maximize` argument gets introduced to this function
     "scipy>=1.4.0",
@@ -116,9 +117,7 @@ def load_readme():
 
 
 def get_test_requirements():
-    requirements = ["pytest", "onnx==1.9.0", "black==22.8.0", "timm==0.6.7", "matplotlib"]
-    if sys.version_info < (3, 3):
-        requirements.append("mock")
+    requirements = ["pytest", "black==22.8.0", "timm==0.6.7", "matplotlib"]
     return requirements
 
 
@@ -147,6 +146,10 @@ setup(
         "Unet",
         "Focal",
         "FPN",
+        "EfficientNet",
+        "Test-Time Augmentation",
+        "Model Ensembling",
+        "Model Surgery",
     ],
     scripts=[],
     license="License :: OSI Approved :: MIT License",
@@ -158,9 +161,14 @@ setup(
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "Operating System :: OS Independent",
         "Topic :: Scientific/Engineering :: Mathematics",
         "Topic :: Scientific/Engineering :: Image Recognition",
+        "Topic :: Scientific/Engineering :: Deep Learning",
+        "Topic :: Scientific/Engineering :: Computer Vision",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
