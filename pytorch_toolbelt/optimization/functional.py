@@ -1,5 +1,5 @@
 import collections
-from typing import Optional, Iterator, Dict, Union, List
+from typing import Optional, Iterator, Dict, Union, List, Tuple, Mapping
 from torch import nn
 import itertools
 
@@ -8,8 +8,8 @@ __all__ = ["get_lr_decay_parameters", "get_optimizable_parameters", "freeze_mode
 
 def build_optimizer_param_groups(
     model: nn.Module,
-    learning_rate: Union[float, Dict[str, float]],
-    weight_decay: Union[float, Dict[str, float]],
+    learning_rate: Union[float, Mapping[str, float]],
+    weight_decay: Union[float, Mapping[str, float]],
     apply_weight_decay_on_bias: bool = True,
     apply_weight_decay_on_norm: bool = True,
 ) -> collections.OrderedDict:
@@ -17,20 +17,20 @@ def build_optimizer_param_groups(
 
     Args:
         model:
-        learning_rate: A single number of dictionary of layerwise learning rate parameters.
-        weight_decay: A single number of dictionary of layerwise weight decay parameters.
+        learning_rate: A single number of dictionary of layer-wise learning rate parameters.
+        weight_decay: A single number of dictionary of layer-wise weight decay parameters.
         apply_weight_decay_on_bias: If True, weight decay is applied to bias on Linear & Conv layers (default).
-            This parameter is False, it overrule the matching layerwise weight-decay parameter.
+            This parameter is False, it overrules the matching layer-wise weight-decay parameter.
         apply_weight_decay_on_norm: If True, weight decay is applied normalization layers (default).
-            This parameter is False, it overrule the matching layerwise weight-decay parameter.
+            This parameter is False, it overrules the matching layer-wise weight-decay parameter.
 
     Returns:
 
     """
-    if isinstance(learning_rate) and "_default_" not in learning_rate:
+    if isinstance(learning_rate, Mapping) and "_default_" not in learning_rate:
         raise RuntimeError("When using layerwise learning rate, a key _default_ must be present to indicate default LR")
 
-    if isinstance(weight_decay) and "_default_" not in weight_decay:
+    if isinstance(weight_decay, Mapping) and "_default_" not in weight_decay:
         raise RuntimeError("When using layerwise weight decay, a key _default_ must be present to indicate default LR")
 
     all_params:List[Tuple[str,nn.Module]] = list(model.named_modules())
