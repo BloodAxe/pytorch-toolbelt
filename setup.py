@@ -7,6 +7,7 @@ import sys
 from setuptools import find_packages, setup
 from distutils.version import LooseVersion
 
+
 def is_docker() -> bool:
     """
     Check whether setup is running in Docker environment.

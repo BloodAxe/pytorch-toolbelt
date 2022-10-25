@@ -52,7 +52,7 @@ class DatasetMeanStdCalculator:
 
         if mask is not None:
             mask = mask.reshape((mask.shape[0] * mask.shape[1]))
-            image = image[mask,:]
+            image = image[mask, :]
 
             # In case the whole image is masked out, we exclude it entirely
             if len(image) == 0:
