@@ -1,9 +1,8 @@
-import collections
 import dataclasses
 import numbers
 from typing import Optional, Iterator, Dict, Union, List, Tuple, Mapping
+
 from torch import nn
-import itertools
 
 __all__ = ["get_lr_decay_parameters", "get_optimizable_parameters", "freeze_model", "build_optimizer_param_groups"]
 
