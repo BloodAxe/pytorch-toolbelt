@@ -1,9 +1,18 @@
 import collections
+from typing import List, Dict
 
+import torch.nn
 from torch import nn
+from torch.optim import SGD
 
 from pytorch_toolbelt.optimization.functional import build_optimizer_param_groups
 from pytorch_toolbelt.utils import count_parameters
+
+
+def count_parameters_in_param_groups(pg: List[Dict[str, List[torch.nn.Parameter]]]) -> Dict[str, int]:
+    kv_iter = enumerate(pg)
+    dict_iter = [(str(key), sum([p.numel() for p in value["params"]])) for key, value in kv_iter]
+    return dict(dict_iter)
 
 
 def test_build_optimizer_param_groups():
@@ -30,12 +39,16 @@ def test_build_optimizer_param_groups():
 
     total_params = count_parameters(model)
 
-    pg = build_optimizer_param_groups(
+    pg, defaults = build_optimizer_param_groups(
         model, learning_rate=1e-4, weight_decay=0, apply_weight_decay_on_bias=False, apply_weight_decay_on_norm=False
     )
-    assert len(pg) == 1
+    assert len(pg) == 3
+    optimizer = SGD(pg, **defaults)
 
-    pg = build_optimizer_param_groups(
+    total_params_in_pg = count_parameters_in_param_groups(pg)
+    assert sum(total_params_in_pg.values()) == total_params["total"]
+    
+    pg, defaults = build_optimizer_param_groups(
         model,
         learning_rate={"encoder": 1e-3, "neck": 1e-4, "decoder": 1e-5, "_default_": 0},
         weight_decay={
@@ -47,4 +60,8 @@ def test_build_optimizer_param_groups():
         apply_weight_decay_on_norm=False,
     )
 
-    assert len(pg) == 7
+    assert len(pg) == 10
+
+    optimizer = SGD(pg, **defaults)
+    total_params_in_pg = count_parameters_in_param_groups(pg)
+    assert sum(total_params_in_pg.values()) == total_params["total"]
