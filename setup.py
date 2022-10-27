@@ -167,8 +167,6 @@ setup(
         "Operating System :: OS Independent",
         "Topic :: Scientific/Engineering :: Mathematics",
         "Topic :: Scientific/Engineering :: Image Recognition",
-        "Topic :: Scientific/Engineering :: Deep Learning",
-        "Topic :: Scientific/Engineering :: Computer Vision",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
