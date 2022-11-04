@@ -49,7 +49,7 @@ def build_optimizer_param_groups(
     weight_decay: Union[float, Mapping[str, float]],
     apply_weight_decay_on_bias: bool = True,
     apply_weight_decay_on_norm: bool = True,
-) -> Tuple[List[ParametersGroup], Dict]:
+) -> Tuple[List[Dict], Dict]:
     """
 
     Args:
@@ -107,25 +107,25 @@ def build_optimizer_param_groups(
     )
 
     def get_param_group(parameter_name: str, module: nn.Module):
-        matching_lr_index = -1
+        matching_lr_index = "default"
         matching_lr_value = default_learning_rate
         for lr_index, (prefix, lr) in enumerate(learning_rate):
             if parameter_name.startswith(prefix):
-                matching_lr_index = lr_index
+                matching_lr_index = prefix
                 matching_lr_value = lr
                 break
 
-        matching_wd_index = -1
+        matching_wd_index = "default"
         matching_wd_value = default_weight_decay
         for wd_index, (prefix, wd) in enumerate(weight_decay):
             if parameter_name.startswith(prefix):
-                matching_wd_index = wd_index
+                matching_wd_index = prefix
                 matching_wd_value = wd
                 break
 
         if not apply_weight_decay_on_norm and isinstance(module, norm_layers):
             matching_wd_value = 0
-            matching_wd_index = "_no_wd_on_norm"
+            matching_wd_index = "no_wd_on_norm"
 
         if (
             not apply_weight_decay_on_bias
@@ -133,9 +133,12 @@ def build_optimizer_param_groups(
             and parameter_name.endswith(".bias")
         ):
             matching_wd_value = 0
-            matching_wd_index = "_no_wd_on_bias"
-
-        param_group_name = f"{matching_lr_index}_{matching_wd_index}"
+            matching_wd_index = "no_wd_on_bias"
+        
+        if matching_lr_index == matching_wd_index:
+            param_group_name = f"{matching_lr_index}"
+        else:
+            param_group_name = f"{matching_lr_index}_{matching_wd_index}"
         if param_group_name not in parameter_groups:
             parameter_groups[param_group_name] = ParametersGroup(
                 lr=matching_lr_value, weight_decay=matching_wd_value, name=param_group_name, params=[]

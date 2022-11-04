@@ -31,22 +31,24 @@ def test_build_optimizer_param_groups():
         collections.OrderedDict(
             [
                 ("encoder", nn.Sequential(conv_bn_relu(3, 32), conv_bn_relu(32, 64))),
-                ("neck", nn.Sequential(conv_bn_relu(64, 64), conv_bn_relu(64, 64))),
+                ("neck", nn.Sequential(conv_bn_relu(64, 64), conv_bn_relu(64, 64).requires_grad_(False))),
                 ("decoder", nn.Sequential(conv_bn_relu(64, 32), conv_bn_relu(32, 1))),
             ]
         )
     )
 
-    total_params = count_parameters(model)
-
     pg, defaults = build_optimizer_param_groups(
         model, learning_rate=1e-4, weight_decay=0, apply_weight_decay_on_bias=False, apply_weight_decay_on_norm=False
     )
-    assert len(pg) == 3
-    optimizer = SGD(pg, **defaults)
-
+    
+    total_params = count_parameters(model)
     total_params_in_pg = count_parameters_in_param_groups(pg)
-    assert sum(total_params_in_pg.values()) == total_params["total"]
+    optimizer = SGD(pg, **defaults)
+    
+    print(total_params)
+    print(total_params_in_pg)
+    assert len(pg) == 3
+    assert sum(total_params_in_pg.values()) == total_params["trainable"]
     
     pg, defaults = build_optimizer_param_groups(
         model,
@@ -60,8 +62,7 @@ def test_build_optimizer_param_groups():
         apply_weight_decay_on_norm=False,
     )
 
+    print(total_params)
+    print(total_params_in_pg)
     assert len(pg) == 10
-
-    optimizer = SGD(pg, **defaults)
-    total_params_in_pg = count_parameters_in_param_groups(pg)
-    assert sum(total_params_in_pg.values()) == total_params["total"]
+    assert sum(total_params_in_pg.values()) == total_params["trainable"]
