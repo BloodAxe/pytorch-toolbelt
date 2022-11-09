@@ -1,3 +1,4 @@
+import os
 import pickle
 from typing import Any, Dict, List
 
@@ -7,6 +8,7 @@ from torch import Tensor
 import torch.distributed as dist
 
 __all__ = [
+    "distributed_guard","DistributedGuard",
     "all_gather",
     "broadcast_from_master",
     "get_rank",
@@ -17,6 +19,34 @@ __all__ = [
     "reduce_dict_sum",
 ]
 
+
+class DistributedGuard:
+    def __init__(
+        self,
+        local_rank: int = os.environ.get("LOCAL_RANK", -1),
+        world_size: int = os.environ.get("WORLD_SIZE", -1),
+        visible_devices: List = os.environ.get("CUDA_VISIBLE_DEVICES", list(range(torch.cuda.device_count()))),
+    ):
+        self.local_rank = int(local_rank)
+        self.world_size = int(world_size)
+
+    def __enter__(self):
+        torch.cuda.set_device(self.local_rank)
+        torch.distributed.init_process_group(backend="nccl")
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        try:
+            torch.distributed.destroy_process_group()
+        except:
+            pass
+
+
+def distributed_guard(func):
+    def inner1(*args, **kwargs):
+        with DistributedGuard():
+            return func(*args, **kwargs)
+    
+    return inner1
 
 def is_dist_avail_and_initialized() -> bool:
     if not dist.is_available():
