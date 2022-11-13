@@ -29,14 +29,23 @@ class DistributedGuard:
     ):
         self.local_rank = int(local_rank)
         self.world_size = int(world_size)
+        self.visible_devices = visible_devices
+        self.dist_is_available = torch.distributed.is_available()
+        self.dist_is_initialized = torch.distributed.is_initialized()
 
     def __enter__(self):
-        torch.cuda.set_device(self.local_rank)
-        torch.distributed.init_process_group(backend="nccl")
+        if self.dist_is_available:
+            if self.dist_is_initialized:
+                raise RuntimeError("Torch distributed is already initialized. This indicates an error.")
+
+            torch.cuda.set_device(self.local_rank)
+            torch.distributed.init_process_group(backend="nccl")
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         try:
-            torch.distributed.destroy_process_group()
+            if self.dist_is_available and self.dist_is_initialized():
+                torch.distributed.barrier()
+                torch.distributed.destroy_process_group()
         except:
             pass
 
