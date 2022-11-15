@@ -275,7 +275,7 @@ def transfer_weights(model: nn.Module, model_state_dict: collections.OrderedDict
             print(e)
 
 
-def resize_like(x: Tensor, target: Tensor, mode: str = "bilinear", align_corners: bool = True) -> Tensor:
+def resize_like(x: Tensor, target: Tensor, mode: str = "bilinear", align_corners: Union[bool,None] = True) -> Tensor:
     """
     Resize input tensor to have the same spatial dimensions as target.
 
