@@ -34,7 +34,7 @@ class DistributedGuard:
         self.dist_is_initialized = torch.distributed.is_initialized()
 
     def __enter__(self):
-        if self.dist_is_available:
+        if self.dist_is_available and self.world_size > 1:
             if self.dist_is_initialized:
                 raise RuntimeError("Torch distributed is already initialized. This indicates an error.")
 
