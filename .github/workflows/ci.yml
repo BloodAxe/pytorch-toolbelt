@@ -53,4 +53,4 @@ jobs:
     - name: Install Black
       run: pip install black==22.8.0
     - name: Run Black
-      run: black --config=black.toml --check .
+      run: black --config=pyproject.toml --check .
