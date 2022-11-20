@@ -1,3 +1,4 @@
+import warnings
 from typing import Optional, List
 
 import torch
@@ -97,20 +98,24 @@ class BilinearAdditiveUpsample2d(nn.Module):
     https://arxiv.org/abs/1707.05847
     """
 
-    def __init__(self, in_channels: int, scale_factor: int = 2, n: int = 4):
+    def __init__(self, in_channels: int, scale_factor: int = 2, n = None):
         super().__init__()
-        if in_channels % n != 0:
-            raise ValueError(f"Number of input channels ({in_channels})must be divisable by n ({n})")
+        if n is not None:
+            warnings.warn("Argument n has been deprecated and will be removed in new release. It is computed automatically and not required to be specified explicitly")
+
+        self.n = 2 ** scale_factor
+
+        if in_channels % self.n != 0:
+            raise ValueError(f"Number of input channels ({in_channels})must be divisable by n ({self.n})")
 
         self.in_channels = in_channels
-        self.out_channels = in_channels // n
+        self.out_channels = in_channels // self.n
         self.upsample = nn.UpsamplingBilinear2d(scale_factor=scale_factor)
-        self.n = n
 
     def forward(self, x: Tensor) -> Tensor:  # skipcq: PYL-W0221
         x = self.upsample(x)
         n, c, h, w = x.size()
-        x = x.reshape(n, c // self.n, self.n, h, w).mean(2)
+        x = x.reshape(n, self.out_channels, self.n, h, w).mean(2)
         return x
 
 
