@@ -24,6 +24,7 @@ __all__ = [
 
 logger = logging.getLogger("DistributedGuard")
 
+
 class DistributedGuard:
     def __init__(
         self,
@@ -37,11 +38,15 @@ class DistributedGuard:
         self.dist_is_available = torch.distributed.is_available()
         self.dist_is_initialized = torch.distributed.is_initialized()
 
+        logger.info(
+            f"Creating DistributedGuard with devices {self.visible_devices} {self.local_rank}/{self.world_size}"
+        )
+
     def __enter__(self):
         if self.dist_is_available and self.world_size > 1:
             if self.dist_is_initialized:
                 raise RuntimeError("Torch distributed is already initialized. This indicates an error.")
-            
+
             device = torch.device(f"cuda:{self.local_rank}")
             torch.cuda.set_device(device)
             logger.info(f"Setting CUDA device %s for rank %d/%d", str(device), self.local_rank, self.world_size)
