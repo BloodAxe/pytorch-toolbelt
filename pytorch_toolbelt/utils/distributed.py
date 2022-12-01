@@ -50,7 +50,7 @@ class DistributedGuard:
 
             torch.cuda.set_device(self.device)
             logger.info(f"Setting CUDA device %s for rank %d/%d", str(self.device), self.local_rank, self.world_size)
-            torch.distributed.init_process_group(backend="nccl")
+            torch.distributed.init_process_group(backend="nccl", world_size=self.world_size, rank=self.local_rank)
         return self
     
     def __exit__(self, exc_type, exc_val, exc_tb):
