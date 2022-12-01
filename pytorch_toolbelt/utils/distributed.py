@@ -1,3 +1,4 @@
+import logging
 import os
 import pickle
 from typing import Any, Dict, List
@@ -7,8 +8,10 @@ from torch import Tensor
 
 import torch.distributed as dist
 
+
 __all__ = [
-    "distributed_guard","DistributedGuard",
+    "distributed_guard",
+    "DistributedGuard",
     "all_gather",
     "broadcast_from_master",
     "get_rank",
@@ -19,6 +22,7 @@ __all__ = [
     "reduce_dict_sum",
 ]
 
+logger = logging.getLogger("DistributedGuard")
 
 class DistributedGuard:
     def __init__(
@@ -37,8 +41,10 @@ class DistributedGuard:
         if self.dist_is_available and self.world_size > 1:
             if self.dist_is_initialized:
                 raise RuntimeError("Torch distributed is already initialized. This indicates an error.")
-
-            torch.cuda.set_device(self.local_rank)
+            
+            device = torch.device(f"cuda:{self.local_rank}")
+            torch.cuda.set_device(device)
+            logger.info(f"Setting CUDA device %s for rank %d/%d", str(device), self.local_rank, self.world_size)
             torch.distributed.init_process_group(backend="nccl")
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -54,8 +60,9 @@ def distributed_guard(func):
     def inner1(*args, **kwargs):
         with DistributedGuard():
             return func(*args, **kwargs)
-    
+
     return inner1
+
 
 def is_dist_avail_and_initialized() -> bool:
     if not dist.is_available():
