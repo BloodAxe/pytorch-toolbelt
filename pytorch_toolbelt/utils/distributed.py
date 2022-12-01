@@ -51,7 +51,8 @@ class DistributedGuard:
             torch.cuda.set_device(device)
             logger.info(f"Setting CUDA device %s for rank %d/%d", str(device), self.local_rank, self.world_size)
             torch.distributed.init_process_group(backend="nccl")
-
+        return self
+    
     def __exit__(self, exc_type, exc_val, exc_tb):
         try:
             if self.dist_is_available and self.dist_is_initialized():
