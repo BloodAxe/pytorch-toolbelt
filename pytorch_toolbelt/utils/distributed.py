@@ -37,6 +37,7 @@ class DistributedGuard:
         self.visible_devices = visible_devices
         self.dist_is_available = torch.distributed.is_available()
         self.dist_is_initialized = torch.distributed.is_initialized()
+        self.device = torch.device(f"cuda:{self.local_rank}")
 
         logger.info(
             f"Creating DistributedGuard with devices {self.visible_devices} {self.local_rank}/{self.world_size}"
@@ -47,9 +48,8 @@ class DistributedGuard:
             if self.dist_is_initialized:
                 raise RuntimeError("Torch distributed is already initialized. This indicates an error.")
 
-            device = torch.device(f"cuda:{self.local_rank}")
-            torch.cuda.set_device(device)
-            logger.info(f"Setting CUDA device %s for rank %d/%d", str(device), self.local_rank, self.world_size)
+            torch.cuda.set_device(self.device)
+            logger.info(f"Setting CUDA device %s for rank %d/%d", str(self.device), self.local_rank, self.world_size)
             torch.distributed.init_process_group(backend="nccl")
         return self
     
