@@ -28,8 +28,8 @@ logger = logging.getLogger("DistributedGuard")
 class DistributedGuard:
     def __init__(
         self,
-        local_rank: int = os.environ.get("LOCAL_RANK", -1),
-        world_size: int = os.environ.get("WORLD_SIZE", -1),
+        local_rank: int = os.environ.get("LOCAL_RANK", 0),
+        world_size: int = os.environ.get("WORLD_SIZE", 1),
         visible_devices: List = os.environ.get("CUDA_VISIBLE_DEVICES", list(range(torch.cuda.device_count()))),
     ):
         self.local_rank = int(local_rank)
