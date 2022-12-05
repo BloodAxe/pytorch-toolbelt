@@ -26,21 +26,21 @@ class ParametersGroup:
         return d
 
 
-def rec_getattr(obj, attr):
+def recursive_getattr(obj, attr):
     """Get object's attribute. May use dot notation.
 
     >>> class C(object): pass
     >>> a = C()
     >>> a.b = C()
     >>> a.b.c = 4
-    >>> rec_getattr(a, 'b.c')
+    >>> recursive_getattr(a, 'b.c')
     4
     """
     if "." not in attr:
         return getattr(obj, attr)
     else:
         L = attr.split(".")
-        return rec_getattr(getattr(obj, L[0]), ".".join(L[1:]))
+        return recursive_getattr(getattr(obj, L[0]), ".".join(L[1:]))
 
 
 def build_optimizer_param_groups(
@@ -146,19 +146,31 @@ def build_optimizer_param_groups(
 
         return parameter_groups[param_group_name]
 
-    # All parameters
+    # All optimizable parameters
     parameters = get_named_optimizable_parameters(model)
-
+    total_optimizable_params = 0
+    
     for parameter_name, parameter in parameters:
+        total_optimizable_params += parameter.numel()
         module_name = ".".join(parameter_name.split(".")[:-1])
-        module = rec_getattr(model, module_name)
+        module = recursive_getattr(model, module_name)
 
         param_group: ParametersGroup = get_param_group(parameter_name, module)
         param_group.params.append(parameter)
     
     defaults = {"lr": default_learning_rate, "weight_decay": default_weight_decay}
-    pgs = [x.asdict() for x in parameter_groups.values()]
-    return pgs, defaults
+    param_groups = [x.asdict() for x in parameter_groups.values()]
+
+    total_params_count_from_groups = 0
+    for pg in param_groups:
+        total_params_count_from_groups += sum(x.numel() for x in pg["params"])
+
+    if total_params_count_from_groups != total_optimizable_params:
+        raise RuntimeError(f"Detected mismatch in total number of optimizable parameters ({total_optimizable_params}) and"
+                           f"number of parameters across each groups ({total_params_count_from_groups})."
+                           f"This is likely indicate a bug in build_optimizer_param_groups."
+                           f"Please report a bug to https://github.com/BloodAxe/pytorch-toolbelt/issues/new?assignees=&labels=&template=bug-report.md")
+    return param_groups, defaults
 
 
 def get_lr_decay_parameters(model: nn.Module, learning_rate: float, lr_multipliers: Dict[str, float]):
