@@ -3,8 +3,31 @@ import numbers
 from typing import Optional, Iterator, Dict, Union, List, Tuple, Mapping
 
 from torch import nn
+from pytorch_toolbelt.utils.distributed import get_rank, get_world_size, is_dist_avail_and_initialized
 
-__all__ = ["get_lr_decay_parameters", "get_optimizable_parameters", "freeze_model", "build_optimizer_param_groups"]
+__all__ = ["scale_learning_rate_for_ddp", "get_optimizable_parameters", "freeze_model", "build_optimizer_param_groups"]
+
+
+def scale_learning_rate_for_ddp(
+    learning_rate: Union[numbers.Rational, Dict[str, numbers.Rational]]
+) -> Union[float, Dict[str, float]]:
+    """
+    Scale learning rate with respect to world size for Distributed Data Parallel training.
+    Efficient learning rate is WORLD_SIZE * learning rate from config
+    For non-distributed runs it is No-Op and returns learning_rate argument as is.
+    """
+    if not is_dist_avail_and_initialized():
+        return learning_rate
+
+    scale = float(get_world_size())
+    if isinstance(learning_rate, numbers.Rational):
+        return scale * learning_rate
+    if isinstance(learning_rate, Mapping):
+        mapping_cls = type(learning_rate)
+        return mapping_cls((k, float(v * scale)) for k, v in learning_rate.items())
+    raise ValueError(
+        f"Got unsupported type {type(learning_rate)} for learning rate. Must be either a mapping or a single scalar."
+    )
 
 
 @dataclasses.dataclass
@@ -53,7 +76,7 @@ def build_optimizer_param_groups(
     """
 
     Args:
-        model:
+        model: A model whose parameters will be used to fill corresponding parameter groups.
         learning_rate: A single number of dictionary of layer-wise learning rate parameters.
         weight_decay: A single number of dictionary of layer-wise weight decay parameters.
         apply_weight_decay_on_bias: If True, weight decay is applied to bias on Linear & Conv layers (default).
@@ -94,6 +117,7 @@ def build_optimizer_param_groups(
         nn.InstanceNorm1d,
         nn.InstanceNorm3d,
         nn.InstanceNorm2d,
+        nn.SyncBatchNorm,
     )
 
     layers_with_bias = (
@@ -134,7 +158,7 @@ def build_optimizer_param_groups(
         ):
             matching_wd_value = 0
             matching_wd_index = "no_wd_on_bias"
-        
+
         if matching_lr_index == matching_wd_index:
             param_group_name = f"{matching_lr_index}"
         else:
@@ -149,7 +173,7 @@ def build_optimizer_param_groups(
     # All optimizable parameters
     parameters = get_named_optimizable_parameters(model)
     total_optimizable_params = 0
-    
+
     for parameter_name, parameter in parameters:
         total_optimizable_params += parameter.numel()
         module_name = ".".join(parameter_name.split(".")[:-1])
@@ -157,7 +181,7 @@ def build_optimizer_param_groups(
 
         param_group: ParametersGroup = get_param_group(parameter_name, module)
         param_group.params.append(parameter)
-    
+
     defaults = {"lr": default_learning_rate, "weight_decay": default_weight_decay}
     param_groups = [x.asdict() for x in parameter_groups.values()]
 
@@ -166,43 +190,13 @@ def build_optimizer_param_groups(
         total_params_count_from_groups += sum(x.numel() for x in pg["params"])
 
     if total_params_count_from_groups != total_optimizable_params:
-        raise RuntimeError(f"Detected mismatch in total number of optimizable parameters ({total_optimizable_params}) and"
-                           f"number of parameters across each groups ({total_params_count_from_groups})."
-                           f"This is likely indicate a bug in build_optimizer_param_groups."
-                           f"Please report a bug to https://github.com/BloodAxe/pytorch-toolbelt/issues/new?assignees=&labels=&template=bug-report.md")
+        raise RuntimeError(
+            f"Detected mismatch in total number of optimizable parameters ({total_optimizable_params}) and"
+            f"number of parameters across each groups ({total_params_count_from_groups})."
+            f"This is likely indicate a bug in build_optimizer_param_groups."
+            f"Please report a bug to https://github.com/BloodAxe/pytorch-toolbelt/issues/new?assignees=&labels=&template=bug-report.md"
+        )
     return param_groups, defaults
-
-
-def get_lr_decay_parameters(model: nn.Module, learning_rate: float, lr_multipliers: Dict[str, float]):
-    """
-    Create different parameter groups with different settings.
-
-    Args:
-        parameters:
-        learning_rate:
-        groups: {"encoder": 0.1 ,"encoder.layer2": 0.2}
-    """
-    custom_lr_parameters = dict(
-        (group_name, {"params": [], "lr": learning_rate * lr_factor})
-        for (group_name, lr_factor) in lr_multipliers.items()
-    )
-    custom_lr_parameters["default"] = {"params": [], "lr": learning_rate}
-
-    for parameter_name, parameter in model.named_parameters():
-        if not parameter.requires_grad:
-            continue
-
-        matches = False
-        for group_name, lr in lr_multipliers.items():
-            if str.startswith(parameter_name, group_name):
-                custom_lr_parameters[group_name]["params"].append(parameter)
-                matches = True
-                break
-
-        if not matches:
-            custom_lr_parameters["default"]["params"].append(parameter)
-
-    return list(custom_lr_parameters.values())
 
 
 def get_optimizable_parameters(model: nn.Module) -> Iterator[nn.Parameter]:

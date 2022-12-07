@@ -1,3 +1,4 @@
+import gc
 import logging
 import os
 import pickle
@@ -58,8 +59,11 @@ class DistributedGuard:
             if self.dist_is_available and self.dist_is_initialized():
                 torch.distributed.barrier()
                 torch.distributed.destroy_process_group()
-        except:
-            pass
+        except Exception as e:
+            logger.exception(e)
+        finally:
+            torch.cuda.empty_cache()
+            gc.collect()
 
 
 def distributed_guard(func):
