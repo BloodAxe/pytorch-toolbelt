@@ -20,7 +20,7 @@ def scale_learning_rate_for_ddp(
         return learning_rate
 
     scale = float(get_world_size())
-    if isinstance(learning_rate, numbers.Rational):
+    if isinstance(learning_rate, (float, numbers.Rational)):
         return scale * learning_rate
     if isinstance(learning_rate, Mapping):
         mapping_cls = type(learning_rate)
