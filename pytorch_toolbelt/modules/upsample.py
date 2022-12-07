@@ -140,7 +140,7 @@ class ResidualDeconvolutionUpsample2d(nn.Module):
         self.conv = nn.ConvTranspose2d(
             in_channels, in_channels // n, kernel_size=3, padding=1, stride=scale_factor, output_padding=1
         )
-        self.residual = BilinearAdditiveUpsample2d(in_channels, scale_factor=scale_factor, n=n)
+        self.residual = BilinearAdditiveUpsample2d(in_channels, scale_factor=scale_factor)
         self.init_weights()
 
     def forward(self, x: Tensor) -> Tensor:  # skipcq: PYL-W0221
