@@ -81,6 +81,8 @@ def _deaugment_averaging(x: Tensor, reduction: MaybeStrOrCallable) -> Tensor:
         x = F.harmonic_mean(x, dim=0)
     elif reduction == "logodd":
         x = F.logodd_mean(x, dim=0)
+    elif reduction == "log1p":
+        x = F.log1p_mean(x, dim=0)
     elif callable(reduction):
         x = reduction(x, dim=0)
     elif reduction in {None, "None", "none"}:

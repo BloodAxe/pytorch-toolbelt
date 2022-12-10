@@ -10,6 +10,7 @@ __all__ = [
     "geometric_mean",
     "harmonic_mean",
     "logodd_mean",
+    "log1p_mean",
     "pad_image_tensor",
     "torch_fliplr",
     "torch_flipud",
@@ -260,4 +261,21 @@ def logodd_mean(x: Tensor, dim: int, eps: float = 1e-6) -> Tensor:
     x = torch.log(x / (1 - x))
     x = torch.mean(x, dim=dim)
     x = torch.exp(x) / (1 + torch.exp(x))
+    return x
+
+def log1p_mean(x: Tensor, dim: int) -> Tensor:
+    """
+    Compute average log(x+1) and them compute exp.
+    Requires all inputs to be non-negative
+
+    Args:
+        x: Input tensor of arbitrary shape
+        dim: Dimension to reduce
+
+    Returns:
+        Tensor
+    """
+    x = torch.log1p(x)
+    x = torch.mean(x, dim=dim)
+    x = torch.exp(x) - 1
     return x
