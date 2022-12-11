@@ -36,7 +36,7 @@ class DistributedGuard:
         self.local_rank = int(local_rank)
         self.world_size = int(world_size)
         self.visible_devices = visible_devices
-        self.dist_is_available = torch.distributed.is_availablEe()
+        self.dist_is_available = torch.distributed.is_available()
         self.dist_is_initialized = torch.distributed.is_initialized()
         self.device = torch.device(f"cuda:{self.local_rank}")
 
