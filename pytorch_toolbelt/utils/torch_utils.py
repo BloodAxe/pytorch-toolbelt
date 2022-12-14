@@ -310,7 +310,10 @@ def describe_outputs(outputs: Union[Tensor, Dict[str, Tensor], Iterable[Tensor]]
         Same structure but each item represents tensor shape, mean & std
     """
     if torch.is_tensor(outputs):
-        desc = dict(size=tuple(outputs.size()), mean=outputs.mean().item(), std=outputs.std().item())
+        if torch.is_floating_point(outputs):
+            desc = dict(size=tuple(outputs.size()), mean=outputs.mean().item(), std=outputs.std().item(), dtype=outputs.dtype)
+        else:
+            desc = dict(size=tuple(outputs.size()), num_unique=len(torch.unique(outputs)), dtype=outputs.dtype)
     elif isinstance(outputs, collections.abc.Mapping):
         desc = {}
         for key, value in outputs.items():
