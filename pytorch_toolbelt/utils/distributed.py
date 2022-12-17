@@ -264,7 +264,6 @@ def split_across_nodes(
         indexes = np.linspace(0, len(collection), int(world_size + 1), dtype=int)
         rank_local_indexes = slice(indexes[local_rank], indexes[local_rank + 1])
         rank_specific_subset = collection[rank_local_indexes]
-        torch.distributed.barrier()
         return rank_specific_subset
     else:
         return collection
