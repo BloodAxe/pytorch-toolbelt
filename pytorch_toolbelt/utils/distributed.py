@@ -3,7 +3,7 @@ import logging
 import os
 import pickle
 import typing
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, SupportsIndex
 
 import torch
 from torch import Tensor
@@ -230,10 +230,10 @@ def master_print(*args, **kwargs) -> None:
 
 
 def split_across_nodes(
-    collection: typing.SupportsIndex,
+    collection: SupportsIndex,
     world_size: Optional[int] = None,
     local_rank: Optional[int] = None,
-) -> typing.SupportsIndex:
+) -> SupportsIndex:
     """
     Split input collection such that each node receives 1/N of the total collection elements to process, where
     N is the number of nodes.
@@ -264,6 +264,7 @@ def split_across_nodes(
         indexes = np.linspace(0, len(collection), int(world_size + 1), dtype=int)
         rank_local_indexes = slice(indexes[local_rank], indexes[local_rank + 1])
         rank_specific_subset = collection[rank_local_indexes]
+        logger.debug(f"split_across_nodes returning slice {rank_local_indexes} from collection of size {len(collection)} for rank {local_rank}")
         return rank_specific_subset
     else:
         return collection
