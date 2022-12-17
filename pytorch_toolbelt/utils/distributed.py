@@ -2,6 +2,7 @@ import gc
 import logging
 import os
 import pickle
+import typing
 from typing import Any, Dict, List
 
 import torch
@@ -21,6 +22,7 @@ __all__ = [
     "is_main_process",
     "master_print",
     "reduce_dict_sum",
+    "split_across_nodes",
 ]
 
 logger = logging.getLogger("DistributedGuard")
@@ -225,3 +227,43 @@ def master_print(*args, **kwargs) -> None:
     """
     if is_main_process():
         print(*args, **kwargs)
+
+
+def split_across_nodes(
+    collection: typing.SupportsIndex,
+    world_size: Optional[int] = None,
+    local_rank: Optional[int] = None,
+) -> typing.SupportsIndex:
+    """
+    Split input collection such that each node receives 1/N of the total collection elements to process, where
+    N is the number of nodes.
+
+    Example:
+
+    >>> local_values = split_across_nodes([0,1,2,3,4,5,6,7,8,9])
+    >>> print(local_values, get_rank())
+    >>> # [0,1,2], 0
+    >>> # [3,4,5], 1
+    >>> # [6,7,8], 2
+    >>> # [9], 3
+
+    Args:
+        collection:
+        world_size:
+        local_rank:
+
+    Returns:
+
+    """
+    if world_size is None:
+        world_size = get_world_size()
+    if local_rank is None:
+        local_rank = get_rank()
+
+    if world_size > 1:
+        indexes = np.linspace(0, len(collection), int(world_size + 1), dtype=int)
+        rank_local_indexes = slice(indexes[local_rank], indexes[local_rank + 1])
+        torch.distributed.barrier()
+        return collection[rank_local_indexes]
+    else:
+        return collection
