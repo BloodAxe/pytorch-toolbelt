@@ -11,14 +11,14 @@ __all__ = ["GenericTimmEncoder", "make_n_channel_input_std_conv"]
 
 
 class GenericTimmEncoder(EncoderModule):
-    def __init__(self, timm_encoder: Union[nn.Module, str], layers: List[int] = None, pretrained=True):
+    def __init__(self, timm_encoder: Union[nn.Module, str], layers: List[int] = None, pretrained=True, **kwargs):
         strides = []
         channels = []
         default_layers = []
         if isinstance(timm_encoder, str):
             import timm.models.factory
 
-            timm_encoder = timm.models.factory.create_model(timm_encoder, features_only=True, pretrained=pretrained)
+            timm_encoder = timm.models.factory.create_model(timm_encoder, features_only=True, pretrained=pretrained, **kwargs)
 
         for i, fi in enumerate(timm_encoder.feature_info):
             strides.append(fi["reduction"])
@@ -61,7 +61,6 @@ def make_n_channel_input_std_conv(conv: nn.Module, in_channels: int, mode="auto"
         dilation=kwargs.get("dilation", conv.dilation),
         groups=kwargs.get("groups", conv.groups),
         bias=kwargs.get("bias", conv.bias is not None),
-        eps=kwargs.get("eps", conv.eps),
     )
 
     w = conv.weight
