@@ -43,7 +43,7 @@ def test_build_optimizer_param_groups():
 
     total_params = count_parameters(model)
     total_params_in_pg = count_parameters_in_param_groups(pg)
-    optimizer = SGD(pg, **defaults)
+    assert SGD(pg, **defaults) is not None
 
     print(total_params)
     print(total_params_in_pg)
