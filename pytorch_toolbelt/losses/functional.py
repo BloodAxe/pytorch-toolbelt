@@ -12,6 +12,7 @@ __all__ = [
     "soft_jaccard_score",
     "soft_dice_score",
     "wing_loss",
+    "log_cosh_loss",
 ]
 
 
@@ -298,3 +299,22 @@ def label_smoothed_nll_loss(
     eps_i = epsilon / lprobs.size(dim)
     loss = (1.0 - epsilon) * nll_loss + eps_i * smooth_loss
     return loss
+
+
+def log_cosh_loss(y_pred: torch.Tensor, y_true: torch.Tensor) -> torch.Tensor:
+    """
+    Numerically stable log-cosh implementation.
+    Reference: https://datascience.stackexchange.com/questions/96271/logcoshloss-on-pytorch
+
+    Args:
+        y_pred:
+        y_true:
+
+    Returns:
+
+    """
+
+    def _log_cosh(x: torch.Tensor) -> torch.Tensor:
+        return x + torch.nn.functional.softplus(-2.0 * x) - math.log(2.0)
+
+    return torch.mean(_log_cosh(y_pred - y_true))
