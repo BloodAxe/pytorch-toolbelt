@@ -18,7 +18,9 @@ class GenericTimmEncoder(EncoderModule):
         if isinstance(timm_encoder, str):
             import timm.models.factory
 
-            timm_encoder = timm.models.factory.create_model(timm_encoder, features_only=True, pretrained=pretrained, **kwargs)
+            timm_encoder = timm.models.factory.create_model(
+                timm_encoder, features_only=True, pretrained=pretrained, **kwargs
+            )
 
         for i, fi in enumerate(timm_encoder.feature_info):
             strides.append(fi["reduction"])

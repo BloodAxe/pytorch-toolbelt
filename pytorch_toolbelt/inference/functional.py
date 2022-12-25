@@ -261,6 +261,7 @@ def harmonic1p_mean(x: Tensor, dim: int) -> Tensor:
     x = torch.reciprocal(x) - 1
     return x
 
+
 def logodd_mean(x: Tensor, dim: int, eps: float = 1e-6) -> Tensor:
     """
     Compute log-odd mean along given dimension.
@@ -279,6 +280,7 @@ def logodd_mean(x: Tensor, dim: int, eps: float = 1e-6) -> Tensor:
     x = torch.mean(x, dim=dim)
     x = torch.exp(x) / (1 + torch.exp(x))
     return x
+
 
 def log1p_mean(x: Tensor, dim: int) -> Tensor:
     """

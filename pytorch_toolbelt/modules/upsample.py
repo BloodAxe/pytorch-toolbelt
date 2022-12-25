@@ -98,12 +98,14 @@ class BilinearAdditiveUpsample2d(nn.Module):
     https://arxiv.org/abs/1707.05847
     """
 
-    def __init__(self, in_channels: int, scale_factor: int = 2, n = None):
+    def __init__(self, in_channels: int, scale_factor: int = 2, n=None):
         super().__init__()
         if n is not None:
-            warnings.warn("Argument n has been deprecated and will be removed in new release. It is computed automatically and not required to be specified explicitly")
+            warnings.warn(
+                "Argument n has been deprecated and will be removed in new release. It is computed automatically and not required to be specified explicitly"
+            )
 
-        self.n = 2 ** scale_factor
+        self.n = 2**scale_factor
 
         if in_channels % self.n != 0:
             raise ValueError(f"Number of input channels ({in_channels})must be divisable by n ({self.n})")

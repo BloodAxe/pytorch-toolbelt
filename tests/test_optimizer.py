@@ -40,16 +40,16 @@ def test_build_optimizer_param_groups():
     pg, defaults = build_optimizer_param_groups(
         model, learning_rate=1e-4, weight_decay=0, apply_weight_decay_on_bias=False, apply_weight_decay_on_norm=False
     )
-    
+
     total_params = count_parameters(model)
     total_params_in_pg = count_parameters_in_param_groups(pg)
     optimizer = SGD(pg, **defaults)
-    
+
     print(total_params)
     print(total_params_in_pg)
     assert len(pg) == 3
     assert sum(total_params_in_pg.values()) == total_params["trainable"]
-    
+
     pg, defaults = build_optimizer_param_groups(
         model,
         learning_rate={"encoder": 1e-3, "neck": 1e-4, "decoder": 1e-5, "_default_": 0},
