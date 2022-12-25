@@ -9,7 +9,9 @@ from ..utils.support import pytorch_toolbelt_deprecated
 __all__ = [
     "geometric_mean",
     "harmonic_mean",
+    "harmonic1p_mean",
     "logodd_mean",
+    "log1p_mean",
     "pad_image_tensor",
     "torch_fliplr",
     "torch_flipud",
@@ -229,7 +231,7 @@ def geometric_mean(x: Tensor, dim: int) -> Tensor:
 def harmonic_mean(x: Tensor, dim: int, eps: float = 1e-6) -> Tensor:
     """
     Compute harmonic mean along given dimension.
-    This implementation assume values are in range (0...1) (Probabilities)
+
     Args:
         x: Input tensor of arbitrary shape
         dim: Dimension to reduce
@@ -240,6 +242,23 @@ def harmonic_mean(x: Tensor, dim: int, eps: float = 1e-6) -> Tensor:
     x = torch.reciprocal(x.clamp_min(eps))
     x = torch.mean(x, dim=dim)
     x = torch.reciprocal(x.clamp_min(eps))
+    return x
+
+
+def harmonic1p_mean(x: Tensor, dim: int) -> Tensor:
+    """
+    Compute harmonic mean along given dimension.
+
+    Args:
+        x: Input tensor of arbitrary shape
+        dim: Dimension to reduce
+
+    Returns:
+        Tensor
+    """
+    x = torch.reciprocal(x + 1)
+    x = torch.mean(x, dim=dim)
+    x = torch.reciprocal(x) - 1
     return x
 
 
@@ -260,4 +279,22 @@ def logodd_mean(x: Tensor, dim: int, eps: float = 1e-6) -> Tensor:
     x = torch.log(x / (1 - x))
     x = torch.mean(x, dim=dim)
     x = torch.exp(x) / (1 + torch.exp(x))
+    return x
+
+
+def log1p_mean(x: Tensor, dim: int) -> Tensor:
+    """
+    Compute average log(x+1) and them compute exp.
+    Requires all inputs to be non-negative
+
+    Args:
+        x: Input tensor of arbitrary shape
+        dim: Dimension to reduce
+
+    Returns:
+        Tensor
+    """
+    x = torch.log1p(x)
+    x = torch.mean(x, dim=dim)
+    x = torch.exp(x) - 1
     return x

@@ -1,12 +1,19 @@
+import gc
+import logging
+import os
 import pickle
-from typing import Any, Dict, List
-
+import typing
+from typing import Any, Dict, List, Optional
+import numpy as np
 import torch
 from torch import Tensor
 
 import torch.distributed as dist
 
+
 __all__ = [
+    "distributed_guard",
+    "DistributedGuard",
     "all_gather",
     "broadcast_from_master",
     "get_rank",
@@ -15,7 +22,58 @@ __all__ = [
     "is_main_process",
     "master_print",
     "reduce_dict_sum",
+    "split_across_nodes",
 ]
+
+logger = logging.getLogger("DistributedGuard")
+
+
+class DistributedGuard:
+    def __init__(
+        self,
+        local_rank: int = os.environ.get("LOCAL_RANK", 0),
+        world_size: int = os.environ.get("WORLD_SIZE", 1),
+        visible_devices: List = os.environ.get("CUDA_VISIBLE_DEVICES", list(range(torch.cuda.device_count()))),
+    ):
+        self.local_rank = int(local_rank)
+        self.world_size = int(world_size)
+        self.visible_devices = visible_devices
+        self.dist_is_available = torch.distributed.is_available()
+        self.dist_is_initialized = torch.distributed.is_initialized()
+        self.device = torch.device(f"cuda:{self.local_rank}")
+
+        logger.info(
+            f"Creating DistributedGuard with devices {self.visible_devices} {self.local_rank}/{self.world_size}"
+        )
+
+    def __enter__(self):
+        if self.dist_is_available and self.world_size > 1:
+            if self.dist_is_initialized:
+                raise RuntimeError("Torch distributed is already initialized. This indicates an error.")
+
+            torch.cuda.set_device(self.device)
+            logger.info(f"Setting CUDA device {self.device} for rank {self.local_rank}/{self.world_size}")
+            torch.distributed.init_process_group(backend="nccl", world_size=self.world_size, rank=self.local_rank)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        try:
+            if self.dist_is_available and self.dist_is_initialized:
+                torch.distributed.barrier()
+                torch.distributed.destroy_process_group()
+        except Exception as e:
+            logger.exception(e)
+        finally:
+            torch.cuda.empty_cache()
+            gc.collect()
+
+
+def distributed_guard(func):
+    def inner1(*args, **kwargs):
+        with DistributedGuard():
+            return func(*args, **kwargs)
+
+    return inner1
 
 
 def is_dist_avail_and_initialized() -> bool:
@@ -169,3 +227,46 @@ def master_print(*args, **kwargs) -> None:
     """
     if is_main_process():
         print(*args, **kwargs)
+
+
+def split_across_nodes(
+    collection: List,
+    world_size: Optional[int] = None,
+    local_rank: Optional[int] = None,
+) -> List:
+    """
+    Split input collection such that each node receives 1/N of the total collection elements to process, where
+    N is the number of nodes.
+
+    Example:
+
+    >>> local_values = split_across_nodes([0,1,2,3,4,5,6,7,8,9])
+    >>> print(local_values, get_rank())
+    >>> # [0,1,2], 0
+    >>> # [3,4,5], 1
+    >>> # [6,7,8], 2
+    >>> # [9], 3
+
+    Args:
+        collection:
+        world_size:
+        local_rank:
+
+    Returns:
+
+    """
+    if world_size is None:
+        world_size = get_world_size()
+    if local_rank is None:
+        local_rank = get_rank()
+
+    if world_size > 1:
+        indexes = np.linspace(0, len(collection), int(world_size + 1), dtype=int)
+        rank_local_indexes = slice(indexes[local_rank], indexes[local_rank + 1])
+        rank_specific_subset = collection[rank_local_indexes]
+        logger.debug(
+            f"split_across_nodes returning slice {rank_local_indexes} from collection of size {len(collection)} for rank {local_rank}"
+        )
+        return rank_specific_subset
+    else:
+        return collection
