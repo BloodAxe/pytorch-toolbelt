@@ -7,7 +7,6 @@ from .focal import *
 from .focal_cosine import *
 from .functional import *
 from .jaccard import *
-from .joint_loss import *
 from .lovasz import *
 from .soft_bce import *
 from .soft_ce import *
