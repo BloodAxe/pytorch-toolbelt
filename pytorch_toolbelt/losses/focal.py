@@ -33,6 +33,7 @@ class BinaryFocalLoss(nn.Module):
 
         """
         super().__init__()
+        self.ignore_index = ignore_index
         self.focal_loss_fn = partial(
             focal_loss_with_logits,
             alpha=alpha,
@@ -45,10 +46,37 @@ class BinaryFocalLoss(nn.Module):
             softmax_dim=softmax_dim,
         )
 
+        self.get_one_hot_targets = self._one_hot_targets_with_ignore if ignore_index is not None else self._one_hot_targets
+
     def forward(self, inputs: Tensor, targets: Tensor) -> Tensor:
-        """Compute focal loss for binary classification problem."""
+        """
+        Compute focal loss for binary classification problem.
+        Args:
+            inputs: [B,C,H,W]
+            targets: [B,C,H,W] one-hot or [B,H,W] long tensor that will be one-hot encoded (w.r.t to ignore_index)
+
+        Returns:
+
+        """
+
+        if len(targets.shape) + 1 == len(inputs.shape):
+            targets = self.get_one_hot_targets(targets, num_classes=inputs.size(1))
+
         loss = self.focal_loss_fn(inputs, targets)
         return loss
+
+    def _one_hot_targets(self, targets, num_classes):
+        targets_one_hot = torch.nn.functional.one_hot(targets, num_classes=num_classes)
+        targets_one_hot = torch.moveaxis(targets_one_hot, -1, 1)
+        return targets_one_hot
+
+    def _one_hot_targets_with_ignore(self, targets, num_classes):
+        ignored_mask = targets.eq(self.ignore_index)
+        targets_masked = torch.masked_fill(targets, ignored_mask, 0)
+        targets_one_hot = torch.nn.functional.one_hot(targets_masked, num_classes=num_classes)
+        targets_one_hot = torch.moveaxis(targets_one_hot, -1, 1)
+        targets_one_hot = torch.masked_fill(targets_one_hot, ignored_mask.unsqueeze(1), self.ignore_index)
+        return targets_one_hot
 
 
 class CrossEntropyFocalLoss(nn.Module):
@@ -81,6 +109,15 @@ class CrossEntropyFocalLoss(nn.Module):
         self.ignore_index = ignore_index
 
     def forward(self, inputs: Tensor, targets: Tensor) -> Tensor:
+        """
+
+        Args:
+            inputs: [B,C,H,W] tensor
+            targets: [B,H,W] tensor
+
+        Returns:
+
+        """
         return softmax_focal_loss_with_logits(
             inputs,
             targets,
