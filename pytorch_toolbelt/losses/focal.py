@@ -75,7 +75,7 @@ class BinaryFocalLoss(nn.Module):
         targets_masked = torch.masked_fill(targets, ignored_mask, 0)
         targets_one_hot = torch.nn.functional.one_hot(targets_masked, num_classes=num_classes)
         targets_one_hot = torch.moveaxis(targets_one_hot, -1, 1)
-        targets_one_hot = torch.masked_fill(targets_one_hot, ignored_mask.unsqueeze(1), self.ignore_index)
+        targets_one_hot.masked_fill_(ignored_mask.unsqueeze(1), self.ignore_index)
         return targets_one_hot
 
 
