@@ -1,5 +1,5 @@
 import random
-from typing import Any
+from typing import Any, Optional
 
 from torch.utils.data import Dataset
 import numpy as np
@@ -14,22 +14,26 @@ class RandomSubsetDataset(Dataset):
     Wrapper to get desired number of samples from underlying dataset
     """
 
-    def __init__(self, dataset, num_samples: int):
+    def __init__(self, dataset, num_samples: int, weights: Optional[np.ndarray] = None):
         self.dataset = dataset
         self.num_samples = num_samples
+        self.weights = weights
 
     def __len__(self) -> int:
         return self.num_samples
 
     def __getitem__(self, _) -> Any:
         index = random.randrange(len(self.dataset))
+        
+        index = random.choices(range(len(self.dataset)), k=1)[0]
+        
         return self.dataset[index]
 
     def get_collate_fn(self):
         get_collate_fn = getattr(self.dataset, "get_collate_fn", None)
         if callable(get_collate_fn):
             return get_collate_fn()
-        return default_collate()
+        return default_collate
 
 
 class RandomSubsetWithMaskDataset(Dataset):
