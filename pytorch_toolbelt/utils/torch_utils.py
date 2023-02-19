@@ -40,6 +40,7 @@ __all__ = [
     "move_to_device_non_blocking",
     "describe_outputs",
     "get_collate_for_dataset",
+    "get_non_wrapped_model",
 ]
 
 
@@ -201,7 +202,7 @@ def image_to_tensor(image: np.ndarray, dummy_channels_dim=True) -> torch.Tensor:
     else:
         # HWC -> CHW
         image = np.moveaxis(image, -1, 0)
-    image = np.ascontiguousarray(image)
+    image = np.require(image, requirements="C")
     image = torch.from_numpy(image)
     return image
 
@@ -357,3 +358,25 @@ def get_collate_for_dataset(dataset: Union[Dataset, ConcatDataset]) -> Callable:
         collate_fn = collates[0]
 
     return collate_fn
+
+
+def get_non_wrapped_model(model: nn.Module) -> nn.Module:
+    """
+    Return real model from (maybe) wrapped in DP / DDP
+
+    Args:
+        model:
+
+    Returns:
+
+    """
+    from torch.nn import DataParallel
+    from torch.nn.parallel import DistributedDataParallel
+
+    if not isinstance(model, nn.Module):
+        raise RuntimeError("Input model must be a subclass of nn.Module.")
+
+    if isinstance(model, (DataParallel, DistributedDataParallel)):
+        model = model.module
+
+    return model
