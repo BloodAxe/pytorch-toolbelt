@@ -25,7 +25,7 @@ __all__ = [
     "split_across_nodes",
 ]
 
-logger = logging.getLogger("DistributedGuard")
+logger = logging.getLogger("pytorch_toolbelt.utils.distributed")
 
 
 class DistributedGuard:
@@ -230,9 +230,7 @@ def master_print(*args, **kwargs) -> None:
 
 
 def split_across_nodes(
-    collection: List,
-    world_size: Optional[int] = None,
-    local_rank: Optional[int] = None,
+    collection: List, world_size: Optional[int] = None, local_rank: Optional[int] = None, cost: Optional[List] = None
 ) -> List:
     """
     Split input collection such that each node receives 1/N of the total collection elements to process, where
@@ -248,9 +246,12 @@ def split_across_nodes(
     >>> # [9], 3
 
     Args:
-        collection:
-        world_size:
-        local_rank:
+        collection: Initial collection of size N to split into K nodes
+        world_size: World size (Number of nodes K)
+        local_rank: Current node
+        cost: A vector of size N that represents the cost of processing associated with each item.
+              If present, it will affect the order of elements each node will receive to even the total cost each node
+              will get.
 
     Returns:
 
@@ -261,12 +262,29 @@ def split_across_nodes(
         local_rank = get_rank()
 
     if world_size > 1:
-        indexes = np.linspace(0, len(collection), int(world_size + 1), dtype=int)
-        rank_local_indexes = slice(indexes[local_rank], indexes[local_rank + 1])
-        rank_specific_subset = collection[rank_local_indexes]
-        logger.debug(
-            f"split_across_nodes returning slice {rank_local_indexes} from collection of size {len(collection)} for rank {local_rank}"
-        )
+        if cost is not None:
+            if len(cost) != len(collection):
+                raise RuntimeError()
+            ordered_indexes = np.argsort(cost)
+            rank_local_indexes = ordered_indexes % world_size
+
+            logger.debug(
+                f"Node {local_rank} get {len(rank_local_indexes)} items with total cost {sum(cost[rank_local_indexes])}"
+            )
+
+            if isinstance(collection, np.ndarray):
+                rank_specific_subset = collection[rank_local_indexes]
+            else:
+                rank_specific_subset = [collection[i] for i in rank_local_indexes]
+
+        else:
+            indexes = np.linspace(0, len(collection), int(world_size + 1), dtype=int)
+            rank_local_indexes = slice(indexes[local_rank], indexes[local_rank + 1])
+            rank_specific_subset = collection[rank_local_indexes]
+
+            logger.debug(
+                f"split_across_nodes returning slice {rank_local_indexes} from collection of size {len(collection)} for rank {local_rank}"
+            )
         return rank_specific_subset
     else:
         return collection
