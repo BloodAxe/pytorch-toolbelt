@@ -266,16 +266,18 @@ def split_across_nodes(
             if len(cost) != len(collection):
                 raise RuntimeError()
             ordered_indexes = np.argsort(cost)
-            rank_local_indexes = ordered_indexes % world_size
+            rank_local_indexes = (ordered_indexes % world_size) == local_rank
 
             logger.debug(
-                f"Node {local_rank} get {len(rank_local_indexes)} items with total cost {sum(cost[rank_local_indexes])}"
+                f"Node {local_rank} get {np.count_nonzero(rank_local_indexes)} items with total cost {sum(cost[rank_local_indexes])}"
             )
 
             if isinstance(collection, np.ndarray):
                 rank_specific_subset = collection[rank_local_indexes]
             else:
-                rank_specific_subset = [collection[i] for i in rank_local_indexes]
+                rank_specific_subset = [
+                    collection[index] for index, should_pick in enumerate(rank_local_indexes) if should_pick
+                ]
 
         else:
             indexes = np.linspace(0, len(collection), int(world_size + 1), dtype=int)
