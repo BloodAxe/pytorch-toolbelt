@@ -6,7 +6,9 @@ __all__ = ["HRNetW18Encoder", "HRNetW32Encoder", "HRNetW48Encoder", "TimmHRNetW1
 
 
 class HRNetW18Encoder(GenericTimmEncoder):
-    def __init__(self, pretrained=True, use_incre_features: bool = True, layers=None):
+    def __init__(
+        self, pretrained=True, use_incre_features: bool = True, layers=None, first_conv_stride_one: bool = False
+    ):
         from timm.models import hrnet
 
         encoder = hrnet.hrnet_w18(
@@ -15,7 +17,13 @@ class HRNetW18Encoder(GenericTimmEncoder):
             features_only=True,
             out_indices=(0, 1, 2, 3, 4),
         )
+        if first_conv_stride_one:
+            encoder.conv1.stride = (1, 1)
+
         super().__init__(encoder, layers)
+
+        if first_conv_stride_one:
+            self._output_strides = [s // 2 for s in self._output_strides]
 
     def forward(self, x):
         y = self.encoder.forward(x)
