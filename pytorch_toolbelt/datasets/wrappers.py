@@ -24,9 +24,6 @@ class RandomSubsetDataset(Dataset):
 
     def __getitem__(self, _) -> Any:
         index = random.randrange(len(self.dataset))
-        
-        index = random.choices(range(len(self.dataset)), k=1)[0]
-        
         return self.dataset[index]
 
     def get_collate_fn(self):
