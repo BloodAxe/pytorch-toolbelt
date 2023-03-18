@@ -78,14 +78,12 @@ class BiFPNBlock(nn.Module):
         self.epsilon = epsilon
         num_blocks = num_feature_maps - 1
 
-        self.top_down_blocks = [
-            BiFPNDepthwiseConvBlock(feature_size, feature_size, activation=activation, act=act)
-            for _ in range(num_blocks)
-        ]
-        self.bottom_up_blocks = [
-            BiFPNDepthwiseConvBlock(feature_size, feature_size, activation=activation, act=act)
-            for _ in range(num_blocks)
-        ]
+        self.top_down_blocks = nn.ModuleList(
+            [BiFPNDepthwiseConvBlock(feature_size, feature_size, activation=activation) for _ in range(num_blocks)]
+        )
+        self.bottom_up_blocks = nn.ModuleList(
+            [BiFPNDepthwiseConvBlock(feature_size, feature_size, activation=activation) for _ in range(num_blocks)]
+        )
 
         self.register_parameter("w1", nn.Parameter(torch.Tensor(2, num_blocks), requires_grad=True))
         self.register_parameter("w2", nn.Parameter(torch.Tensor(3, num_blocks), requires_grad=True))
