@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Union, Type
 
 import torch
 import torch.nn as nn
@@ -69,7 +69,7 @@ class BiFPNConvBlock(nn.Module):
 
 class BiFPNBlock(nn.Module):
     """
-    Bi-directional Feature Pyramid Network
+    Bi-Directional Feature Pyramid Network
     """
 
     def __init__(
@@ -171,14 +171,12 @@ class BiFPNDecoder(DecoderModule):
         super(BiFPNDecoder, self).__init__()
 
         self.projections = nn.ModuleList(
-            [nn.Conv2d(f, channels, kernel_size=1, stride=1, padding=0) for f in feature_maps]
-            if f != channels
-            else nn.Identity()
+            [nn.Conv2d(f, channels, kernel_size=1, stride=1, padding=0)  if f != channels else nn.Identity() for f in feature_maps]
         )
 
         bifpns = []
         for _ in range(num_layers):
-            bifpns.append(BiFPNBlock(channels, num_feature_maps=len(feature_maps), activation=activation))
+            bifpns.append(BiFPNBlock(channels, num_feature_maps=len(feature_maps), activation=activation, block=block))
         self.bifpn = nn.Sequential(*bifpns)
 
         self._channels = [channels] * len(feature_maps)

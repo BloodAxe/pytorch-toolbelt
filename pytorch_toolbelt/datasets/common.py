@@ -1,3 +1,5 @@
+from typing import Union
+
 import cv2
 
 __all__ = [
@@ -28,7 +30,9 @@ __all__ = [
 ]
 
 
-def name_for_stride(name, stride: int):
+def name_for_stride(name, stride: Union[int, None]) -> str:
+    if stride is None:
+        return name
     return f"{name}_STRIDE_{stride}"
 
 
