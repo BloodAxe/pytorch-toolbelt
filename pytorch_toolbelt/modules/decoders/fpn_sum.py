@@ -1,4 +1,6 @@
 from typing import List, Union
+
+import torch
 from torch import Tensor, nn
 import inspect
 
@@ -24,6 +26,7 @@ class FPNSumDecoder(SegmentationDecoderModule):
     def __init__(
         self,
         feature_maps: List[int],
+        strides: List[int],
         channels: int,
         context_block=FPNContextBlock,
         bottleneck_block=FPNBottleneckBlock,
@@ -52,12 +55,12 @@ class FPNSumDecoder(SegmentationDecoderModule):
 
         if inspect.isclass(prediction_block) and issubclass(prediction_block, nn.Identity):
             self.outputs = nn.ModuleList([prediction_block() for _ in reversed(feature_maps)])
-            self.channels = [channels] * len(feature_maps)
+            self._channels = [channels] * len(feature_maps)
         else:
             self.outputs = nn.ModuleList(
                 [prediction_block(channels, prediction_channels) for _ in reversed(feature_maps)]
             )
-            self.channels = [prediction_channels] * len(feature_maps)
+            self._channels = [prediction_channels] * len(feature_maps)
 
         if issubclass(upsample_block, nn.Upsample):
             self.upsamples = nn.ModuleList([upsample_block(scale_factor=2) for _ in reversed(feature_maps)])
@@ -65,6 +68,18 @@ class FPNSumDecoder(SegmentationDecoderModule):
             self.upsamples = nn.ModuleList(
                 [upsample_block(channels, channels) for in_channels in reversed(feature_maps)]
             )
+        self._strides = tuple(strides)
+
+    @property
+    @torch.jit.ignore
+    def channels(self):
+        return self._channels
+
+    @property
+    @torch.jit.ignore
+    def strides(self):
+        return self._strides
+
 
     def forward(self, feature_maps: List[Tensor]) -> List[Tensor]:
         last_feature_map = feature_maps[-1]
