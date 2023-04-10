@@ -48,17 +48,17 @@ class FPNSumDecoder(SegmentationDecoderModule):
         self.lateral = nn.ModuleList([bottleneck_block(in_channels, channels) for in_channels in feature_maps])
 
         if inspect.isclass(prediction_block) and issubclass(prediction_block, nn.Identity):
-            self.outputs = nn.ModuleList([prediction_block() for _ in feature_maps])
+            self.outputs = nn.ModuleList([prediction_block() for _ in feature_maps[:-1]])
             self._channels = [channels] * len(feature_maps)
         else:
-            self.outputs = nn.ModuleList([prediction_block(channels, channels) for _ in feature_maps])
+            self.outputs = nn.ModuleList([prediction_block(channels, channels) for _ in feature_maps[:-1]])
             self._channels = [channels] * len(feature_maps)
 
         if issubclass(upsample_block, nn.Upsample):
-            self.upsamples = nn.ModuleList([upsample_block(scale_factor=2) for _ in reversed(feature_maps)])
+            self.upsamples = nn.ModuleList([upsample_block(scale_factor=2) for _ in reversed(feature_maps[:-1])])
         else:
             self.upsamples = nn.ModuleList(
-                [upsample_block(channels, channels) for in_channels in reversed(feature_maps)]
+                [upsample_block(channels, channels) for in_channels in reversed(feature_maps[:-1])]
             )
         self._strides = tuple(strides)
 
