@@ -1,5 +1,5 @@
 import warnings
-from typing import Optional, List
+from typing import Optional, List, Dict, Any, Tuple
 
 import torch
 from torch import nn, Tensor
@@ -12,6 +12,7 @@ __all__ = [
     "BilinearAdditiveUpsample2d",
     "DeconvolutionUpsample2d",
     "ResidualDeconvolutionUpsample2d",
+    "InterpolateLayer",
 ]
 
 
@@ -152,3 +153,12 @@ class ResidualDeconvolutionUpsample2d(nn.Module):
     def init_weights(self):
         torch.nn.init.kaiming_normal_(self.conv.weight, nonlinearity="linear")
         torch.nn.init.zeros_(self.conv.bias)
+
+
+class InterpolateLayer(nn.Module):
+    def __init__(self, interpolate_kwargs: Dict[str, Any]):
+        super().__init__()
+        self.interpolate_kwargs = interpolate_kwargs
+
+    def forward(self, x: Tensor, output_size: Tuple[int, int]) -> Tensor:
+        return torch.nn.functional.interpolate(x, size=output_size, **self.interpolate_kwargs)

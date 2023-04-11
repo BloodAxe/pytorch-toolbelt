@@ -1,11 +1,11 @@
-from typing import List, Union
+from typing import List, Union, Callable, Tuple
 
 import torch
 from torch import Tensor, nn
 import inspect
 
 from .common import SegmentationDecoderModule
-from .. import conv1x1, conv3x3, FPNContextBlock, FPNBottleneckBlock
+from .. import conv1x1, conv3x3, FPNContextBlock, FPNBottleneckBlock, InterpolateLayer
 
 __all__ = ["FPNSumDecoder"]
 
@@ -28,38 +28,44 @@ class FPNSumDecoder(SegmentationDecoderModule):
         feature_maps: List[int],
         strides: List[int],
         channels: int,
-        bottleneck_block=conv1x1,
-        prediction_block: Union[nn.Identity, conv1x1, nn.Module] = conv3x3,
-        upsample_block=nn.Upsample,
+        bottleneck_block: Callable[[int, int], nn.Module] = conv1x1,
+        prediction_block: Union[nn.Identity, Callable[[int, int], nn.Module]] = conv3x3,
+        upsample_type: Union[str, nn.Module] = "interpolate",
+        upsample_kwargs=None,
     ):
         """
         Create a new instance of FPN decoder with summation of consecutive feature maps.
         :param feature_maps: Number of channels in input feature maps (fine to coarse).
             For instance - [64, 256, 512, 2048]
         :param channels: FPN channels
-        :param context_block:
         :param bottleneck_block:
         :param prediction_block: Optional prediction block to apply to FPN feature maps before returning from decoder
         :param prediction_channels: Number of prediction channels
         :param upsample_block:
+        :param upsample_kwargs:
         """
         super().__init__()
+        if upsample_kwargs is None:
+            upsample_kwargs = {}
+        self.upsample_kwargs = upsample_kwargs
 
         self.lateral = nn.ModuleList([bottleneck_block(in_channels, channels) for in_channels in feature_maps])
 
         if inspect.isclass(prediction_block) and issubclass(prediction_block, nn.Identity):
             self.outputs = nn.ModuleList([prediction_block() for _ in feature_maps[:-1]])
-            self._channels = [channels] * len(feature_maps)
         else:
             self.outputs = nn.ModuleList([prediction_block(channels, channels) for _ in feature_maps[:-1]])
-            self._channels = [channels] * len(feature_maps)
 
-        if issubclass(upsample_block, nn.Upsample):
-            self.upsamples = nn.ModuleList([upsample_block(scale_factor=2) for _ in reversed(feature_maps[:-1])])
-        else:
+        if inspect.isclass(upsample_type) and issubclass(upsample_type, nn.Upsample):
+            self.upsamples = nn.ModuleList([upsample_type(scale_factor=2) for _ in reversed(feature_maps[:-1])])
+        elif isinstance(upsample_type,str) and upsample_type == "interpolate":
             self.upsamples = nn.ModuleList(
-                [upsample_block(channels, channels) for in_channels in reversed(feature_maps[:-1])]
+                [InterpolateLayer(self.upsample_kwargs) for _ in reversed(feature_maps[:-1])]
             )
+        else:
+            raise ValueError(f"Unknown upsample type: {upsample_type}")
+
+        self._channels = tuple([channels] * len(feature_maps))
         self._strides = tuple(strides)
 
     @property
@@ -72,7 +78,6 @@ class FPNSumDecoder(SegmentationDecoderModule):
     def strides(self):
         return self._strides
 
-
     def forward(self, feature_maps: List[Tensor]) -> List[Tensor]:
         # Lateral connections
         lateral_maps = [lateral(feature_map) for feature_map, lateral in zip(feature_maps, self.lateral)]
@@ -82,10 +87,13 @@ class FPNSumDecoder(SegmentationDecoderModule):
 
         outputs = [last_feature_map]
 
-        for feature_map, upsample, output_block in zip(
-            remaining_feature_maps, self.upsamples, self.outputs
-        ):
-            fpn = output_block(feature_map + upsample(outputs[-1]))
+        for feature_map, upsample, output_block in zip(remaining_feature_maps, self.upsamples, self.outputs):
+            if isinstance(upsample, (InterpolateLayer, nn.ConvTranspose2d)):
+                upsampled = upsample(outputs[-1], output_size=feature_map.shape[-2:])
+            else:
+                upsampled = upsample(outputs[-1])
+
+            fpn = output_block(feature_map + upsampled)
             outputs.append(fpn)
 
         # Returns list of tensors in same order as input (fine-to-coarse)
