@@ -1,15 +1,15 @@
-from typing import List, Tuple, Union, Type
+from typing import List, Union, Type
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-from pytorch_toolbelt.modules.decoders.common import DecoderModule
+
 from pytorch_toolbelt.modules.activations import (
     ACT_RELU,
-    get_activation_block,
     instantiate_activation_block,
 )
+from pytorch_toolbelt.modules.decoders.common import DecoderModule
 
 __all__ = ["BiFPNDecoder", "BiFPNBlock", "BiFPNConvBlock", "BiFPNDepthwiseConvBlock"]
 
@@ -23,9 +23,9 @@ class BiFPNDepthwiseConvBlock(nn.Module):
         self,
         in_channels,
         out_channels,
-        kernel_size=1,
+        kernel_size=3,
         stride=1,
-        padding=0,
+        padding=1,
         dilation=1,
         activation: str = ACT_RELU,
     ):
@@ -54,7 +54,7 @@ class BiFPNConvBlock(nn.Module):
 
     """
 
-    def __init__(self, in_channels, out_channels, kernel_size=1, stride=1, padding=0, activation=ACT_RELU, dilation=1):
+    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=1, activation=ACT_RELU, dilation=1):
         super(BiFPNConvBlock, self).__init__()
 
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride=stride, padding=padding, bias=False)
@@ -199,7 +199,7 @@ class BiFPNDecoder(DecoderModule):
 
 
 if __name__ == "__main__":
-    from pytorch_toolbelt.utils.torch_utils import maybe_cuda, count_parameters, describe_outputs
+    from pytorch_toolbelt.utils.torch_utils import describe_outputs
 
     decoder = BiFPNDecoder(feature_maps=[256, 512, 1024], strides=[8, 16, 32], channels=256, num_layers=3)
     inputs = [torch.randn(1, 256, 64, 64), torch.randn(1, 512, 32, 32), torch.randn(1, 1024, 16, 16)]
