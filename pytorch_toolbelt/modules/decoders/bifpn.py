@@ -1,16 +1,15 @@
-from typing import List, Union, Type
+from typing import List, Tuple, Union, Type, Callable
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-
+from pytorch_toolbelt.modules.decoders.common import DecoderModule
 from pytorch_toolbelt.modules.activations import (
     ACT_RELU,
     instantiate_activation_block,
 )
-from pytorch_toolbelt.modules.decoders.common import DecoderModule
-
+from .. import conv1x1
 __all__ = ["BiFPNDecoder", "BiFPNBlock", "BiFPNConvBlock", "BiFPNDepthwiseConvBlock"]
 
 
@@ -166,12 +165,18 @@ class BiFPNDecoder(DecoderModule):
         channels: int,
         num_layers: int,
         activation=ACT_RELU,
-        block: Union[Type[BiFPNConvBlock], Type[BiFPNDepthwiseConvBlock]] = BiFPNConvBlock,
+        block: Union[
+            Type[BiFPNConvBlock], Type[BiFPNDepthwiseConvBlock], Callable[[int, int], nn.Module]
+        ] = BiFPNConvBlock,
+        projection_block: Callable[[int, int], nn.Module] = conv1x1,
     ):
         super(BiFPNDecoder, self).__init__()
 
         self.projections = nn.ModuleList(
-            [nn.Conv2d(f, channels, kernel_size=1, stride=1, padding=0)  if f != channels else nn.Identity() for f in feature_maps]
+            [
+                projection_block(f, channels) if f != channels else nn.Identity()
+                for f in feature_maps
+            ]
         )
 
         bifpns = []
