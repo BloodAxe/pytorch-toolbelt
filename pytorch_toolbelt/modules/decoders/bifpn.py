@@ -10,6 +10,7 @@ from pytorch_toolbelt.modules.activations import (
     instantiate_activation_block,
 )
 from .. import conv1x1
+
 __all__ = ["BiFPNDecoder", "BiFPNBlock", "BiFPNConvBlock", "BiFPNDepthwiseConvBlock"]
 
 
@@ -170,13 +171,12 @@ class BiFPNDecoder(DecoderModule):
         ] = BiFPNConvBlock,
         projection_block: Callable[[int, int], nn.Module] = conv1x1,
     ):
+        if len(feature_maps) != len(strides):
+            raise ValueError("feature_maps and strides must have the same length")
         super(BiFPNDecoder, self).__init__()
 
         self.projections = nn.ModuleList(
-            [
-                projection_block(f, channels) if f != channels else nn.Identity()
-                for f in feature_maps
-            ]
+            [projection_block(f, channels) if f != channels else nn.Identity() for f in feature_maps]
         )
 
         bifpns = []
