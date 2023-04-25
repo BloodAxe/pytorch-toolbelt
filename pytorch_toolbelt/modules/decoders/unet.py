@@ -1,4 +1,4 @@
-from typing import List, Union, Type
+from typing import List, Union, Type, Tuple
 
 import torch
 from torch import nn
@@ -11,9 +11,12 @@ __all__ = ["UNetDecoder"]
 
 
 class UNetDecoder(DecoderModule):
+    __constant__ = ["_output_filters", "_output_strides"]
+
     def __init__(
         self,
         feature_maps: List[int],
+        strides: List[int],
         decoder_features: Union[int, List[int]] = None,
         unet_block=UnetBlock,
         upsample_block: Union[nn.Upsample, nn.ConvTranspose2d, Type[nn.PixelShuffle]] = None,
@@ -78,12 +81,18 @@ class UNetDecoder(DecoderModule):
 
         self.blocks = nn.ModuleList(blocks)
         self.upsamples = nn.ModuleList(upsamples)
-        self.output_filters = decoder_features
+        self._output_filters = decoder_features
+        self._output_strides = tuple(strides[:-1])
 
     @property
     @torch.jit.unused
     def channels(self) -> List[int]:
-        return self.output_filters
+        return self._output_filters
+
+    @property
+    @torch.jit.unused
+    def strides(self) -> Tuple[int, ...]:
+        return self._output_strides
 
     def forward(self, feature_maps: List[torch.Tensor]) -> List[torch.Tensor]:
         x = feature_maps[-1]
