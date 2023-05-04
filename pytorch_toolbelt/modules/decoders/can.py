@@ -2,11 +2,13 @@ from typing import List
 
 import torch
 import torch.nn.functional as F
-from torch import nn
+from torch import nn, Tensor
 
 from ..dsconv import DepthwiseSeparableConv2d
 
 __all__ = ["CANDecoder"]
+
+from ..interfaces import AbstractDecoder, FeatureMapsSpecification
 
 
 class RCM(nn.Module):
@@ -86,13 +88,16 @@ class AMM(nn.Module):
         return encoder + x
 
 
-class CANDecoder(nn.Module):
+class CANDecoder(AbstractDecoder):
     """
     Context Aggregation Network
     """
 
-    def __init__(self, features: List[int], out_channels=256):
-        super().__init__()
+    __constants__ = ["output_spec"]
+
+    def __init__(self, input_spec: FeatureMapsSpecification, out_channels=256):
+        super().__init__(input_spec)
+        features = input_spec.channels
 
         self.encoder_rcm = nn.ModuleList(RCM(in_channels, out_channels) for in_channels in features)
         self.cfm = nn.Sequential(CFM(out_channels, out_channels), RCM(out_channels * 5, out_channels))
@@ -100,9 +105,11 @@ class CANDecoder(nn.Module):
         self.amm_blocks = nn.ModuleList(AMM(out_channels, out_channels) for in_channels in features[:-1])
         self.rcm_blocks = nn.ModuleList(RCM(out_channels, out_channels) for in_channels in features[:-1])
 
-        self.output_filters = [out_channels] * len(features)
+        self.output_spec = FeatureMapsSpecification(
+            channels=[out_channels] * len(input_spec), strides=input_spec.strides
+        )
 
-    def forward(self, features):
+    def forward(self, features: List[Tensor]):
         features = [rcm(x) for x, rcm in zip(features, self.encoder_rcm)]
 
         x = self.cfm(features[-1])
@@ -116,3 +123,6 @@ class CANDecoder(nn.Module):
             outputs.append(x)
 
         return outputs[::-1]
+
+    def get_output_spec(self) -> FeatureMapsSpecification:
+        return self.output_spec

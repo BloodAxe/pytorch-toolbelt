@@ -6,7 +6,6 @@ from .coord_conv import *
 from .dropblock import *
 from .dsconv import *
 from .fpn import *
-from .hypercolumn import *
 from .identity import *
 from .ocnet import *
 from .pooling import *
@@ -16,4 +15,3 @@ from .unet import *
 from .upsample import *
 from .encoders import *
 from .decoders import *
-from .normalize import *

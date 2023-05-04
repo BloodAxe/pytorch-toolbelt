@@ -4,48 +4,15 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-from pytorch_toolbelt.modules.decoders.common import DecoderModule
 from pytorch_toolbelt.modules.activations import (
     ACT_RELU,
     instantiate_activation_block,
 )
-from .. import conv1x1
+from pytorch_toolbelt.modules.simple import conv1x1
+from pytorch_toolbelt.modules.dsconv import DepthwiseSeparableConv2dBlock
+from pytorch_toolbelt.modules.interfaces import AbstractDecoder, FeatureMapsSpecification
 
-__all__ = ["BiFPNDecoder", "BiFPNBlock", "BiFPNConvBlock", "BiFPNDepthwiseConvBlock"]
-
-
-class BiFPNDepthwiseConvBlock(nn.Module):
-    """
-    Depthwise seperable convolution.
-    """
-
-    def __init__(
-        self,
-        in_channels,
-        out_channels,
-        kernel_size=3,
-        stride=1,
-        padding=1,
-        dilation=1,
-        activation: str = ACT_RELU,
-    ):
-        super(BiFPNDepthwiseConvBlock, self).__init__()
-
-        self.depthwise = nn.Conv2d(
-            in_channels, in_channels, kernel_size, stride, padding, dilation, groups=in_channels, bias=False
-        )
-        self.pointwise = nn.Conv2d(
-            in_channels, out_channels, kernel_size=1, stride=1, padding=0, dilation=1, groups=1, bias=False
-        )
-
-        self.bn = nn.BatchNorm2d(out_channels)
-        self.act = instantiate_activation_block(activation, inplace=True)
-
-    def forward(self, x: Tensor) -> Tensor:
-        x = self.depthwise(x)
-        x = self.pointwise(x)
-        x = self.bn(x)
-        return self.act(x)
+__all__ = ["BiFPNDecoder", "BiFPNBlock", "BiFPNConvBlock"]
 
 
 class BiFPNConvBlock(nn.Module):
@@ -78,7 +45,7 @@ class BiFPNBlock(nn.Module):
         num_feature_maps: int,
         epsilon=0.0001,
         activation=ACT_RELU,
-        block: Union[Type[BiFPNConvBlock], Type[BiFPNDepthwiseConvBlock]] = BiFPNConvBlock,
+        block: Union[Type[BiFPNConvBlock], Type[DepthwiseSeparableConv2dBlock]] = BiFPNConvBlock,
     ):
         super(BiFPNBlock, self).__init__()
 
@@ -151,62 +118,48 @@ class BiFPNBlock(nn.Module):
         return features
 
 
-class BiFPNDecoder(DecoderModule):
+class BiFPNDecoder(AbstractDecoder):
     """
-    BiFPN decoder. Note this class does not compute additional feature maps (p6/p7) and expects them as input.
+    BiFPN decoder. Note this class does not compute additional feature maps (p6/p7) and expects them to be present in input.
     Because of this it supports arbitrary number of input feature maps.
 
     Reference: https://arxiv.org/abs/1911.09070
     """
 
+    __constants__ = ["output_spec"]
+
     def __init__(
         self,
-        feature_maps: List[int],
-        strides: List[int],
-        channels: int,
+        input_spec: FeatureMapsSpecification,
+        out_channels: int,
         num_layers: int,
-        activation=ACT_RELU,
+        activation: str = ACT_RELU,
         block: Union[
-            Type[BiFPNConvBlock], Type[BiFPNDepthwiseConvBlock], Callable[[int, int], nn.Module]
+            Type[BiFPNConvBlock], Type[DepthwiseSeparableConv2dBlock], Callable[[int, int], nn.Module]
         ] = BiFPNConvBlock,
         projection_block: Callable[[int, int], nn.Module] = conv1x1,
     ):
-        if len(feature_maps) != len(strides):
-            raise ValueError("feature_maps and strides must have the same length")
-        super(BiFPNDecoder, self).__init__()
+        super().__init__(input_spec)
 
         self.projections = nn.ModuleList(
-            [projection_block(f, channels) if f != channels else nn.Identity() for f in feature_maps]
+            [projection_block(in_channels, out_channels) for in_channels in input_spec.channels]
         )
 
         bifpns = []
         for _ in range(num_layers):
-            bifpns.append(BiFPNBlock(channels, num_feature_maps=len(feature_maps), activation=activation, block=block))
+            bifpns.append(
+                BiFPNBlock(out_channels, num_feature_maps=len(input_spec), activation=activation, block=block)
+            )
         self.bifpn = nn.Sequential(*bifpns)
 
-        self._channels = [channels] * len(feature_maps)
-        self._strides = tuple(strides)
-
-    @property
-    @torch.jit.ignore
-    def channels(self):
-        return self._channels
-
-    @property
-    @torch.jit.ignore
-    def strides(self):
-        return self._strides
+        self.output_spec = FeatureMapsSpecification(
+            channels=tuple([out_channels] * len(input_spec)), strides=input_spec.strides
+        )
 
     def forward(self, feature_maps: List[Tensor]) -> List[Tensor]:
         # Calculate the input column of BiFPN
         features = [p(c) for p, c in zip(self.projections, feature_maps)]
         return self.bifpn(features)
 
-
-if __name__ == "__main__":
-    from pytorch_toolbelt.utils.torch_utils import describe_outputs
-
-    decoder = BiFPNDecoder(feature_maps=[256, 512, 1024], strides=[8, 16, 32], channels=256, num_layers=3)
-    inputs = [torch.randn(1, 256, 64, 64), torch.randn(1, 512, 32, 32), torch.randn(1, 1024, 16, 16)]
-    outputs = decoder(inputs)
-    print(describe_outputs(outputs))
+    def get_output_spec(self) -> FeatureMapsSpecification:
+        return self.output_spec

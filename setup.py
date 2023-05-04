@@ -85,7 +85,7 @@ DESCRIPTION = "PyTorch extensions for fast R&D prototyping and Kaggle farming"
 URL = "https://github.com/BloodAxe/pytorch-toolbelt"
 EMAIL = "ekhvedchenya@gmail.com"
 AUTHOR = "Eugene Khvedchenya"
-REQUIRES_PYTHON = ">=3.6.0"
+REQUIRES_PYTHON = ">=3.7.0"
 
 DEPENDENCIES = [
     # We rely on particular activation functions that were added in 1.8.1

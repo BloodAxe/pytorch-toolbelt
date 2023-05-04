@@ -1,124 +1,42 @@
+from pprint import pprint
+
 import pytest
 import pytorch_toolbelt.modules.decoders as D
-import pytorch_toolbelt.modules.encoders as E
 import torch
-from pytorch_toolbelt.modules import FPNFuse
-from pytorch_toolbelt.modules.decoders import FPNSumDecoder, FPNCatDecoder
-from pytorch_toolbelt.utils.torch_utils import count_parameters
+from pytorch_toolbelt.modules.interfaces import FeatureMapsSpecification
+from pytorch_toolbelt.modules.upsample import UpsampleLayerType
+from pytorch_toolbelt.utils.torch_utils import count_parameters, describe_outputs
 from torch import nn
-
-skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA is not available")
 
 
 @torch.no_grad()
 @pytest.mark.parametrize(
     ("decoder_cls", "decoder_params"),
     [
-        (D.FPNSumDecoder, {"channels": 128}),
-        (D.FPNCatDecoder, {"channels": 128}),
-        (D.DeeplabV3PlusDecoder, {"aspp_channels": 256, "channels": 256}),
-        (D.DeeplabV3Decoder, {"aspp_channels": 256, "channels": 256}),
+        (D.FPNDecoder, {"out_channels": 128, "upsample_block": UpsampleLayerType.BILINEAR}),
+        (D.FPNDecoder, {"out_channels": 128, "upsample_block": UpsampleLayerType.NEAREST}),
+        (D.FPNDecoder, {"out_channels": 128, "upsample_block": UpsampleLayerType.DECONVOLUTION}),
+
+        (D.BiFPNDecoder, {"out_channels": 128, "num_layers": 3}),
+        (D.DeeplabV3PlusDecoder, {"out_channels": 128, "aspp_channels": 256}),
+        (D.DeeplabV3Decoder, {"out_channels": 128, "aspp_channels": 256}),
+        (D.CANDecoder, {"out_channels": 128}),
+        #
+        (D.UNetDecoder, {"out_channels": [128, 256, 384, 512], "upsample_block": UpsampleLayerType.DECONVOLUTION}),
+        (D.UNetDecoder, {"out_channels": [128, 256, 384, 512], "upsample_block": UpsampleLayerType.NEAREST}),
+        (D.UNetDecoder, {"out_channels": [128, 256, 384, 512], "upsample_block": UpsampleLayerType.BILINEAR}),
+        (D.UNetDecoder, {"out_channels": [128, 256, 384, 512], "upsample_block": UpsampleLayerType.PIXEL_SHUFFLE}),
+        (D.UNetDecoder, {"out_channels": [128, 256, 384, 512], "upsample_block": UpsampleLayerType.RESIDUAL_DECONV}),
     ],
 )
 def test_decoders(decoder_cls, decoder_params):
-    channels = [64, 128, 256, 512, 1024]
-    input = [torch.randn((4, channels[i], 256 // (2**i), 384 // (2**i))) for i in range(len(channels))]
-    decoder = decoder_cls(channels, **decoder_params).eval()
+    input_spec = FeatureMapsSpecification(channels=(64, 128, 256, 512, 1024), strides=(4, 8, 16, 32, 64))
+    input = input_spec.get_dummy_input()
+
+    decoder = decoder_cls(input_spec, **decoder_params).eval()
     output = decoder(input)
 
+    print()
     print(decoder.__class__.__name__)
-    print(count_parameters(decoder))
-    for o in output:
-        print(o.size())
-
-
-@torch.no_grad()
-def test_unet_encoder_decoder():
-    encoder = E.UnetEncoder(3, 32, 5)
-    decoder = D.UNetDecoder(encoder.channels)
-    x = torch.randn((2, 3, 256, 256))
-    model = nn.Sequential(encoder, decoder).eval()
-
-    output = model(x)
-
-    print(count_parameters(encoder))
-    print(count_parameters(decoder))
-    for o in output:
-        print(o.size(), o.mean(), o.std())
-
-
-@torch.no_grad()
-def test_unet_decoder():
-    encoder = E.Resnet18Encoder(pretrained=False, layers=[0, 1, 2, 3, 4])
-    decoder = D.UNetDecoder(encoder.channels)
-    x = torch.randn((16, 3, 256, 256))
-    model = nn.Sequential(encoder, decoder)
-
-    output = model(x)
-
-    print(count_parameters(encoder))
-    print(count_parameters(decoder))
-    for o in output:
-        print(o.size(), o.mean(), o.std())
-
-
-@torch.no_grad()
-def test_fpn_sum():
-    channels = [256, 512, 1024, 2048]
-    sizes = [64, 32, 16, 8]
-
-    decoder = FPNSumDecoder(channels, 5).eval()
-
-    x = [torch.randn(4, ch, sz, sz) for sz, ch in zip(sizes, channels)]
-    outputs = decoder(x)
-
-    print(count_parameters(decoder))
-    for o in outputs:
-        print(o.size(), o.mean(), o.std())
-
-
-@torch.no_grad()
-def test_fpn_sum_with_encoder():
-    x = torch.randn((16, 3, 256, 256))
-    encoder = E.Resnet18Encoder(pretrained=False)
-    decoder = FPNSumDecoder(encoder.channels, 128)
-    model = nn.Sequential(encoder, decoder)
-
-    output = model(x)
-
-    print(count_parameters(decoder))
-    for o in output:
-        print(o.size(), o.mean(), o.std())
-
-
-@torch.no_grad()
-def test_fpn_cat_with_encoder():
-    x = torch.randn((16, 3, 256, 256))
-    encoder = E.Resnet18Encoder(pretrained=False)
-    decoder = FPNCatDecoder(encoder.channels, 128)
-    model = nn.Sequential(encoder, decoder)
-
-    output = model(x)
-
-    print(count_parameters(decoder))
-    for o in output:
-        print(o.size(), o.mean(), o.std())
-
-    fuse = FPNFuse()
-    o = fuse(output)
-    print(o.size(), o.mean(), o.std())
-
-
-@torch.no_grad()
-def test_fpn_cat():
-    channels = [256, 512, 1024, 2048]
-    sizes = [64, 32, 16, 8]
-
-    net = FPNCatDecoder(channels, 5).eval()
-
-    x = [torch.randn(4, ch, sz, sz) for sz, ch in zip(sizes, channels)]
-    outputs = net(x)
-
-    print(count_parameters(net))
-    for output in outputs:
-        print(output.size(), output.mean(), output.std())
+    print(count_parameters(decoder, human_friendly=True))
+    pprint(describe_outputs(output))
