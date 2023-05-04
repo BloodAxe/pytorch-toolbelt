@@ -347,9 +347,8 @@ def get_collate_for_dataset(dataset: Union[Dataset, ConcatDataset]) -> Callable:
     collate_fn = default_collate
 
     if hasattr(dataset, "get_collate_fn"):
-        collate_fn = dataset.get_collate_fn()
-
-    if isinstance(dataset, ConcatDataset):
+        return dataset.get_collate_fn()
+    elif isinstance(dataset, ConcatDataset):
         collates = set(get_collate_for_dataset(ds) for ds in dataset.datasets)
         if len(collates) != 1:
             raise RuntimeError(
