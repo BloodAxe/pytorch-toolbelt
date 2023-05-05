@@ -1,12 +1,12 @@
 from pprint import pprint
 
 import pytest
-import pytorch_toolbelt.modules.decoders as D
 import torch
+
+import pytorch_toolbelt.modules.decoders as D
 from pytorch_toolbelt.modules.interfaces import FeatureMapsSpecification
 from pytorch_toolbelt.modules.upsample import UpsampleLayerType
 from pytorch_toolbelt.utils.torch_utils import count_parameters, describe_outputs
-from torch import nn
 
 
 @torch.no_grad()
