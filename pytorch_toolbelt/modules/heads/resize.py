@@ -1,10 +1,11 @@
 from typing import Optional, List, Union, Mapping, Tuple
 
-import numpy as np
 import torch.jit
 from torch import nn, Tensor
 
 from pytorch_toolbelt.modules.interfaces import AbstractHead, FeatureMapsSpecification
+
+__all__ = ["ResizeHead"]
 
 
 class ResizeHead(AbstractHead):

@@ -112,8 +112,8 @@ class ASPP(nn.Module):
         self.project = nn.Sequential(
             nn.Conv2d(len(self.aspp) * out_channels, out_channels, 1, bias=False),
             nn.BatchNorm2d(out_channels),
-            instantiate_activation_block(activation, inplace=False),
-            nn.Dropout(dropout, inplace=True),
+            instantiate_activation_block(activation, inplace=True),
+            nn.Dropout2d(dropout, inplace=False),
         )
 
     def forward(self, x: Tensor) -> Tensor:  # skipcq: PYL-W0221
