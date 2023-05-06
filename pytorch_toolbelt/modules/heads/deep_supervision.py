@@ -44,3 +44,6 @@ class DeepSupervisionHead(AbstractHead):
                 outputs[name_for_stride(self.output_name_prefix, output_stride)] = output
 
         return outputs
+
+    def get_output_spec(self) -> FeatureMapsSpecification:
+        return self.output_spec
