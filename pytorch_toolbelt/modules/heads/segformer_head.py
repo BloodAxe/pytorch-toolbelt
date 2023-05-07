@@ -2,9 +2,10 @@ from typing import List, Optional
 
 import torch
 import torch.nn as nn
-from pytorch_toolbelt.datasets import name_for_stride
-from pytorch_toolbelt.modules.interfaces import AbstractHead, FeatureMapsSpecification
 from torch import Tensor
+from pytorch_toolbelt.datasets import name_for_stride
+from pytorch_toolbelt.modules import instantiate_activation_block, ACT_GELU
+from pytorch_toolbelt.modules.interfaces import AbstractHead, FeatureMapsSpecification
 
 
 __all__ = ["SegFormerHead"]
@@ -23,6 +24,7 @@ class SegFormerHead(AbstractHead):
         with_supervision: bool,
         output_name: Optional[str],
         dropout_rate: float = 0.0,
+        activation: str = ACT_GELU,
     ):
         super().__init__(input_spec)
 
@@ -40,7 +42,7 @@ class SegFormerHead(AbstractHead):
         self.linear_fuse = nn.Sequential(
             nn.Conv2d(embedding_dim * 4, embedding_dim, kernel_size=1, bias=False),
             nn.BatchNorm2d(embedding_dim),
-            nn.ReLU(inplace=True),
+            instantiate_activation_block(activation, inplace=True),
         )
 
         self.dropout = nn.Dropout2d(dropout_rate, inplace=False)
@@ -59,10 +61,6 @@ class SegFormerHead(AbstractHead):
 
     def forward(self, feature_maps: List[Tensor], output_size):
         c1, c2, c3, c4 = feature_maps
-
-        ############## MLP decoder on C1-C4 ###########
-
-        supervision_outputs = {}
 
         c4 = self.linear_c4(c4)
         c3 = self.linear_c3(c3)
