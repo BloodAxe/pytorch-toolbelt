@@ -1,11 +1,17 @@
 import dataclasses
 from abc import abstractmethod
-from typing import Protocol, Tuple, List, Union, Mapping
+from typing import Protocol, Tuple, List, Union, Mapping, Callable
 
 import numpy as np
 import torch.jit
 
-__all__ = ["FeatureMapsSpecification", "HasOutputFeaturesSpecification", "AbstractDecoder", "AbstractHead", "AbstractEncoder"]
+__all__ = [
+    "FeatureMapsSpecification",
+    "HasOutputFeaturesSpecification",
+    "AbstractDecoder",
+    "AbstractHead",
+    "AbstractEncoder",
+]
 
 from torch import nn, Tensor
 
@@ -42,7 +48,7 @@ class FeatureMapsSpecification:
         feature_maps = []
         rows, cols = image_size
         for c, s in zip(self.channels, self.strides):
-            feature_maps.append(torch.randn((1, c, rows//s, cols//s), device=device))
+            feature_maps.append(torch.randn((1, c, rows // s, cols // s), device=device))
         return feature_maps
 
     def __len__(self) -> int:
@@ -110,3 +116,16 @@ class AbstractHead(AbstractDecoder):
         self, feature_maps: List[Tensor], output_size: Union[Tuple[int, int], torch.Size, None] = None
     ) -> Union[Tensor, Tuple[Tensor, ...], List[Tensor], Mapping[str, Tensor]]:
         ...
+
+    def apply_to_final_layer(self, func: Callable[[nn.Module], None]):
+        """
+        Apply function to the final layer of the head.
+
+        Typically, you can use this method to apply custom initialization
+        to the final layer of the head.
+
+        :param func: Function to apply to the final prediction layer. If head contains
+        supervision layers, function can be applied to them as well.
+
+        """
+        raise NotImplementedError("This method is not implemented for this head")

@@ -105,3 +105,11 @@ class SegFormerHead(AbstractHead):
                 outputs = outputs + (s1, s2, s3, s4)
 
         return outputs
+
+    def apply_to_final_layer(self, func):
+        func(self.final)
+        if self.with_supervision:
+            func(self.supervision_c4)
+            func(self.supervision_c3)
+            func(self.supervision_c2)
+            func(self.supervision_c1)
