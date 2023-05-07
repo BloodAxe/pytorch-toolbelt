@@ -2,6 +2,7 @@ import pytest
 import torch
 
 import pytorch_toolbelt.modules.encoders as E
+from pytorch_toolbelt.modules import AbstractEncoder
 from pytorch_toolbelt.modules.backbone.inceptionv4 import inceptionv4
 from pytorch_toolbelt.utils.torch_utils import maybe_cuda, count_parameters, describe_outputs
 from pytorch_toolbelt.modules.encoders import timm
@@ -287,8 +288,8 @@ def test_hourglass_encoder(encoder, encoder_params):
 def test_supervised_hourglass_encoder(encoder, encoder_params):
     net = encoder(**encoder_params).eval()
     print(net.__class__.__name__, count_parameters(net))
-    print(net.strides)
-    print(net.channels)
+    print(net.get_output_spec())
+
     x = torch.rand((4, 3, 256, 256))
     x = maybe_cuda(x)
     net = maybe_cuda(net)
@@ -315,17 +316,52 @@ def test_supervised_hourglass_encoder(encoder, encoder_params):
 @skip_if_no_cuda
 def test_swin_encoder(encoder, encoder_params):
     net = encoder(**encoder_params).change_input_channels(5).eval()
+    output_spec = encoder.get_output_spec()
+
     print(net.__class__.__name__, count_parameters(net))
-    print(net.strides)
-    print(net.channels)
+    print(output_spec)
+
     x = torch.rand((4, 5, 256, 256))
     x = maybe_cuda(x)
     net = maybe_cuda(net)
     output = net(x)
 
-    assert len(output) == len(net.channels)
+    assert len(output) == len(output_spec.channels)
 
-    for feature_map, expected_stride, expected_channels in zip(output, net.strides, net.channels):
+    for feature_map, expected_stride, expected_channels in zip(output, output_spec.strides, output_spec.channels):
         assert feature_map.size(1) == expected_channels
-        assert feature_map.size(2) * expected_stride == 256
-        assert feature_map.size(3) * expected_stride == 256
+        assert feature_map.size(2) * expected_stride == x.size(2)
+        assert feature_map.size(3) * expected_stride == x.size(3)
+
+
+
+@pytest.mark.parametrize(
+    ["encoder", "encoder_params"],
+    [
+        [E.MitB0Encoder, {"pretrained": True}],
+        [E.MitB1Encoder, {"pretrained": True}],
+        [E.MitB2Encoder, {"pretrained": True}],
+        [E.MitB3Encoder, {"pretrained": True}],
+        [E.MitB4Encoder, {"pretrained": True}],
+        [E.MitB5Encoder, {"pretrained": True}],
+    ],
+)
+@torch.no_grad()
+@skip_if_no_cuda
+def test_mit_encoder(encoder, encoder_params):
+    encoder: AbstractEncoder = encoder(**encoder_params).change_input_channels(5).eval()
+    print(encoder.__class__.__name__, count_parameters(encoder, human_friendly=True))
+
+    output_spec = encoder.get_output_spec()
+    print(encoder.get_output_spec())
+    x = torch.rand((4, 5, 256, 256))
+    x = maybe_cuda(x)
+    encoder = maybe_cuda(encoder)
+    output = encoder(x)
+
+    assert len(output) == len(output_spec.channels)
+
+    for feature_map, expected_stride, expected_channels in zip(output, output_spec.strides, output_spec.channels):
+        assert feature_map.size(1) == expected_channels
+        assert feature_map.size(2) * expected_stride == x.size(2)
+        assert feature_map.size(3) * expected_stride == x.size(3)
