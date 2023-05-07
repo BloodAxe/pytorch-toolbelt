@@ -46,7 +46,7 @@ class SegFormerHead(AbstractHead):
         )
 
         self.dropout = nn.Dropout2d(dropout_rate, inplace=False)
-        self.linear_pred = nn.Conv2d(embedding_dim, num_classes, kernel_size=1)
+        self.final = nn.Conv2d(embedding_dim, num_classes, kernel_size=1)
 
         if self.with_supervision:
             self.supervision_c4 = nn.Conv2d(embedding_dim, num_classes, kernel_size=1)
@@ -80,7 +80,7 @@ class SegFormerHead(AbstractHead):
         )
 
         x = self.dropout(c)
-        x = self.linear_pred(x)
+        x = self.final(x)
         x = torch.nn.functional.interpolate(x, size=output_size, mode="bilinear", align_corners=False)
 
         if self.output_name is not None:
