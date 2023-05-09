@@ -1,7 +1,6 @@
-from typing import Optional, List
+from typing import Optional
 
 import numpy as np
-import torch.jit
 from torch import nn
 
 from pytorch_toolbelt.modules import instantiate_activation_block

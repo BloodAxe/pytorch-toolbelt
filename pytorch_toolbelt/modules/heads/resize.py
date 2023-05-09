@@ -10,8 +10,8 @@ __all__ = ["ResizeHead"]
 
 class ResizeHead(AbstractHead):
     """
-    Basic head that applies a dropout and convolution to the feature map with the smallest stride
-    and upsamples the projected feature map to the original image size.
+    Basic prediction head that applies a dropout and convolution (without normalization and activation) to the
+    feature map with the smallest stride and resize the predicted feature map to the input image size.
     """
 
     def __init__(
@@ -26,12 +26,16 @@ class ResizeHead(AbstractHead):
         interpolation_align_corners=True,
     ):
         """
+        Initialize prediction head
 
         :param input_spec: Specification of input feature maps
         :param num_classes: Number of classes to predict
         :param output_name: Name of the output tensor. If None, returns tensor directly, otherwise returns dict with { output_name: tensor }
-        :param dropout_rate: Dropout rate to apply before convolution.
         :param kernel_size: Convolution kernel size. Padding is automatically computed to using kernel_size // 2 formula.
+        :param dropout_rate: Dropout rate to apply before convolution.
+        :param dropout_inplace: If True, applies dropout in-place.
+        :param interpolation_mode: Interpolation mode to use for upsampling. See torch.nn.functional.interpolate for details.
+        :param interpolation_align_corners: Interpolation align corners mode to use for upsampling. See torch.nn.functional.interpolate for details.
         """
 
         super().__init__(input_spec)
@@ -49,8 +53,14 @@ class ResizeHead(AbstractHead):
         self.interpolation_align_corners = interpolation_align_corners
 
     def forward(
-        self, feature_maps: List[Tensor], output_size: Union[Tuple[int, int], torch.Size, None] = None
+        self, feature_maps: List[Tensor], output_size: Union[Tuple[int, int], torch.Size]
     ) -> Union[Tensor, Tuple[Tensor, ...], List[Tensor], Mapping[str, Tensor]]:
+        """
+
+        :param feature_maps: Input features (from encoder, decoder or neck, etc.)
+        :param output_size:  The desired output size (rows, cols) of the output feature map.
+        :return:
+        """
         x = feature_maps[self.target_feature_map_index]
         x = self.dropout(x)
         x = self.final(x)

@@ -43,16 +43,14 @@ class HypercolumnHead(AbstractHead):
         self.final = nn.Conv2d(mid_channels, num_classes, kernel_size=3, padding=1)
         self.output_name = output_name
         self.output_spec = FeatureMapsSpecification(channels=(num_classes,), strides=(1,))
-
         self.interpolation_mode = interpolation_mode
         self.interpolation_align_corners = interpolation_align_corners
-
-        self.output_spec = FeatureMapsSpecification(channels=(num_classes,), strides=(1,))
 
     def forward(self, feature_maps: List[Tensor], output_size: torch.Size):
         x = self.fuse(feature_maps)
         x = self.projection(x)
         x = self.final(x)
+
         output = torch.nn.functional.interpolate(
             x, size=output_size, mode=self.interpolation_mode, align_corners=self.interpolation_align_corners
         )
