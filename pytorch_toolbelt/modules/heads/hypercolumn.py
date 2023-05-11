@@ -27,7 +27,7 @@ class HypercolumnHead(AbstractHead):
         dropout_rate: float = 0.0,
         dropout_inplace: bool = False,
         interpolation_mode="bilinear",
-        interpolation_align_corners=True,
+        interpolation_align_corners=False,
     ):
         super().__init__(input_spec)
         channels = sum(input_spec.channels)

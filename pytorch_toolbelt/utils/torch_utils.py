@@ -331,7 +331,9 @@ def describe_outputs(outputs: Union[Tensor, Dict[str, Tensor], Iterable[Tensor]]
     return desc
 
 
-def get_collate_for_dataset(dataset: Union[Dataset, ConcatDataset]) -> Callable:
+def get_collate_for_dataset(
+    dataset: Union[Dataset, ConcatDataset], ensure_collate_fn_are_the_same: bool = True
+) -> Callable:
     """
     Return collate_fn function for dataset. By default, default_collate returned.
     If the dataset has method get_collate_fn() we will use it's return value instead.
@@ -349,11 +351,12 @@ def get_collate_for_dataset(dataset: Union[Dataset, ConcatDataset]) -> Callable:
     if hasattr(dataset, "get_collate_fn"):
         return dataset.get_collate_fn()
     elif isinstance(dataset, ConcatDataset):
-        collates = set(get_collate_for_dataset(ds) for ds in dataset.datasets)
-        if len(collates) != 1:
-            raise RuntimeError(
-                "Detected ConcatDataset with datasets having different collate functions. " "This is not supported."
-            )
+        collate_fns = [get_collate_for_dataset(ds) for ds in dataset.datasets]
+
+        if ensure_collate_fn_are_the_same:
+            if not all([fn == collate_fns[0] for fn in collate_fns]):
+                raise RuntimeError("Detected ConcatDataset consist of datasets with different collate functions. ")
+
         collate_fn = collates[0]
 
     return collate_fn
