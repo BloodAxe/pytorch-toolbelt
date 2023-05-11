@@ -2,6 +2,7 @@
 
 """
 import collections
+import functools
 import warnings
 from typing import Optional, Sequence, Union, Dict, List, Any, Iterable, Callable
 
@@ -352,15 +353,29 @@ def get_collate_for_dataset(
         return dataset.get_collate_fn()
     elif isinstance(dataset, ConcatDataset):
         collate_fns = [get_collate_for_dataset(ds) for ds in dataset.datasets]
+        collate_fn = collate_fns[0]
 
         if ensure_collate_fn_are_the_same:
-            if not all([fn == collate_fns[0] for fn in collate_fns]):
-                raise RuntimeError("Detected ConcatDataset consist of datasets with different collate functions. ")
+            for other_collate_fn in collate_fns[1:]:
+                if type(other_collate_fn) != type(collate_fn):
+                    raise ValueError(f"Detected ConcatDataset consist of datasets with different collate functions: {type(collate_fn)} and {type(other_collate_fn)}.")
 
-        collate_fn = collates[0]
+                if isinstance(collate_fn, functools.partial):
+                    if not _partial_functions_equal(collate_fn, other_collate_fn):
+                        raise ValueError(f"Detected ConcatDataset consist of datasets with different collate functions: {collate_fn} and {type(other_collate_fn)}.")
+                elif collate_fn != other_collate_fn:
+                    raise ValueError(f"Detected ConcatDataset consist of datasets with different collate functions: {collate_fn} and {other_collate_fn}.")
+
+
+        collate_fn = collate_fns[0]
 
     return collate_fn
 
+def _partial_functions_equal(func1, func2):
+    if not (isinstance(func1, functools.partial) and isinstance(func2, functools.partial)):
+        return False
+    are_equal = all([getattr(func1, attr) == getattr(func2, attr) for attr in ['func', 'args', 'keywords']])
+    return are_equal
 
 def get_non_wrapped_model(model: nn.Module) -> nn.Module:
     """
