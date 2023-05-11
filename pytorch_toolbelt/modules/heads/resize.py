@@ -23,7 +23,7 @@ class ResizeHead(AbstractHead):
         dropout_rate: float = 0.0,
         dropout_inplace: bool = False,
         interpolation_mode="bilinear",
-        interpolation_align_corners=True,
+        interpolation_align_corners=False,
     ):
         """
         Initialize prediction head
