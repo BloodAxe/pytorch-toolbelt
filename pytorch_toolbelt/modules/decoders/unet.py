@@ -16,8 +16,8 @@ class UNetDecoder(AbstractDecoder):
         self,
         input_spec: FeatureMapsSpecification,
         out_channels: Union[Tuple[int, ...], List[int]],
-        upsample_block: Union[UpsampleLayerType, Type[AbstractResizeLayer]],
         unet_block=UnetBlock,
+        upsample_block: Union[UpsampleLayerType, Type[AbstractResizeLayer]] = UpsampleLayerType.BILINEAR,
     ):
         super().__init__(input_spec)
 
