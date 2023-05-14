@@ -10,6 +10,12 @@ from torch import Tensor
 
 import torch.distributed as dist
 
+from pytorch_toolbelt.utils.bucket_assignment import (
+    naive_bucket_assignment,
+    compute_bucket_imbalance_score,
+    random_bucket_assignment,
+    filler_bucket_assignment,
+)
 
 __all__ = [
     "distributed_guard",
@@ -230,7 +236,11 @@ def master_print(*args, **kwargs) -> None:
 
 
 def split_across_nodes(
-    collection: List, world_size: Optional[int] = None, local_rank: Optional[int] = None, cost: Optional[List] = None
+    collection: List,
+    world_size: Optional[int] = None,
+    local_rank: Optional[int] = None,
+    cost: Optional[List] = None,
+    method: str = "optimal",
 ) -> List:
     """
     Split input collection such that each node receives 1/N of the total collection elements to process, where
@@ -252,7 +262,13 @@ def split_across_nodes(
         cost: A vector of size N that represents the cost of processing associated with each item.
               If present, it will affect the order of elements each node will receive to even the total cost each node
               will get.
+        method: Bucket assignment method used to assign each sample of associated cost to specific node to minimze std of total cost per node.
 
+                naive - Sort elements by cost then assing them in repeating patterm: [0, 1, 2, 3, 0, 1, 2, 3, 4, ...].
+                Each node gets exactly the same number of samples, however cost per node may vary greatly.
+
+                optimal - Iteratively assigns elements starting with the most costly ones to the least used bucket.
+                This gives much better cost balance per node, but the number of items each node gets it not guaratneed to be equal at all.
     Returns:
 
     """
@@ -265,8 +281,14 @@ def split_across_nodes(
         if cost is not None:
             if len(cost) != len(collection):
                 raise RuntimeError()
-            ordered_indexes = np.argsort(cost)
-            rank_local_indexes = (ordered_indexes % world_size) == local_rank
+
+            method_fn = {
+                "optimal": filler_bucket_assignment,
+                "naive": naive_bucket_assignment,
+            }
+            assigned_indexes = method_fn(cost, world_size)
+
+            rank_local_indexes = assigned_indexes == local_rank
 
             logger.debug(
                 f"Node {local_rank} get {np.count_nonzero(rank_local_indexes)} items with total cost {sum(cost[rank_local_indexes])}"
