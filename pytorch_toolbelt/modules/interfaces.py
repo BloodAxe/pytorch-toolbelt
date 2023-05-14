@@ -55,6 +55,16 @@ class FeatureMapsSpecification:
         return len(self.channels)
 
 
+class HasInputFeaturesSpecification(Protocol):
+    """
+    A protocol for modules that have output features
+    """
+
+    @torch.jit.unused
+    def get_input_spec(self) -> FeatureMapsSpecification:
+        ...
+
+
 class HasOutputFeaturesSpecification(Protocol):
     """
     A protocol for modules that have output features
@@ -66,12 +76,10 @@ class HasOutputFeaturesSpecification(Protocol):
 
 
 class AbstractEncoder(nn.Module, HasOutputFeaturesSpecification):
-    @torch.jit.unused
-    def get_output_spec(self) -> FeatureMapsSpecification:
-        raise NotImplementedError()
+    pass
 
 
-class AbstractDecoder(nn.Module, HasOutputFeaturesSpecification):
+class AbstractDecoder(nn.Module, HasInputFeaturesSpecification, HasOutputFeaturesSpecification):
     __constants__ = ["input_spec"]
 
     def __init__(self, input_spec: FeatureMapsSpecification):
@@ -91,22 +99,6 @@ class AbstractDecoder(nn.Module, HasOutputFeaturesSpecification):
     @torch.jit.unused
     def get_input_spec(self):
         return self.input_spec
-
-    @property
-    @torch.jit.unused
-    @pytorch_toolbelt_deprecated("Use get_input_spec() instead")
-    def channels(self):
-        return self.get_output_spec().channels
-
-    @property
-    @torch.jit.unused
-    @pytorch_toolbelt_deprecated("Use get_input_spec() instead")
-    def strides(self):
-        return self.get_output_spec().strides
-
-    @torch.jit.unused
-    def get_output_spec(self) -> FeatureMapsSpecification:
-        raise NotImplementedError()
 
 
 class AbstractHead(AbstractDecoder):
