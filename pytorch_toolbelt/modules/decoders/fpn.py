@@ -1,6 +1,7 @@
 import inspect
 from typing import List, Union, Callable, Type
 
+import torch
 from torch import Tensor, nn
 
 from pytorch_toolbelt.modules.interfaces import AbstractDecoder, FeatureMapsSpecification
@@ -62,6 +63,7 @@ class FPNDecoder(AbstractDecoder):
             channels=[out_channels] * len(feature_maps), strides=input_spec.strides
         )
 
+    @torch.jit.unused
     def get_output_spec(self) -> FeatureMapsSpecification:
         return self.output_spec
 

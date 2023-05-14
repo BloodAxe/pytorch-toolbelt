@@ -84,5 +84,6 @@ class DeeplabV3PlusDecoder(AbstractDecoder):
         combined_features = torch.cat([low_level_features, coarse_features_resized], dim=1)
         return [self.final(combined_features), coarse_features]
 
+    @torch.jit.unused
     def get_output_spec(self) -> FeatureMapsSpecification:
         return self.output_spec

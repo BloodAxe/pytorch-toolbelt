@@ -161,5 +161,6 @@ class BiFPNDecoder(AbstractDecoder):
         features = [p(c) for p, c in zip(self.projections, feature_maps)]
         return self.bifpn(features)
 
+    @torch.jit.unused
     def get_output_spec(self) -> FeatureMapsSpecification:
         return self.output_spec

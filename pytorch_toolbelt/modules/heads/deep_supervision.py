@@ -45,5 +45,6 @@ class DeepSupervisionHead(AbstractHead):
 
         return outputs
 
+    @torch.jit.unused
     def get_output_spec(self) -> FeatureMapsSpecification:
         return self.output_spec

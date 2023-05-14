@@ -124,5 +124,6 @@ class CANDecoder(AbstractDecoder):
 
         return outputs[::-1]
 
+    @torch.jit.unused
     def get_output_spec(self) -> FeatureMapsSpecification:
         return self.output_spec

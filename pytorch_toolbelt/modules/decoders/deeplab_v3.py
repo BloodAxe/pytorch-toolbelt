@@ -59,5 +59,6 @@ class DeeplabV3Decoder(AbstractDecoder):
         high_level_features = self.aspp(high_level_features)
         return self.final(high_level_features)
 
+    @torch.jit.unused
     def get_output_spec(self) -> FeatureMapsSpecification:
         return self.output_spec

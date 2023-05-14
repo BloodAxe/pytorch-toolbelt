@@ -346,13 +346,16 @@ class MixVisionTransformer(AbstractEncoder):
             strides=(4, 8, 16, 32),
         )
 
+    @torch.jit.unused
     def change_input_channels(self, input_channels):
         self.patch_embed1.change_input_channels(input_channels)
         return self
 
+    @torch.jit.unused
     def get_output_spec(self):
         return self.output_spec
 
+    @torch.jit.unused
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
             torch.nn.init.trunc_normal_(m.weight, std=0.02)

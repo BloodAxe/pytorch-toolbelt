@@ -66,6 +66,7 @@ class HasOutputFeaturesSpecification(Protocol):
 
 
 class AbstractEncoder(nn.Module, HasOutputFeaturesSpecification):
+    @torch.jit.unused
     def get_output_spec(self) -> FeatureMapsSpecification:
         raise NotImplementedError()
 
@@ -103,6 +104,7 @@ class AbstractDecoder(nn.Module, HasOutputFeaturesSpecification):
     def strides(self):
         return self.get_output_spec().strides
 
+    @torch.jit.unused
     def get_output_spec(self) -> FeatureMapsSpecification:
         raise NotImplementedError()
 

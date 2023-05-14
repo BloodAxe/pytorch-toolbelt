@@ -52,6 +52,7 @@ class UNetDecoder(AbstractDecoder):
         self.upsamples = nn.ModuleList(upsamples)
         self.output_spec = FeatureMapsSpecification(channels=out_channels, strides=input_spec.strides[:-1])
 
+    @torch.jit.unused
     def get_output_spec(self) -> FeatureMapsSpecification:
         return self.output_spec
 

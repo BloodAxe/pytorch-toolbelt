@@ -146,5 +146,6 @@ class EncoderModule(AbstractEncoder):
         """
         raise NotImplementedError
 
+    @torch.jit.unused
     def get_output_spec(self) -> FeatureMapsSpecification:
         return self.output_spec
