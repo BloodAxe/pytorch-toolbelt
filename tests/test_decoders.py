@@ -40,3 +40,5 @@ def test_decoders(decoder_cls, decoder_params):
     print(decoder.__class__.__name__)
     print(count_parameters(decoder, human_friendly=True))
     pprint(describe_outputs(output))
+
+    torch.jit.trace(decoder, (input,))
