@@ -93,13 +93,13 @@ class AbstractDecoder(nn.Module, HasOutputFeaturesSpecification):
         return self.input_spec
 
     @property
-    @torch.jit.ignore
+    @torch.jit.unused
     @pytorch_toolbelt_deprecated("Use get_input_spec() instead")
     def channels(self):
         return self.get_output_spec().channels
 
     @property
-    @torch.jit.ignore
+    @torch.jit.unused
     @pytorch_toolbelt_deprecated("Use get_input_spec() instead")
     def strides(self):
         return self.get_output_spec().strides
@@ -119,6 +119,7 @@ class AbstractHead(AbstractDecoder):
     ) -> Union[Tensor, Tuple[Tensor, ...], List[Tensor], Mapping[str, Tensor]]:
         ...
 
+    @torch.jit.unused
     def apply_to_final_layer(self, func: Callable[[nn.Module], None]):
         """
         Apply function to the final layer of the head.
