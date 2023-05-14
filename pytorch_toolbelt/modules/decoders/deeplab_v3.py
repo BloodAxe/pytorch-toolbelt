@@ -1,5 +1,6 @@
 from typing import List
 
+import torch
 from torch import nn, Tensor
 
 __all__ = ["DeeplabV3Decoder"]
