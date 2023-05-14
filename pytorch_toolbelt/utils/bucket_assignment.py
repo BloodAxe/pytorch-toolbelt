@@ -33,7 +33,7 @@ def filler_bucket_assignment(costs: np.ndarray, num_buckets: int) -> np.ndarray:
     order = np.argsort(-costs)
     current_buckets_cost = np.zeros(num_buckets)
     assignment = np.zeros_like(costs, dtype=int)
-    for sequential_index, element_index in enumerate(order):
+    for element_index in order:
         bucket_with_min_cost = np.argmin(current_buckets_cost)
         assignment[element_index] = bucket_with_min_cost
         current_buckets_cost[bucket_with_min_cost] += costs[element_index]
