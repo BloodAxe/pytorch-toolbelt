@@ -285,7 +285,7 @@ def split_across_nodes(
             method_fn = {
                 "optimal": filler_bucket_assignment,
                 "naive": naive_bucket_assignment,
-            }
+            }[method]
             assigned_indexes = method_fn(cost, world_size)
 
             rank_local_indexes = assigned_indexes == local_rank
