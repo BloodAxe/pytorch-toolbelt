@@ -85,7 +85,7 @@ DESCRIPTION = "PyTorch extensions for fast R&D prototyping and Kaggle farming"
 URL = "https://github.com/BloodAxe/pytorch-toolbelt"
 EMAIL = "ekhvedchenya@gmail.com"
 AUTHOR = "Eugene Khvedchenya"
-REQUIRES_PYTHON = ">=3.7.0"
+REQUIRES_PYTHON = ">=3.8.0"
 
 DEPENDENCIES = [
     # We rely on particular activation functions that were added in 1.8.1
@@ -159,11 +159,10 @@ setup(
         "Intended Audience :: Science/Research",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "Operating System :: OS Independent",
         "Topic :: Scientific/Engineering :: Mathematics",
         "Topic :: Scientific/Engineering :: Image Recognition",
