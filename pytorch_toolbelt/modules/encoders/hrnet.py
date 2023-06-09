@@ -352,7 +352,6 @@ class HRNetEncoderBase(EncoderModule):
         return nn.Sequential(*layers)
 
     def _make_stage(self, layer_config, num_inchannels, multi_scale_output=True):
-
         blocks_dict = {"BASIC": HRNetBasicBlock, "BOTTLENECK": HRNetBottleneck}
 
         num_modules = layer_config["NUM_MODULES"]

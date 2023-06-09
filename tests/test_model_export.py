@@ -17,7 +17,6 @@ def is_onnx_available():
 skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA is not available")
 
 
-
 @pytest.mark.parametrize(
     ["encoder", "encoder_params"],
     [

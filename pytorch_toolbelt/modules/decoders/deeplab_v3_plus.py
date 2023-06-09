@@ -7,7 +7,7 @@ from torch import nn, Tensor
 from ..activations import instantiate_activation_block, ACT_RELU
 from ..interfaces import AbstractDecoder, FeatureMapsSpecification
 
-__all__ = [ "DeeplabV3PlusDecoder"]
+__all__ = ["DeeplabV3PlusDecoder"]
 
 from ..spp import ASPP, SeparableASPPModule
 

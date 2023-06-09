@@ -63,7 +63,6 @@ def make_n_channel_input_conv2d_same(conv: nn.Conv2d, in_channels: int, mode="au
 
 class TimmBaseEfficientNetEncoder(EncoderModule):
     def __init__(self, encoder, features, layers=[1, 2, 3, 4], first_conv_stride_one: bool = False):
-
         strides = [2, 4, 8, 16, 32]
 
         if first_conv_stride_one:

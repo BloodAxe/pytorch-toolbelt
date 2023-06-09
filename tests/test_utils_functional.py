@@ -221,7 +221,6 @@ class DummyDataset2(torch.utils.data.Dataset):
 
 
 def test_get_collate_for_dataset():
-
     datasets_with_different_collate = ConcatDataset([DummyDataset1(), DummyDataset2()])
     datasets_with_same_collate = ConcatDataset([DummyDataset1(), DummyDataset1()])
 

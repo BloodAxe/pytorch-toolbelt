@@ -55,7 +55,8 @@ class FPNDecoder(AbstractDecoder):
         num_upsample_blocks = len(feature_maps) - 1
         self.upsamples = nn.ModuleList(
             [
-                instantiate_upsample_block(upsample_block, in_channels=out_channels, scale_factor=2) for _ in range(num_upsample_blocks)
+                instantiate_upsample_block(upsample_block, in_channels=out_channels, scale_factor=2)
+                for _ in range(num_upsample_blocks)
             ]
         )
 

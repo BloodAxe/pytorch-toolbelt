@@ -36,6 +36,7 @@ class ProgressiveShuffleHead(AbstractHead):
     At each stage number of channels is reduced by a factor given by `reduction_factor`.
 
     """
+
     def __init__(
         self,
         input_spec: FeatureMapsSpecification,

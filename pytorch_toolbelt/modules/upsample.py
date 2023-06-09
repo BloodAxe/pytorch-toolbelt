@@ -206,9 +206,11 @@ class DeconvolutionUpsample2d(AbstractResizeLayer):
 
 
 class ResidualDeconvolutionUpsample2d(AbstractResizeLayer):
-    def __init__(self, in_channels:int, scale_factor=2):
+    def __init__(self, in_channels: int, scale_factor=2):
         if scale_factor != 2:
-            raise NotImplementedError(f"Scale factor other than 2 is not implemented. Got scale factor of {scale_factor}")
+            raise NotImplementedError(
+                f"Scale factor other than 2 is not implemented. Got scale factor of {scale_factor}"
+            )
         super().__init__()
         n = scale_factor * scale_factor
         self.in_channels = in_channels

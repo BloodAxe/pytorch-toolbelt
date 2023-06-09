@@ -98,7 +98,6 @@ class FPNBottleneckBlock(nn.Module):
         self.abn2 = abn_block(out_channels)
 
     def forward(self, x: Tensor) -> Tensor:  # skipcq: PYL-W0221
-
         x = self.conv1(x)
         x = self.abn1(x)
         x = self.drop1(x)

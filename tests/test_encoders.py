@@ -334,7 +334,6 @@ def test_swin_encoder(encoder, encoder_params):
         assert feature_map.size(3) * expected_stride == x.size(3)
 
 
-
 @pytest.mark.parametrize(
     ["encoder", "encoder_params"],
     [

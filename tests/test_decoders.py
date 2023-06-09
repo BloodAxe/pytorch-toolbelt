@@ -16,7 +16,6 @@ from pytorch_toolbelt.utils.torch_utils import count_parameters, describe_output
         (D.FPNDecoder, {"out_channels": 128, "upsample_block": UpsampleLayerType.BILINEAR}),
         (D.FPNDecoder, {"out_channels": 128, "upsample_block": UpsampleLayerType.NEAREST}),
         (D.FPNDecoder, {"out_channels": 128, "upsample_block": UpsampleLayerType.DECONVOLUTION}),
-
         (D.BiFPNDecoder, {"out_channels": 128, "num_layers": 3}),
         (D.DeeplabV3PlusDecoder, {"out_channels": 128, "aspp_channels": 256}),
         (D.DeeplabV3Decoder, {"out_channels": 128, "aspp_channels": 256}),

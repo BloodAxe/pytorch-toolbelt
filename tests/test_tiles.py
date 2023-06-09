@@ -28,7 +28,6 @@ def test_tiles_split_merge_non_dividable():
 
 @skip_if_no_cuda
 def test_tiles_split_merge_non_dividable_cuda():
-
     image = np.random.random((5632, 5120, 3)).astype(np.uint8)
     tiler = ImageSlicer(image.shape, tile_size=(1280, 1280), tile_step=(1280, 1280), weight="mean")
     tiles = tiler.split(image)
