@@ -316,7 +316,7 @@ def test_supervised_hourglass_encoder(encoder, encoder_params):
 @skip_if_no_cuda
 def test_swin_encoder(encoder, encoder_params):
     net = encoder(**encoder_params).change_input_channels(5).eval()
-    output_spec = encoder.get_output_spec()
+    output_spec = net.get_output_spec()
 
     print(net.__class__.__name__, count_parameters(net))
     print(output_spec)
