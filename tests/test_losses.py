@@ -239,7 +239,8 @@ def test_soft_bce_loss():
     [
         L.BiTemperedLogisticLoss(t1=1, t2=0.8),
         L.FocalCosineLoss(),
-        L.FocalLoss(),
+        L.BinaryFocalLoss(),
+        L.CrossEntropyFocalLoss(),
         L.SoftF1Loss(),
         L.SoftCrossEntropyLoss(),
     ],
