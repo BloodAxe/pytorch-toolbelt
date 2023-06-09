@@ -20,7 +20,6 @@ def test_approximate_bucket_assignment():
     )
     cost = np.random.permutation(cost)
 
-    total_cost = np.sum(cost)
     assignment = naive_bucket_assignment(cost, 4)
 
     print("naive_bucket_assignment  ", compute_bucket_imbalance_score(cost, assignment))
