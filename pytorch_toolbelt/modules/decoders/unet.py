@@ -3,96 +3,58 @@ from typing import List, Union, Type, Tuple
 import torch
 from torch import nn
 
-from .common import DecoderModule
 from .. import DeconvolutionUpsample2d
 from ..unet import UnetBlock
+from pytorch_toolbelt.modules.interfaces import AbstractDecoder, FeatureMapsSpecification
+from pytorch_toolbelt.modules.upsample import AbstractResizeLayer, UpsampleLayerType, instantiate_upsample_block
 
 __all__ = ["UNetDecoder"]
 
 
-class UNetDecoder(DecoderModule):
-    __constant__ = ["_output_filters", "_output_strides"]
-
+class UNetDecoder(AbstractDecoder):
     def __init__(
         self,
-        feature_maps: List[int],
-        strides: List[int],
-        decoder_features: Union[int, List[int]] = None,
+        input_spec: FeatureMapsSpecification,
+        out_channels: Union[Tuple[int, ...], List[int]],
         unet_block=UnetBlock,
-        upsample_block: Union[nn.Upsample, nn.ConvTranspose2d, Type[nn.PixelShuffle]] = None,
+        upsample_block: Union[UpsampleLayerType, Type[AbstractResizeLayer]] = UpsampleLayerType.BILINEAR,
     ):
-        super().__init__()
-
-        # if not isinstance(decoder_features, list):
-        #     decoder_features = [decoder_features * (2 ** i) for i in range(len(feature_maps))]
-        # else:
-        #     assert len(decoder_features) == len(
-        #         feature_maps
-        #     ), f"Incorrect number of decoder features: {decoder_features}, {feature_maps}"
-
-        if upsample_block is None:
-            upsample_block = nn.ConvTranspose2d
+        super().__init__(input_spec)
 
         blocks = []
         upsamples = []
 
-        num_blocks = len(feature_maps) - 1  # Number of outputs is one less than encoder layers
+        num_blocks = len(input_spec) - 1  # Number of outputs is one less than encoder layers
 
-        if decoder_features is None:
-            decoder_features = [None] * num_blocks
-        else:
-            if len(decoder_features) != num_blocks:
-                raise ValueError(f"decoder_features must have length of {num_blocks}")
-        in_channels_for_upsample_block = feature_maps[-1]
+        if len(out_channels) != num_blocks:
+            raise ValueError(f"decoder_features must have length of {num_blocks}")
+
+        in_channels_for_upsample_block = input_spec.channels[-1]
 
         for block_index in reversed(range(num_blocks)):
-            features_from_encoder = feature_maps[block_index]
+            features_from_encoder = input_spec.channels[block_index]
 
-            if isinstance(upsample_block, nn.Upsample):
-                upsamples.append(upsample_block)
-                out_channels_from_upsample_block = in_channels_for_upsample_block
-            elif issubclass(upsample_block, nn.Upsample):
-                upsamples.append(upsample_block(scale_factor=2))
-                out_channels_from_upsample_block = in_channels_for_upsample_block
-            elif issubclass(upsample_block, nn.PixelShuffle):
-                upsamples.append(upsample_block(upscale_factor=2))
-                out_channels_from_upsample_block = in_channels_for_upsample_block // 4
-            elif issubclass(upsample_block, nn.ConvTranspose2d):
-                up = upsample_block(
-                    in_channels_for_upsample_block,
-                    in_channels_for_upsample_block // 2,
-                    kernel_size=3,
-                    stride=2,
-                    padding=1,
-                )
-                upsamples.append(up)
-                out_channels_from_upsample_block = up.out_channels
-            else:
-                up = upsample_block(in_channels_for_upsample_block)
-                upsamples.append(up)
-                out_channels_from_upsample_block = up.out_channels
+            scale_factor = input_spec.strides[block_index + 1] // input_spec.strides[block_index]
+            upsample_layer: AbstractResizeLayer = instantiate_upsample_block(
+                upsample_block, in_channels=in_channels_for_upsample_block, scale_factor=scale_factor
+            )
+
+            upsamples.append(upsample_layer)
+            out_channels_from_upsample_block = upsample_layer.out_channels
 
             in_channels = features_from_encoder + out_channels_from_upsample_block
-            out_channels = decoder_features[block_index] or in_channels // 2
-            blocks.append(unet_block(in_channels, out_channels))
 
-            in_channels_for_upsample_block = out_channels
-            decoder_features[block_index] = out_channels
+            blocks.append(unet_block(in_channels, out_channels[block_index]))
+
+            in_channels_for_upsample_block = out_channels[block_index]
 
         self.blocks = nn.ModuleList(blocks)
         self.upsamples = nn.ModuleList(upsamples)
-        self._output_filters = decoder_features
-        self._output_strides = tuple(strides[:-1])
+        self.output_spec = FeatureMapsSpecification(channels=out_channels, strides=input_spec.strides[:-1])
 
-    @property
     @torch.jit.unused
-    def channels(self) -> List[int]:
-        return self._output_filters
-
-    @property
-    @torch.jit.unused
-    def strides(self) -> Tuple[int, ...]:
-        return self._output_strides
+    def get_output_spec(self) -> FeatureMapsSpecification:
+        return self.output_spec
 
     def forward(self, feature_maps: List[torch.Tensor]) -> List[torch.Tensor]:
         x = feature_maps[-1]
@@ -101,10 +63,7 @@ class UNetDecoder(DecoderModule):
         for index, (upsample_block, decoder_block) in enumerate(zip(self.upsamples, self.blocks)):
             encoder_input = feature_maps[num_feature_maps - index - 2]
 
-            if isinstance(upsample_block, (nn.ConvTranspose2d, DeconvolutionUpsample2d)):
-                x = upsample_block(x, output_size=encoder_input.size())
-            else:
-                x = upsample_block(x)
+            x = upsample_block(x, output_size=encoder_input.size()[2:])
 
             x = torch.cat([x, encoder_input], dim=1)
             x = decoder_block(x)

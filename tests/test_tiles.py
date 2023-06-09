@@ -28,7 +28,6 @@ def test_tiles_split_merge_non_dividable():
 
 @skip_if_no_cuda
 def test_tiles_split_merge_non_dividable_cuda():
-
     image = np.random.random((5632, 5120, 3)).astype(np.uint8)
     tiler = ImageSlicer(image.shape, tile_size=(1280, 1280), tile_step=(1280, 1280), weight="mean")
     tiles = tiler.split(image)
@@ -67,6 +66,7 @@ def test_tiles_split_merge_cuda():
             return max_channel
 
     image = np.random.random((5000, 5000, 3)).astype(np.uint8)
+
     tiler = ImageSlicer(image.shape, tile_size=(512, 512), tile_step=(256, 256), weight="pyramid")
     tiles = [tensor_from_rgb_image(tile) for tile in tiler.split(image)]
 

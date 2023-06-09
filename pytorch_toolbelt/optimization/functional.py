@@ -20,11 +20,10 @@ def scale_learning_rate_for_ddp(
         return learning_rate
 
     scale = float(get_world_size())
-    if isinstance(learning_rate, (float, numbers.Rational)):
-        return scale * learning_rate
     if isinstance(learning_rate, Mapping):
-        mapping_cls = type(learning_rate)
-        return mapping_cls((k, float(v * scale)) for k, v in learning_rate.items())
+        return dict((k, float(v * scale)) for k, v in learning_rate.items())
+    elif isinstance(learning_rate, (float, numbers.Rational)):
+        return scale * learning_rate
     raise ValueError(
         f"Got unsupported type {type(learning_rate)} for learning rate. Must be either a mapping or a single scalar."
     )

@@ -46,7 +46,9 @@ class BinaryFocalLoss(nn.Module):
             softmax_dim=softmax_dim,
         )
 
-        self.get_one_hot_targets = self._one_hot_targets_with_ignore if ignore_index is not None else self._one_hot_targets
+        self.get_one_hot_targets = (
+            self._one_hot_targets_with_ignore if ignore_index is not None else self._one_hot_targets
+        )
 
     def forward(self, inputs: Tensor, targets: Tensor) -> Tensor:
         """
