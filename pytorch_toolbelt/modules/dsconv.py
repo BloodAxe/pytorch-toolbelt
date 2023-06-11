@@ -1,6 +1,6 @@
 from torch import nn, Tensor
 
-from pytorch_toolbelt.modules import instantiate_normalization_block
+from pytorch_toolbelt.modules.normalization import instantiate_normalization_block
 from pytorch_toolbelt.modules.activations import instantiate_activation_block
 
 __all__ = ["DepthwiseSeparableConv2d", "DepthwiseSeparableConv2dBlock"]
