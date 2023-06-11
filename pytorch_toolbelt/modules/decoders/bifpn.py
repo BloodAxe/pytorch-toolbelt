@@ -21,11 +21,21 @@ class BiFPNConvBlock(nn.Module):
 
     """
 
-    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=1, activation=ACT_RELU, dilation=1):
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        kernel_size=3,
+        stride=1,
+        padding=1,
+        activation=ACT_RELU,
+        dilation=1,
+        normalization="batch",
+    ):
         super(BiFPNConvBlock, self).__init__()
 
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride=stride, padding=padding, bias=False)
-        self.bn = nn.BatchNorm2d(out_channels)
+        self.bn = instantiate_normalization_block(normalization, out_channels)
         self.act = instantiate_activation_block(activation, inplace=True)
 
     def forward(self, x: Tensor) -> Tensor:
@@ -39,12 +49,15 @@ class BiFPNBlock(nn.Module):
     Bi-Directional Feature Pyramid Network
     """
 
+    __constants__ = ["epsilon"]
+
     def __init__(
         self,
         feature_size: int,
         num_feature_maps: int,
         epsilon=0.0001,
         activation=ACT_RELU,
+        normalization="batch",
         block: Union[Type[BiFPNConvBlock], Type[DepthwiseSeparableConv2dBlock]] = BiFPNConvBlock,
     ):
         super(BiFPNBlock, self).__init__()
@@ -53,10 +66,16 @@ class BiFPNBlock(nn.Module):
         num_blocks = num_feature_maps - 1
 
         self.top_down_blocks = nn.ModuleList(
-            [block(feature_size, feature_size, activation=activation) for _ in range(num_blocks)]
+            [
+                block(feature_size, feature_size, activation=activation, normalization=normalization)
+                for _ in range(num_blocks)
+            ]
         )
         self.bottom_up_blocks = nn.ModuleList(
-            [block(feature_size, feature_size, activation=activation) for _ in range(num_blocks)]
+            [
+                block(feature_size, feature_size, activation=activation, normalization=normalization)
+                for _ in range(num_blocks)
+            ]
         )
 
         self.register_parameter("w1", nn.Parameter(torch.Tensor(2, num_blocks), requires_grad=True))
@@ -134,6 +153,7 @@ class BiFPNDecoder(AbstractDecoder):
         out_channels: int,
         num_layers: int,
         activation: str = ACT_RELU,
+        normalization=normalization,
         block: Union[
             Type[BiFPNConvBlock], Type[DepthwiseSeparableConv2dBlock], Callable[[int, int], nn.Module]
         ] = BiFPNConvBlock,
@@ -148,7 +168,13 @@ class BiFPNDecoder(AbstractDecoder):
         bifpns = []
         for _ in range(num_layers):
             bifpns.append(
-                BiFPNBlock(out_channels, num_feature_maps=len(input_spec), activation=activation, block=block)
+                BiFPNBlock(
+                    out_channels,
+                    num_feature_maps=len(input_spec),
+                    activation=activation,
+                    normalization=normalization,
+                    block=block,
+                )
             )
         self.bifpn = nn.Sequential(*bifpns)
 

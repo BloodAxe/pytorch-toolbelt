@@ -3,7 +3,7 @@ from typing import Optional, List
 import torch.jit
 from torch import nn, Tensor
 
-from pytorch_toolbelt.modules import FPNFuse, instantiate_activation_block
+from pytorch_toolbelt.modules import FPNFuse, instantiate_activation_block, instantiate_normalization_block
 from pytorch_toolbelt.modules.interfaces import AbstractHead, FeatureMapsSpecification
 
 __all__ = ["HypercolumnHead"]
@@ -22,6 +22,7 @@ class HypercolumnHead(AbstractHead):
         input_spec: FeatureMapsSpecification,
         num_classes: int,
         activation: str,
+        normalization: str,
         mid_channels: int,
         output_name: Optional[str] = None,
         dropout_rate: float = 0.0,
@@ -35,7 +36,7 @@ class HypercolumnHead(AbstractHead):
 
         self.projection = nn.Sequential(
             nn.Conv2d(channels, mid_channels, kernel_size=1),
-            nn.BatchNorm2d(mid_channels),
+            instantiate_normalization_block(normalization, mid_channels),
             instantiate_activation_block(activation, inplace=True),
             nn.Dropout2d(dropout_rate, inplace=dropout_inplace),
         )
