@@ -28,9 +28,9 @@ class BiFPNConvBlock(nn.Module):
         kernel_size=3,
         stride=1,
         padding=1,
-        activation=ACT_RELU,
+        activation: str = ACT_RELU,
         dilation=1,
-        normalization="batch",
+        normalization: str = NORM_BATCH,
     ):
         super(BiFPNConvBlock, self).__init__()
 
@@ -153,7 +153,7 @@ class BiFPNDecoder(AbstractDecoder):
         out_channels: int,
         num_layers: int,
         activation: str = ACT_RELU,
-        normalization=normalization,
+        normalization: str = NORM_BATCH,
         block: Union[
             Type[BiFPNConvBlock], Type[DepthwiseSeparableConv2dBlock], Callable[[int, int], nn.Module]
         ] = BiFPNConvBlock,
