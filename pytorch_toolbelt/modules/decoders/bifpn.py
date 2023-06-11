@@ -11,6 +11,7 @@ from pytorch_toolbelt.modules.activations import (
 from pytorch_toolbelt.modules.simple import conv1x1
 from pytorch_toolbelt.modules.dsconv import DepthwiseSeparableConv2dBlock
 from pytorch_toolbelt.modules.interfaces import AbstractDecoder, FeatureMapsSpecification
+from pytorch_toolbelt.modules.normalization import NORM_BATCH, instantiate_normalization_block
 
 __all__ = ["BiFPNDecoder", "BiFPNBlock", "BiFPNConvBlock"]
 
