@@ -54,7 +54,7 @@ class ProgressiveShuffleHead(AbstractHead):
 
         min_stride = input_spec.strides[self.feature_map_index]
         num_upsample_blocks = int(np.log2(min_stride))
-        in_channels = input_spec.strides[self.feature_map_index]
+        in_channels = input_spec.channels[self.feature_map_index]
         blocks = []
 
         for _ in range(num_upsample_blocks):
