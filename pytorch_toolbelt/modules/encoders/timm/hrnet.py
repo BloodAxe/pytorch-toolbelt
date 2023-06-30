@@ -1,6 +1,7 @@
 from .common import GenericTimmEncoder
 from ..common import EncoderModule, _take, make_n_channel_input
 from ...activations import ACT_RELU, get_activation_block
+from pytorch_toolbelt.modules.interfaces import FeatureMapsSpecification
 
 __all__ = ["HRNetW18Encoder", "HRNetW32Encoder", "HRNetW48Encoder", "TimmHRNetW18SmallV2Encoder"]
 
