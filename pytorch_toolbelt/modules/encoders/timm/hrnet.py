@@ -15,7 +15,7 @@ class HRNetTimmEncoder(GenericTimmEncoder):
         if first_conv_stride_one:
             self.output_spec = FeatureMapsSpecification(
                 channels=self.output_spec.channels,
-                strides=(s // 2 for s in self.output_spec.strides)
+                strides=tuple([s // 2 for s in self.output_spec.strides])
             )
 
     def forward(self, x):
