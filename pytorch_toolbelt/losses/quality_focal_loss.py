@@ -8,6 +8,7 @@ class QualityFocalLoss(nn.Module):
         self.beta = beta
         self.reduction = reduction
 
+    @torch.cuda.amp.autocast(False)
     def forward(self, predictions: Tensor, targets: Tensor) -> Tensor:
         """
 
@@ -16,7 +17,7 @@ class QualityFocalLoss(nn.Module):
         :return:
         """
         bce = torch.nn.functional.binary_cross_entropy_with_logits(predictions, targets, reduction="none")
-        focal_term = torch.abs(targets - predictions.sigmoid()) ** self.beta
+        focal_term = torch.nn.functional.l1_loss(predictions.sigmoid(), targets, reduction="none").pow_(self.beta)
         loss = focal_term * bce
 
         if self.reduction == "mean":
