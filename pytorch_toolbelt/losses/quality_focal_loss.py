@@ -16,6 +16,9 @@ class QualityFocalLoss(nn.Module):
         :param targets: Targets
         :return:
         """
+        predictions = predictions.float()
+        targets = targets.float()
+        
         bce = torch.nn.functional.binary_cross_entropy_with_logits(predictions, targets, reduction="none")
         focal_term = torch.nn.functional.l1_loss(predictions.sigmoid(), targets, reduction="none").pow_(self.beta)
         loss = focal_term * bce
