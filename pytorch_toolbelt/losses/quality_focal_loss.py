@@ -3,6 +3,8 @@ from torch import nn, Tensor
 
 
 class QualityFocalLoss(nn.Module):
+    __constants__ = ["beta", "reduction"]
+
     def __init__(self, beta: float = 2, reduction="mean"):
         """
         Quality Focal Loss from https://arxiv.org/abs/2006.04388
@@ -29,7 +31,7 @@ class QualityFocalLoss(nn.Module):
         """
         predictions = predictions.float()
         targets = targets.float()
-        
+
         bce = torch.nn.functional.binary_cross_entropy_with_logits(predictions, targets, reduction="none")
         focal_term = torch.nn.functional.l1_loss(predictions.sigmoid(), targets, reduction="none").pow_(self.beta)
         loss = focal_term * bce
