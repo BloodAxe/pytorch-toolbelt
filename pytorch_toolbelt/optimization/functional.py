@@ -87,7 +87,7 @@ def build_optimizer_param_groups(
     Returns:
 
     """
-    module = get_non_wrapped_model(model)
+    model = get_non_wrapped_model(model)
 
     if isinstance(learning_rate, Mapping) and "_default_" not in learning_rate:
         raise RuntimeError(
