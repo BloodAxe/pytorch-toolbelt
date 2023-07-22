@@ -35,7 +35,7 @@ def plot_heatmap(
     fname=None,
     noshow: bool = False,
     cmap=None,
-    backend="Agg"
+    backend="Agg",
 ):
     if len(cm.shape) != 2:
         raise ValueError("Heatmap must be a 2-D array")
@@ -66,7 +66,15 @@ def plot_heatmap(
         for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
             text = format(cm[i, j], format_string) if np.isfinite(cm[i, j]) else "N/A"
             color = "white" if cm[i, j] > thresh else "black"
-            plt.text(j, i, text, horizontalalignment="center", fontsize=fontsize, color=color)
+            plt.text(
+                j,
+                i,
+                text,
+                horizontalalignment="center",
+                verticalalignment="center_baseline",
+                fontsize=fontsize,
+                color=color,
+            )
 
     plt.xlabel(x_label)
     plt.ylabel(y_label)
