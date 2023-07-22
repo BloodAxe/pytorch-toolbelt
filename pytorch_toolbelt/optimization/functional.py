@@ -4,6 +4,7 @@ from typing import Optional, Iterator, Dict, Union, List, Tuple, Mapping
 
 from torch import nn
 from pytorch_toolbelt.utils.distributed import get_rank, get_world_size, is_dist_avail_and_initialized
+from pytorch_toolbelt.utils.torch_utils import get_non_wrapped_model
 
 __all__ = ["scale_learning_rate_for_ddp", "get_optimizable_parameters", "freeze_model", "build_optimizer_param_groups"]
 
@@ -86,6 +87,8 @@ def build_optimizer_param_groups(
     Returns:
 
     """
+    model = get_non_wrapped_model(model)
+
     if isinstance(learning_rate, Mapping) and "_default_" not in learning_rate:
         raise RuntimeError(
             "When using layerwise learning rate, a key _default_ must be present to indicate default LR"

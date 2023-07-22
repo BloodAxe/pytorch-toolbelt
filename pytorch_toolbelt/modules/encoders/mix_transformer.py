@@ -243,12 +243,15 @@ class MixVisionTransformer(AbstractEncoder):
         depths=[3, 4, 6, 3],
         sr_ratios=[8, 4, 2, 1],
         activation=ACT_GELU,
+        first_embedd_stride=4,
     ):
         super().__init__()
         self.depths = depths
 
         # patch_embed
-        self.patch_embed1 = OverlapPatchEmbed(patch_size=7, stride=4, in_chans=in_channels, embed_dim=embed_dims[0])
+        self.patch_embed1 = OverlapPatchEmbed(
+            patch_size=7, stride=first_embedd_stride, in_chans=in_channels, embed_dim=embed_dims[0]
+        )
         self.patch_embed2 = OverlapPatchEmbed(patch_size=3, stride=2, in_chans=embed_dims[0], embed_dim=embed_dims[1])
         self.patch_embed3 = OverlapPatchEmbed(patch_size=3, stride=2, in_chans=embed_dims[1], embed_dim=embed_dims[2])
         self.patch_embed4 = OverlapPatchEmbed(patch_size=3, stride=2, in_chans=embed_dims[2], embed_dim=embed_dims[3])
@@ -343,7 +346,7 @@ class MixVisionTransformer(AbstractEncoder):
         self.apply(self._init_weights)
         self.output_spec = FeatureMapsSpecification(
             channels=embed_dims,
-            strides=(4, 8, 16, 32),
+            strides=(first_embedd_stride, first_embedd_stride * 2, first_embedd_stride * 4, first_embedd_stride * 8),
         )
 
     @torch.jit.unused
@@ -459,7 +462,9 @@ MitPretrainedWeights = {
 
 
 class MitB0Encoder(MixVisionTransformer):
-    def __init__(self, pretrained: bool = True, drop_rate=0.0, drop_path_rate=0.1, activation=ACT_GELU):
+    def __init__(
+        self, pretrained: bool = True, drop_rate=0.0, drop_path_rate=0.1, activation=ACT_GELU, first_embedd_stride=4
+    ):
         super().__init__(
             embed_dims=[32, 64, 160, 256],
             num_heads=[1, 2, 5, 8],
@@ -471,6 +476,7 @@ class MitB0Encoder(MixVisionTransformer):
             drop_rate=drop_rate,
             drop_path_rate=drop_path_rate,
             activation=activation,
+            first_embedd_stride=first_embedd_stride,
         )
         if pretrained:
             checkpoint = torch.hub.load_state_dict_from_url(
@@ -480,7 +486,9 @@ class MitB0Encoder(MixVisionTransformer):
 
 
 class MitB1Encoder(MixVisionTransformer):
-    def __init__(self, pretrained: bool = True, drop_rate=0.0, drop_path_rate=0.1, activation=ACT_GELU):
+    def __init__(
+        self, pretrained: bool = True, drop_rate=0.0, drop_path_rate=0.1, activation=ACT_GELU, first_embedd_stride=4
+    ):
         super().__init__(
             embed_dims=[64, 128, 320, 512],
             num_heads=[1, 2, 5, 8],
@@ -492,6 +500,7 @@ class MitB1Encoder(MixVisionTransformer):
             drop_rate=drop_rate,
             drop_path_rate=drop_path_rate,
             activation=activation,
+            first_embedd_stride=first_embedd_stride,
         )
         if pretrained:
             checkpoint = torch.hub.load_state_dict_from_url(
@@ -501,7 +510,9 @@ class MitB1Encoder(MixVisionTransformer):
 
 
 class MitB2Encoder(MixVisionTransformer):
-    def __init__(self, pretrained: bool = True, drop_rate=0.0, drop_path_rate=0.1, activation=ACT_GELU):
+    def __init__(
+        self, pretrained: bool = True, drop_rate=0.0, drop_path_rate=0.1, activation=ACT_GELU, first_embedd_stride=4
+    ):
         super().__init__(
             embed_dims=[64, 128, 320, 512],
             num_heads=[1, 2, 5, 8],
@@ -513,6 +524,7 @@ class MitB2Encoder(MixVisionTransformer):
             drop_rate=drop_rate,
             drop_path_rate=drop_path_rate,
             activation=activation,
+            first_embedd_stride=first_embedd_stride,
         )
         if pretrained:
             checkpoint = torch.hub.load_state_dict_from_url(
@@ -522,7 +534,9 @@ class MitB2Encoder(MixVisionTransformer):
 
 
 class MitB3Encoder(MixVisionTransformer):
-    def __init__(self, pretrained: bool = True, drop_rate=0.0, drop_path_rate=0.1, activation=ACT_GELU):
+    def __init__(
+        self, pretrained: bool = True, drop_rate=0.0, drop_path_rate=0.1, activation=ACT_GELU, first_embedd_stride=4
+    ):
         super().__init__(
             embed_dims=[64, 128, 320, 512],
             num_heads=[1, 2, 5, 8],
@@ -534,6 +548,7 @@ class MitB3Encoder(MixVisionTransformer):
             drop_rate=drop_rate,
             drop_path_rate=drop_path_rate,
             activation=activation,
+            first_embedd_stride=first_embedd_stride,
         )
         if pretrained:
             checkpoint = torch.hub.load_state_dict_from_url(
@@ -543,7 +558,9 @@ class MitB3Encoder(MixVisionTransformer):
 
 
 class MitB4Encoder(MixVisionTransformer):
-    def __init__(self, pretrained: bool = True, drop_rate=0.0, drop_path_rate=0.1, activation=ACT_GELU):
+    def __init__(
+        self, pretrained: bool = True, drop_rate=0.0, drop_path_rate=0.1, activation=ACT_GELU, first_embedd_stride=4
+    ):
         super().__init__(
             embed_dims=[64, 128, 320, 512],
             num_heads=[1, 2, 5, 8],
@@ -555,6 +572,7 @@ class MitB4Encoder(MixVisionTransformer):
             drop_rate=drop_rate,
             drop_path_rate=drop_path_rate,
             activation=activation,
+            first_embedd_stride=first_embedd_stride,
         )
         if pretrained:
             checkpoint = torch.hub.load_state_dict_from_url(
@@ -564,7 +582,9 @@ class MitB4Encoder(MixVisionTransformer):
 
 
 class MitB5Encoder(MixVisionTransformer):
-    def __init__(self, pretrained: bool = True, drop_rate=0.0, drop_path_rate=0.1, activation=ACT_GELU):
+    def __init__(
+        self, pretrained: bool = True, drop_rate=0.0, drop_path_rate=0.1, activation=ACT_GELU, first_embedd_stride=4
+    ):
         super().__init__(
             embed_dims=[64, 128, 320, 512],
             num_heads=[1, 2, 5, 8],
@@ -576,6 +596,7 @@ class MitB5Encoder(MixVisionTransformer):
             drop_rate=drop_rate,
             drop_path_rate=drop_path_rate,
             activation=activation,
+            first_embedd_stride=first_embedd_stride,
         )
 
         if pretrained:
