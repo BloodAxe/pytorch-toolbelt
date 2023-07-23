@@ -12,10 +12,16 @@ def instantiate_normalization_block(normalization: str, in_channels: int, **kwar
     if normalization in ("bn", "batch", "batch_norm", "batchnorm"):
         return nn.BatchNorm2d(num_features=in_channels)
 
+    if normalization in ("bn3d", "batch3d", "batch_norm3d", "batch_norm_3d", "batchnorm3d"):
+        return nn.BatchNorm3d(num_features=in_channels)
+
     if normalization in ("gn", "group", "group_norm", "groupnorm"):
         return nn.GroupNorm(num_channels=in_channels, **kwargs)
 
     if normalization in ("in", "instance", "instance_norm", "instancenorm"):
         return nn.InstanceNorm2d(num_features=in_channels, **kwargs)
+
+    if normalization in ("in3d", "instance3d", "instance_norm_3d", "instancenorm3d"):
+        return nn.InstanceNorm3d(num_features=in_channels, **kwargs)
 
     raise KeyError(f"Unknown normalization type '{normalization}'")
