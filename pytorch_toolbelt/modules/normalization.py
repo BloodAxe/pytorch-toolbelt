@@ -18,7 +18,7 @@ def instantiate_normalization_block(normalization: str, in_channels: int, **kwar
     if normalization in ("gn", "group", "group_norm", "groupnorm"):
         return nn.GroupNorm(num_channels=in_channels, **kwargs)
 
-    if normalization in ("in", "instance", "instance_norm", "instancenorm", "instance_norm_2d", "instancenorm2d"):
+    if normalization in ("in", "instance", "instance2d", "instance_norm", "instancenorm", "instance_norm_2d", "instancenorm2d"):
         return nn.InstanceNorm2d(num_features=in_channels, **kwargs)
 
     if normalization in ("in3d", "instance3d", "instance_norm_3d", "instancenorm3d"):
