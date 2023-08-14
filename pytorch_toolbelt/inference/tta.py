@@ -779,7 +779,9 @@ class MultiscaleTTA(nn.Module):
         self.deaugment_fn = deaugment_fn
 
     def forward(self, x):
-        ms_inputs = self.augment_fn(x, size_offsets=self.size_offsets, mode=self.mode, align_corners=self.align_corners)
+        ms_inputs = self.augment_fn(
+            x, size_offsets=self.size_offsets, mode=self.mode, align_corners=self.align_corners
+        )
         ms_outputs = [self.model(x) for x in ms_inputs]
 
         outputs = {}
@@ -791,6 +793,8 @@ class MultiscaleTTA(nn.Module):
             for key in keys:
                 deaugment_fn: Callable = self.deaugment_fn[key]
                 values = [x[key] for x in ms_outputs]
-                outputs[key] = deaugment_fn(values, size_offsets=self.size_offsets, mode=self.mode, align_corners=self.align_corners)
+                outputs[key] = deaugment_fn(
+                    values, size_offsets=self.size_offsets, mode=self.mode, align_corners=self.align_corners
+                )
 
         return outputs

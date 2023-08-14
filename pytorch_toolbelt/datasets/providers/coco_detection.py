@@ -7,7 +7,8 @@ from typing import List
 import numpy as np
 from torch.utils.data import Dataset
 
-__all__ = ["DetectionSample","COCODetectionDatasetReader"]
+__all__ = ["DetectionSample", "COCODetectionDatasetReader"]
+
 
 @dataclasses.dataclass
 class DetectionSample:
@@ -70,13 +71,12 @@ class COCODetectionDatasetReader(Dataset):
             if image_id in annotations:
                 for annotations in annotations[image_id]:
                     class_index = category_id_to_index[annotations["category_id"]]
-                    x,y,w,h = annotations["bbox"]
-                    bbox_xyxy = [x,y,x+w,y+h]
+                    x, y, w, h = annotations["bbox"]
+                    bbox_xyxy = [x, y, x + w, y + h]
 
                     labels.append(class_index)
                     bboxes.append(bbox_xyxy)
                     is_difficult.append(annotations["iscrowd"])
-
 
             sample = DetectionSample(
                 image_id=image_id,
@@ -90,7 +90,6 @@ class COCODetectionDatasetReader(Dataset):
             samples.append(sample)
 
         return cls(samples, class_names)
-
 
 
 if __name__ == "__main__":
