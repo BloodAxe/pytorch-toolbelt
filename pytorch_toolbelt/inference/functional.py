@@ -144,7 +144,8 @@ def torch_transpose2(x: Tensor):
     """
     return x.transpose(3, 2)
 
-def pad_tensor_to_size(x: Tensor, size: Tuple[int, ...], mode='constant', value=0) -> Tuple[Tensor, Tuple[slice,...]]:
+
+def pad_tensor_to_size(x: Tensor, size: Tuple[int, ...], mode="constant", value=0) -> Tuple[Tensor, Tuple[slice, ...]]:
     """
     Pad tensor to given size by appending elements to the beginning and end of each axis.
 
@@ -168,9 +169,11 @@ def pad_tensor_to_size(x: Tensor, size: Tuple[int, ...], mode='constant', value=
 
     x = torch.nn.functional.pad(x, pad=padding_params, mode=mode, value=value)
 
-    crop_params = [slice(None), slice(None)] + [slice(before, before + total_size) for (before, after, total_size) in zip(padding_before, padding_after, spatial_dims)]
+    crop_params = [slice(None), slice(None)] + [
+        slice(before, before + total_size)
+        for (before, after, total_size) in zip(padding_before, padding_after, spatial_dims)
+    ]
     return x, crop_params
-
 
 
 def pad_image_tensor(

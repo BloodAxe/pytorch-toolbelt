@@ -48,7 +48,6 @@ class COCODetectionDatasetReader(Dataset):
 
     @classmethod
     def from_directory_and_annotation(cls, images_directory: str, annotation: str):
-
         samples = []
         with open(annotation, "r") as f:
             data = json.load(f)
