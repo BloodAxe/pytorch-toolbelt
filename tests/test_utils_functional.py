@@ -1,13 +1,42 @@
 import numpy as np
 import pytest
 import torch
-from pytorch_toolbelt.inference.functional import unpad_xyxy_bboxes, pad_image_tensor, unpad_image_tensor
+from pytorch_toolbelt.inference.functional import unpad_xyxy_bboxes, pad_image_tensor, unpad_image_tensor, pad_tensor_to_size
 from pytorch_toolbelt.modules.encoders import make_n_channel_input
 from pytorch_toolbelt.utils import match_bboxes, match_bboxes_hungarian, get_collate_for_dataset
 from torch import nn
 from torch.utils.data import ConcatDataset
 from functools import partial
 
+def test_pad_tensor_to_size_1d():
+    x = torch.randn((1, 3, 32))
+
+    x_padded, unpad = pad_tensor_to_size(x, (48,))
+
+    assert x_padded.size(2) == 48
+    print(x_padded[unpad].size())
+    assert (x_padded[unpad] == x).all()
+
+def test_pad_tensor_to_size_2d():
+    x = torch.randn((1, 3, 32, 33))
+
+    x_padded, unpad = pad_tensor_to_size(x, (48,46))
+
+    assert x_padded.size(2) == 48
+    assert x_padded.size(3) == 46
+    print(x_padded[unpad].size())
+    assert (x_padded[unpad] == x).all()
+
+def test_pad_tensor_to_size_3d():
+    x = torch.randn((1, 3, 32, 33, 34))
+
+    x_padded, unpad = pad_tensor_to_size(x, (48,46,49))
+
+    assert x_padded.size(2) == 48
+    assert x_padded.size(3) == 46
+    assert x_padded.size(4) == 49
+    print(x_padded[unpad].size())
+    assert (x_padded[unpad] == x).all()
 
 def test_unpad_xyxy_bboxes():
     bboxes1 = torch.rand((1, 32, 4))

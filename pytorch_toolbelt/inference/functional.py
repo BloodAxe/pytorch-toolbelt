@@ -1,3 +1,4 @@
+import itertools
 from collections.abc import Sized, Iterable
 from typing import Union, Tuple
 
@@ -13,6 +14,7 @@ __all__ = [
     "logodd_mean",
     "log1p_mean",
     "pad_image_tensor",
+    "pad_tensor_to_size",
     "torch_fliplr",
     "torch_flipud",
     "torch_none",
@@ -141,6 +143,34 @@ def torch_transpose2(x: Tensor):
     :return:
     """
     return x.transpose(3, 2)
+
+def pad_tensor_to_size(x: Tensor, size: Tuple[int, ...], mode='constant', value=0) -> Tuple[Tensor, Tuple[slice,...]]:
+    """
+    Pad tensor to given size by appending elements to the beginning and end of each axis.
+
+    :param x: Input tensor of shape [B, C, *num_spatial_dims]
+    :param size: Target tensor size defined as an array of [num_spatial_dims] elements
+    :param mode: Padding mode, see torch.nn.functional.pad
+    :param value: Padding value, see torch.nn.functional.pad
+    :return: Tuple of padded tensor and crop parameters. Second argument can be used to reverse pad operation of model output
+    """
+    num_spatial_dims = len(size)
+    if num_spatial_dims != len(x.shape) - 2:
+        raise ValueError(f"Expected {num_spatial_dims} spatial dimensions, got {len(x.shape) - 2}")
+
+    spatial_dims = x.shape[-num_spatial_dims:]
+    padding = torch.tensor(size) - torch.tensor(spatial_dims)
+    padding_before = padding // 2
+    padding_after = padding - padding_before
+
+    padding_pairs = tuple(zip(padding_before.tolist(), padding_after.tolist()))
+    padding_params = tuple(itertools.chain(*reversed(padding_pairs)))
+
+    x = torch.nn.functional.pad(x, pad=padding_params, mode=mode, value=value)
+
+    crop_params = [slice(None), slice(None)] + [slice(before, before + total_size) for (before, after, total_size) in zip(padding_before, padding_after, spatial_dims)]
+    return x, crop_params
+
 
 
 def pad_image_tensor(
