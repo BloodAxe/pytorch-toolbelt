@@ -1,12 +1,10 @@
-from typing import Optional
-
-import torch
-import torch.nn.functional as F
 from torch import nn
 
-from ..modules.activations import ABN
+from pytorch_toolbelt.modules.drop_path import DropPath
+from pytorch_toolbelt.modules.activations import ACT_RELU, instantiate_activation_block
+from pytorch_toolbelt.modules.normalization import NORM_BATCH, instantiate_normalization_block
 
-__all__ = ["UnetBlock", "UnetCentralBlock", "UnetDecoderBlock"]
+__all__ = ["UnetBlock", "UnetResidualBlock"]
 
 
 class UnetBlock(nn.Module):
@@ -14,83 +12,86 @@ class UnetBlock(nn.Module):
     Vanilla U-Net block containing of two convolutions interleaved with batch-norm and RELU
     """
 
-    def __init__(self, in_channels: int, out_channels: int, abn_block=ABN):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        activation=ACT_RELU,
+        normalization=NORM_BATCH,
+        normalization_kwargs=None,
+        activation_kwargs=None,
+    ):
         super().__init__()
+
+        if activation_kwargs is None:
+            activation_kwargs = {"inplace": True}
+        if normalization_kwargs is None:
+            normalization_kwargs = {}
+
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, stride=1, bias=False)
-        self.abn1 = abn_block(out_channels)
+        self.norm1 = instantiate_normalization_block(normalization, out_channels, **normalization_kwargs)
+        self.act1 = instantiate_activation_block(activation, **activation_kwargs)
+
         self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, stride=1, bias=False)
-        self.abn2 = abn_block(out_channels)
+        self.norm2 = instantiate_normalization_block(normalization, out_channels, **normalization_kwargs)
+        self.act2 = instantiate_activation_block(activation, **activation_kwargs)
 
     def forward(self, x):
         x = self.conv1(x)
-        x = self.abn1(x)
+        x = self.norm1(x)
+        x = self.act1(x)
+
         x = self.conv2(x)
-        x = self.abn2(x)
+        x = self.norm2(x)
+        x = self.act2(x)
         return x
 
 
-class UnetCentralBlock(nn.Module):
-    def __init__(self, in_dec_filters: int, out_filters: int, abn_block=ABN):
-        super().__init__()
-        self.conv1 = nn.Conv2d(in_dec_filters, out_filters, kernel_size=3, padding=1, stride=2, bias=False)
-        self.abn1 = abn_block(out_filters)
-        self.conv2 = nn.Conv2d(out_filters, out_filters, kernel_size=3, padding=1, bias=False)
-        self.abn2 = abn_block(out_filters)
-
-    def forward(self, x):
-        x = self.conv1(x)
-        x = self.abn1(x)
-        x = self.conv2(x)
-        x = self.abn2(x)
-        return x
-
-
-class UnetDecoderBlock(nn.Module):
-    """"""
+class UnetResidualBlock(nn.Module):
+    """ """
 
     def __init__(
         self,
-        in_dec_filters: int,
-        in_enc_filters: int,
-        out_filters: int,
-        abn_block=ABN,
-        dropout_rate=0.0,
-        scale_factor=None,
-        scale_mode="nearest",
-        align_corners=None,
+        in_channels: int,
+        out_channels: int,
+        activation=ACT_RELU,
+        normalization=NORM_BATCH,
+        normalization_kwargs=None,
+        activation_kwargs=None,
+        drop_path_rate=0.0,
     ):
-        super(UnetDecoderBlock, self).__init__()
+        super().__init__()
 
-        self.scale_factor = scale_factor
-        self.scale_mode = scale_mode
-        self.align_corners = align_corners
+        if activation_kwargs is None:
+            activation_kwargs = {"inplace": True}
+        if normalization_kwargs is None:
+            normalization_kwargs = {}
 
-        self.conv1 = nn.Conv2d(in_dec_filters + in_enc_filters, out_filters, kernel_size=3, padding=1, bias=False)
-        self.abn1 = abn_block(out_filters)
+        self.residual = (
+            nn.Conv2d(in_channels, out_channels, kernel_size=1, padding=0, stride=1, bias=False)
+            if in_channels != out_channels
+            else nn.Identity()
+        )
 
-        self.drop = nn.Dropout2d(dropout_rate, inplace=False)
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, stride=1, bias=False)
+        self.norm1 = instantiate_normalization_block(normalization, out_channels, **normalization_kwargs)
+        self.act1 = instantiate_activation_block(activation, **activation_kwargs)
 
-        self.conv2 = nn.Conv2d(out_filters, out_filters, kernel_size=3, padding=1, bias=False)
-        self.abn2 = abn_block(out_filters)
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, stride=1, bias=False)
+        self.norm2 = instantiate_normalization_block(normalization, out_channels, **normalization_kwargs)
+        self.act2 = instantiate_activation_block(activation, **activation_kwargs)
 
-    def forward(self, x: torch.Tensor, enc: Optional[torch.Tensor] = None) -> torch.Tensor:
-        if self.scale_factor is not None:
-            x = F.interpolate(
-                x, scale_factor=self.scale_factor, mode=self.scale_mode, align_corners=self.align_corners
-            )
-        else:
-            lat_size = enc.size()[2:]
-            x = F.interpolate(x, size=lat_size, mode=self.scale_mode, align_corners=self.align_corners)
+        self.drop_path = DropPath(drop_path_rate) if drop_path_rate > 0.0 else nn.Identity()
 
-        if enc is not None:
-            x = torch.cat([x, enc], dim=1)
+    def forward(self, x):
+        residual = self.residual(x)
 
         x = self.conv1(x)
-        x = self.abn1(x)
-
-        x = self.drop(x)
+        x = self.norm1(x)
+        x = self.act1(x)
 
         x = self.conv2(x)
-        x = self.abn2(x)
+        x = self.norm2(x)
+        x = self.act2(x)
 
-        return x
+        return self.drop_path(x) + residual

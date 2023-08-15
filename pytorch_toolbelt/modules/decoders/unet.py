@@ -1,14 +1,24 @@
 from typing import List, Union, Type, Tuple
 
 import torch
+import logging
+
 from torch import nn
 
-from .. import DeconvolutionUpsample2d
-from ..unet import UnetBlock
+from pytorch_toolbelt.modules.unet import UnetBlock, UnetResidualBlock
 from pytorch_toolbelt.modules.interfaces import AbstractDecoder, FeatureMapsSpecification
-from pytorch_toolbelt.modules.upsample import AbstractResizeLayer, UpsampleLayerType, instantiate_upsample_block
+from pytorch_toolbelt.modules.upsample import (
+    AbstractResizeLayer,
+    UpsampleLayerType,
+    instantiate_upsample_block,
+    DeconvolutionUpsample2d,
+)
+from pytorch_toolbelt.modules.normalization import NORM_BATCH, instantiate_normalization_block
+from pytorch_toolbelt.modules.activations import ACT_RELU
 
 __all__ = ["UNetDecoder"]
+
+logger = logging.getLogger(__name__)
 
 
 class UNetDecoder(AbstractDecoder):
@@ -16,10 +26,23 @@ class UNetDecoder(AbstractDecoder):
         self,
         input_spec: FeatureMapsSpecification,
         out_channels: Union[Tuple[int, ...], List[int]],
-        unet_block=UnetBlock,
+        block_type: Union[Type[UnetBlock], Type[UnetResidualBlock]] = UnetBlock,
         upsample_block: Union[UpsampleLayerType, Type[AbstractResizeLayer]] = UpsampleLayerType.BILINEAR,
+        activation: str = ACT_RELU,
+        normalization: str = NORM_BATCH,
+        block_kwargs=None,
+        unet_block=None,
     ):
+        if unet_block is not None:
+            logger.warning("unet_block argument is deprecated, use block_type instead", DeprecationWarning)
+            block_type = unet_block
+
         super().__init__(input_spec)
+        if block_kwargs is None:
+            block_kwargs = {
+                "activation": activation,
+                "normalization": normalization,
+            }
 
         blocks = []
         upsamples = []
@@ -44,7 +67,7 @@ class UNetDecoder(AbstractDecoder):
 
             in_channels = features_from_encoder + out_channels_from_upsample_block
 
-            blocks.append(unet_block(in_channels, out_channels[block_index]))
+            blocks.append(block_type(in_channels, out_channels[block_index], **block_kwargs))
 
             in_channels_for_upsample_block = out_channels[block_index]
 

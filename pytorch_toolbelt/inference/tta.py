@@ -677,7 +677,7 @@ def ms_image_deaugment(
         if rows_offset == 0 and cols_offset == 0:
             deaugmented_outputs.append(feature_map)
         else:
-            batch_size, channels, rows, cols = feature_map.size()
+            _, _, rows, cols = feature_map.size()
             original_size = rows - rows_offset // stride, cols - cols_offset // stride
             scaled_image = torch.nn.functional.interpolate(
                 feature_map, size=original_size, mode=mode, align_corners=align_corners
@@ -760,6 +760,9 @@ class MultiscaleTTA(nn.Module):
         self,
         model: nn.Module,
         size_offsets: List[int],
+        mode: str = "bilinear",
+        align_corners: bool = False,
+        augment_fn: Callable = ms_image_augment,
         deaugment_fn: Union[Callable, Dict[str, Callable]] = ms_image_deaugment,
     ):
         if isinstance(deaugment_fn, Mapping):
@@ -770,10 +773,15 @@ class MultiscaleTTA(nn.Module):
         super().__init__()
         self.model = model
         self.size_offsets = size_offsets
+        self.mode = mode
+        self.align_corners = align_corners
+        self.augment_fn = augment_fn
         self.deaugment_fn = deaugment_fn
 
     def forward(self, x):
-        ms_inputs = ms_image_augment(x, size_offsets=self.size_offsets)
+        ms_inputs = self.augment_fn(
+            x, size_offsets=self.size_offsets, mode=self.mode, align_corners=self.align_corners
+        )
         ms_outputs = [self.model(x) for x in ms_inputs]
 
         outputs = {}
@@ -785,6 +793,8 @@ class MultiscaleTTA(nn.Module):
             for key in keys:
                 deaugment_fn: Callable = self.deaugment_fn[key]
                 values = [x[key] for x in ms_outputs]
-                outputs[key] = deaugment_fn(values, self.size_offsets)
+                outputs[key] = deaugment_fn(
+                    values, size_offsets=self.size_offsets, mode=self.mode, align_corners=self.align_corners
+                )
 
         return outputs

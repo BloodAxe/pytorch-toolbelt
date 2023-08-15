@@ -1,4 +1,5 @@
 import random
+import typing
 from typing import Any, Optional
 
 from torch.utils.data import Dataset
@@ -74,8 +75,8 @@ class RandomSubsetWithMaskDataset(Dataset):
         index = random.choice(self.indexes)
         return self.dataset[index]
 
-    def get_collate_fn(self):
+    def get_collate_fn(self) -> typing.Callable:
         get_collate_fn = getattr(self.dataset, "get_collate_fn", None)
         if callable(get_collate_fn):
             return get_collate_fn()
-        return default_collate()
+        return default_collate

@@ -11,6 +11,8 @@ __all__ = ["CrossEntropyFocalLoss", "BinaryFocalLoss", "FocalLoss"]
 
 
 class BinaryFocalLoss(nn.Module):
+    __constants__ = ["alpha", "gamma", "reduction", "ignore_index", "normalized", "reduced_threshold", "activation"]
+
     def __init__(
         self,
         alpha: Optional[float] = None,
@@ -33,7 +35,15 @@ class BinaryFocalLoss(nn.Module):
 
         """
         super().__init__()
+        self.alpha = alpha
+        self.gamma = gamma
         self.ignore_index = ignore_index
+        self.reduction = reduction
+        self.normalized = normalized
+        self.reduced_threshold = reduced_threshold
+        self.activation = activation
+        self.softmax_dim = softmax_dim
+
         self.focal_loss_fn = partial(
             focal_loss_with_logits,
             alpha=alpha,
@@ -49,6 +59,13 @@ class BinaryFocalLoss(nn.Module):
         self.get_one_hot_targets = (
             self._one_hot_targets_with_ignore if ignore_index is not None else self._one_hot_targets
         )
+
+    def __repr__(self):
+        repr = f"{self.__class__.__name__}(alpha={self.alpha}, gamma={self.gamma}, "
+        repr += f"ignore_index={self.ignore_index}, reduction={self.reduction}, normalized={self.normalized}, "
+        repr += f"reduced_threshold={self.reduced_threshold}, activation={self.activation}, "
+        repr += f"softmax_dim={self.softmax_dim})"
+        return repr
 
     def forward(self, inputs: Tensor, targets: Tensor) -> Tensor:
         """

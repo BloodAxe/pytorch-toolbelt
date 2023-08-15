@@ -1,5 +1,6 @@
 from torch import nn, Tensor
 
+from pytorch_toolbelt.modules.normalization import instantiate_normalization_block, NORM_BATCH
 from pytorch_toolbelt.modules.activations import instantiate_activation_block
 
 __all__ = ["DepthwiseSeparableConv2d", "DepthwiseSeparableConv2dBlock"]
@@ -44,6 +45,7 @@ class DepthwiseSeparableConv2dBlock(nn.Module):
         stride=1,
         padding=1,
         dilation=1,
+        normalization: str = NORM_BATCH,
     ):
         super(DepthwiseSeparableConv2dBlock, self).__init__()
         self.depthwise = DepthwiseSeparableConv2d(
@@ -55,7 +57,7 @@ class DepthwiseSeparableConv2dBlock(nn.Module):
             dilation=dilation,
             bias=False,
         )
-        self.bn = nn.BatchNorm2d(out_channels)
+        self.bn = instantiate_normalization_block(normalization, out_channels)
         self.act = instantiate_activation_block(activation, inplace=True)
 
     def forward(self, x: Tensor) -> Tensor:
