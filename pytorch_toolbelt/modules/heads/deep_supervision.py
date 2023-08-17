@@ -1,4 +1,4 @@
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Callable
 
 import torch
 import torch.nn as nn
@@ -48,3 +48,7 @@ class DeepSupervisionHead(AbstractHead):
     @torch.jit.unused
     def get_output_spec(self) -> FeatureMapsSpecification:
         return self.output_spec
+
+    def apply_to_final_layer(self, func: Callable[[nn.Module], None]):
+        for head in self.heads:
+            func(head)

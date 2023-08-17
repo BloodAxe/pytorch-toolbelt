@@ -123,4 +123,4 @@ class AbstractHead(AbstractDecoder):
         supervision layers, function can be applied to them as well.
 
         """
-        raise NotImplementedError("This method is not implemented for this head")
+        raise NotImplementedError("This method is not implemented in class " + self.__class__.__name__)

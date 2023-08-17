@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Callable
 
 import numpy as np
 from torch import nn
@@ -79,3 +79,6 @@ class ProgressiveShuffleHead(AbstractHead):
             return {self.output_name: output}
         else:
             return output
+
+    def apply_to_final_layer(self, func: Callable[[nn.Module], None]):
+        func(self.final)
