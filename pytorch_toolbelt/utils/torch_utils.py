@@ -4,6 +4,7 @@
 import collections
 import functools
 import warnings
+import logging
 from typing import Optional, Sequence, Union, Dict, List, Any, Iterable, Callable
 
 import numpy as np
@@ -260,6 +261,7 @@ def maybe_cuda(x: Union[torch.Tensor, nn.Module]) -> Union[torch.Tensor, nn.Modu
         return x.cuda()
     return x
 
+logger = logging.getLogger("pytorch_toolbelt.utils")
 
 def transfer_weights(model: nn.Module, model_state_dict: collections.OrderedDict):
     """
@@ -274,7 +276,7 @@ def transfer_weights(model: nn.Module, model_state_dict: collections.OrderedDict
         try:
             model.load_state_dict(collections.OrderedDict([(name, value)]), strict=False)
         except Exception as e:
-            print(e)
+            logger.debug(f"transfer_weights skipped loading weights for key {name}, because of error: {e}")
 
 
 def resize_like(x: Tensor, target: Tensor, mode: str = "bilinear", align_corners: Union[bool, None] = True) -> Tensor:

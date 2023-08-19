@@ -1,8 +1,10 @@
 import gc
+import inspect
 import logging
 import os
 import pickle
 import typing
+import functools
 from typing import Any, Dict, List, Optional
 import numpy as np
 import torch
@@ -29,6 +31,7 @@ __all__ = [
     "master_print",
     "reduce_dict_sum",
     "split_across_nodes",
+    "master_node_only"
 ]
 
 logger = logging.getLogger("pytorch_toolbelt.utils.distributed")
@@ -312,3 +315,26 @@ def split_across_nodes(
         return rank_specific_subset
     else:
         return collection
+
+def master_node_only(func):
+    """
+    A decorator for making sure a function runs only in main process.
+    If not in DDP mode (local_rank = -1), the function will run.
+    If in DDP mode, the function will run only in the main process (local_rank = 0)
+    This works only for functions with no return value
+    """
+
+    return_type = inspect.signature(func).return_annotation
+    function_has_return_value = return_type is not None and return_type != inspect._empty
+    if function_has_return_value:
+        raise RuntimeError(f"Function {func} decorated with @master_node_only must not return any value. "
+                           f"Function signature: {inspect.signature(func)}")
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        if is_main_process():
+            return func(*args, **kwargs)
+        else:
+            return None
+
+    return wrapper
