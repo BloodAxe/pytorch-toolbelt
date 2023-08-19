@@ -16,6 +16,7 @@ __all__ = [
 ]
 
 
+@torch.cuda.amp.autocast(False)
 def focal_loss_with_logits(
     output: torch.Tensor,
     target: torch.Tensor,
@@ -53,7 +54,8 @@ def focal_loss_with_logits(
     References:
         https://github.com/open-mmlab/mmdetection/blob/master/mmdet/core/loss/losses.py
     """
-    target = target.type_as(output)
+    output = output.float()
+    target = target.float()
 
     if activation == "sigmoid":
         p = torch.sigmoid(output)
@@ -88,9 +90,9 @@ def focal_loss_with_logits(
     if reduction == "mean":
         loss = loss.mean()
     if reduction == "sum":
-        loss = loss.sum(dtype=torch.float32)
+        loss = loss.sum()
     if reduction == "batchwise_mean":
-        loss = loss.sum(dim=0, dtype=torch.float32)
+        loss = loss.sum(dim=0)
 
     return loss
 

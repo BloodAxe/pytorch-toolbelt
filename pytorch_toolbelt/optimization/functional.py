@@ -4,6 +4,7 @@ from typing import Optional, Iterator, Dict, Union, List, Tuple, Mapping
 
 from torch import nn
 from pytorch_toolbelt.utils.distributed import get_rank, get_world_size, is_dist_avail_and_initialized
+from pytorch_toolbelt.utils.torch_utils import get_non_wrapped_model
 
 __all__ = ["scale_learning_rate_for_ddp", "get_optimizable_parameters", "freeze_model", "build_optimizer_param_groups"]
 
@@ -20,11 +21,10 @@ def scale_learning_rate_for_ddp(
         return learning_rate
 
     scale = float(get_world_size())
-    if isinstance(learning_rate, (float, numbers.Rational)):
-        return scale * learning_rate
     if isinstance(learning_rate, Mapping):
-        mapping_cls = type(learning_rate)
-        return mapping_cls((k, float(v * scale)) for k, v in learning_rate.items())
+        return dict((k, float(v * scale)) for k, v in learning_rate.items())
+    elif isinstance(learning_rate, (float, numbers.Rational)):
+        return scale * learning_rate
     raise ValueError(
         f"Got unsupported type {type(learning_rate)} for learning rate. Must be either a mapping or a single scalar."
     )
@@ -87,6 +87,8 @@ def build_optimizer_param_groups(
     Returns:
 
     """
+    model = get_non_wrapped_model(model)
+
     if isinstance(learning_rate, Mapping) and "_default_" not in learning_rate:
         raise RuntimeError(
             "When using layerwise learning rate, a key _default_ must be present to indicate default LR"

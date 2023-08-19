@@ -11,6 +11,8 @@ __all__ = ["CrossEntropyFocalLoss", "BinaryFocalLoss", "FocalLoss"]
 
 
 class BinaryFocalLoss(nn.Module):
+    __constants__ = ["alpha", "gamma", "reduction", "ignore_index", "normalized", "reduced_threshold", "activation"]
+
     def __init__(
         self,
         alpha: Optional[float] = None,
@@ -33,6 +35,15 @@ class BinaryFocalLoss(nn.Module):
 
         """
         super().__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+        self.ignore_index = ignore_index
+        self.reduction = reduction
+        self.normalized = normalized
+        self.reduced_threshold = reduced_threshold
+        self.activation = activation
+        self.softmax_dim = softmax_dim
+
         self.focal_loss_fn = partial(
             focal_loss_with_logits,
             alpha=alpha,
@@ -45,10 +56,46 @@ class BinaryFocalLoss(nn.Module):
             softmax_dim=softmax_dim,
         )
 
+        self.get_one_hot_targets = (
+            self._one_hot_targets_with_ignore if ignore_index is not None else self._one_hot_targets
+        )
+
+    def __repr__(self):
+        repr = f"{self.__class__.__name__}(alpha={self.alpha}, gamma={self.gamma}, "
+        repr += f"ignore_index={self.ignore_index}, reduction={self.reduction}, normalized={self.normalized}, "
+        repr += f"reduced_threshold={self.reduced_threshold}, activation={self.activation}, "
+        repr += f"softmax_dim={self.softmax_dim})"
+        return repr
+
     def forward(self, inputs: Tensor, targets: Tensor) -> Tensor:
-        """Compute focal loss for binary classification problem."""
+        """
+        Compute focal loss for binary classification problem.
+        Args:
+            inputs: [B,C,H,W]
+            targets: [B,C,H,W] one-hot or [B,H,W] long tensor that will be one-hot encoded (w.r.t to ignore_index)
+
+        Returns:
+
+        """
+
+        if len(targets.shape) + 1 == len(inputs.shape):
+            targets = self.get_one_hot_targets(targets, num_classes=inputs.size(1))
+
         loss = self.focal_loss_fn(inputs, targets)
         return loss
+
+    def _one_hot_targets(self, targets, num_classes):
+        targets_one_hot = torch.nn.functional.one_hot(targets, num_classes=num_classes)
+        targets_one_hot = torch.moveaxis(targets_one_hot, -1, 1)
+        return targets_one_hot
+
+    def _one_hot_targets_with_ignore(self, targets, num_classes):
+        ignored_mask = targets.eq(self.ignore_index)
+        targets_masked = torch.masked_fill(targets, ignored_mask, 0)
+        targets_one_hot = torch.nn.functional.one_hot(targets_masked, num_classes=num_classes)
+        targets_one_hot = torch.moveaxis(targets_one_hot, -1, 1)
+        targets_one_hot.masked_fill_(ignored_mask.unsqueeze(1), self.ignore_index)
+        return targets_one_hot
 
 
 class CrossEntropyFocalLoss(nn.Module):
@@ -81,6 +128,15 @@ class CrossEntropyFocalLoss(nn.Module):
         self.ignore_index = ignore_index
 
     def forward(self, inputs: Tensor, targets: Tensor) -> Tensor:
+        """
+
+        Args:
+            inputs: [B,C,H,W] tensor
+            targets: [B,H,W] tensor
+
+        Returns:
+
+        """
         return softmax_focal_loss_with_logits(
             inputs,
             targets,

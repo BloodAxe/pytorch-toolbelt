@@ -8,5 +8,8 @@ publish: build
 	python -m twine check dist/*
 	python -m twine upload dist/*
 
+black:
+	black --config=pyproject.toml .
+
 clean:
 	rm -r build dist *.egg-info || true

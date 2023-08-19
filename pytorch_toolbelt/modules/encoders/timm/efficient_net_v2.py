@@ -1,3 +1,4 @@
+import copy
 import math
 import warnings
 
@@ -52,6 +53,7 @@ class TimmEfficientNetV2(GenericTimmEncoder):
         activation: str = ACT_SILU,
         drop_rate=0.0,
         drop_path_rate=0.0,
+        first_conv_stride_one: bool = False,
     ):
         from timm.models.factory import create_model
 
@@ -64,6 +66,12 @@ class TimmEfficientNetV2(GenericTimmEncoder):
             drop_rate=drop_rate,
             drop_path_rate=drop_path_rate,
         )
+        if first_conv_stride_one:
+            encoder.conv_stem.stride = (1, 1)
+            encoder.feature_info = copy.deepcopy(encoder.feature_info)
+            for fi in encoder.feature_info:
+                fi["reduction"] = fi["reduction"] // 2
+
         super().__init__(encoder, layers)
 
     @torch.jit.unused

@@ -10,6 +10,12 @@ from torch import Tensor
 
 import torch.distributed as dist
 
+from pytorch_toolbelt.utils.bucket_assignment import (
+    naive_bucket_assignment,
+    compute_bucket_imbalance_score,
+    random_bucket_assignment,
+    filler_bucket_assignment,
+)
 
 __all__ = [
     "distributed_guard",
@@ -25,7 +31,7 @@ __all__ = [
     "split_across_nodes",
 ]
 
-logger = logging.getLogger("DistributedGuard")
+logger = logging.getLogger("pytorch_toolbelt.utils.distributed")
 
 
 class DistributedGuard:
@@ -158,7 +164,7 @@ def all_gather(data: Any) -> List[Any]:
 
     # serialized to a Tensor
     buffer = pickle.dumps(data)
-    storage = torch.ByteStorage.from_buffer(buffer)
+    storage = torch.UntypedStorage.from_buffer(buffer, dtype=torch.uint8)
     tensor = torch.ByteTensor(storage).to("cuda")
 
     # obtain Tensor size of each rank
@@ -233,6 +239,8 @@ def split_across_nodes(
     collection: List,
     world_size: Optional[int] = None,
     local_rank: Optional[int] = None,
+    cost: Optional[List] = None,
+    method: str = "optimal",
 ) -> List:
     """
     Split input collection such that each node receives 1/N of the total collection elements to process, where
@@ -248,10 +256,19 @@ def split_across_nodes(
     >>> # [9], 3
 
     Args:
-        collection:
-        world_size:
-        local_rank:
+        collection: Initial collection of size N to split into K nodes
+        world_size: World size (Number of nodes K)
+        local_rank: Current node
+        cost: A vector of size N that represents the cost of processing associated with each item.
+              If present, it will affect the order of elements each node will receive to even the total cost each node
+              will get.
+        method: Bucket assignment method used to assign each sample of associated cost to specific node to minimze std of total cost per node.
 
+                naive - Sort elements by cost then assing them in repeating patterm: [0, 1, 2, 3, 0, 1, 2, 3, 4, ...].
+                Each node gets exactly the same number of samples, however cost per node may vary greatly.
+
+                optimal - Iteratively assigns elements starting with the most costly ones to the least used bucket.
+                This gives much better cost balance per node, but the number of items each node gets it not guaratneed to be equal at all.
     Returns:
 
     """
@@ -261,12 +278,37 @@ def split_across_nodes(
         local_rank = get_rank()
 
     if world_size > 1:
-        indexes = np.linspace(0, len(collection), int(world_size + 1), dtype=int)
-        rank_local_indexes = slice(indexes[local_rank], indexes[local_rank + 1])
-        rank_specific_subset = collection[rank_local_indexes]
-        logger.debug(
-            f"split_across_nodes returning slice {rank_local_indexes} from collection of size {len(collection)} for rank {local_rank}"
-        )
+        if cost is not None:
+            if len(cost) != len(collection):
+                raise RuntimeError()
+
+            method_fn = {
+                "optimal": filler_bucket_assignment,
+                "naive": naive_bucket_assignment,
+            }[method]
+            assigned_indexes = method_fn(cost, world_size)
+
+            rank_local_indexes = assigned_indexes == local_rank
+
+            logger.debug(
+                f"Node {local_rank} get {np.count_nonzero(rank_local_indexes)} items with total cost {sum(cost[rank_local_indexes])}"
+            )
+
+            if isinstance(collection, np.ndarray):
+                rank_specific_subset = collection[rank_local_indexes]
+            else:
+                rank_specific_subset = [
+                    collection[index] for index, should_pick in enumerate(rank_local_indexes) if should_pick
+                ]
+
+        else:
+            indexes = np.linspace(0, len(collection), int(world_size + 1), dtype=int)
+            rank_local_indexes = slice(indexes[local_rank], indexes[local_rank + 1])
+            rank_specific_subset = collection[rank_local_indexes]
+
+            logger.debug(
+                f"split_across_nodes returning slice {rank_local_indexes} from collection of size {len(collection)} for rank {local_rank}"
+            )
         return rank_specific_subset
     else:
         return collection

@@ -13,7 +13,6 @@ def pytorch_toolbelt_deprecated(reason):
     It will result in a warning being emitted when the function is used.
     """
     if isinstance(reason, string_types):
-
         # The @deprecated is used with a 'reason'.
         #
         # .. code-block:: python
@@ -23,7 +22,6 @@ def pytorch_toolbelt_deprecated(reason):
         #      pass
 
         def decorator(func1):
-
             if inspect.isclass(func1):
                 fmt1 = "Call to deprecated class {name} ({reason})."
             else:
@@ -43,7 +41,6 @@ def pytorch_toolbelt_deprecated(reason):
         return decorator
 
     elif inspect.isclass(reason) or inspect.isfunction(reason):
-
         # The @deprecated is used without any 'reason'.
         #
         # .. code-block:: python

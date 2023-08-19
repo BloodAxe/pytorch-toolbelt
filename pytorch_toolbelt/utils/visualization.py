@@ -17,7 +17,77 @@ __all__ = [
     "vstack_autopad",
     "vstack_header",
     "grid_stack",
+    "plot_heatmap",
 ]
+
+
+def plot_heatmap(
+    cm: np.ndarray,
+    title: str,
+    x_label=None,
+    y_label=None,
+    x_ticks: List[str] = None,
+    y_ticks: List[str] = None,
+    format_string=None,
+    show_scores=True,
+    fontsize=12,
+    figsize: Tuple[int, int] = (16, 16),
+    fname=None,
+    noshow: bool = False,
+    cmap=None,
+    backend="Agg",
+):
+    if len(cm.shape) != 2:
+        raise ValueError("Heatmap must be a 2-D array")
+    import matplotlib
+
+    matplotlib.use(backend)
+    import matplotlib.pyplot as plt
+
+    if cmap is None:
+        cmap = plt.cm.Oranges
+
+    f = plt.figure(figsize=figsize)
+    plt.imshow(cm, interpolation="nearest", cmap=cmap)
+    plt.title(title)
+    plt.colorbar(fraction=0.046, pad=0.04)
+
+    if x_ticks is not None:
+        plt.xticks(np.arange(len(x_ticks)), x_ticks, rotation=45, ha="right")
+
+    if y_ticks is not None:
+        plt.yticks(np.arange(len(y_ticks)), y_ticks)
+
+    if format_string is None:
+        format_string = ".2f" if np.issubdtype(cm.dtype, np.floating) else "d"
+
+    if show_scores:
+        thresh = (cm.max() + cm.min()) / 2.0
+        for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+            text = format(cm[i, j], format_string) if np.isfinite(cm[i, j]) else "N/A"
+            color = "white" if cm[i, j] > thresh else "black"
+            plt.text(
+                j,
+                i,
+                text,
+                horizontalalignment="center",
+                verticalalignment="center_baseline",
+                fontsize=fontsize,
+                color=color,
+            )
+
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+
+    plt.tight_layout()
+
+    if fname is not None:
+        plt.savefig(fname=fname, dpi=200)
+
+    if not noshow:
+        plt.show()
+
+    return f
 
 
 def plot_confusion_matrix(

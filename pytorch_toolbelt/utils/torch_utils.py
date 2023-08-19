@@ -2,6 +2,7 @@
 
 """
 import collections
+import functools
 import warnings
 from typing import Optional, Sequence, Union, Dict, List, Any, Iterable, Callable
 
@@ -40,6 +41,7 @@ __all__ = [
     "move_to_device_non_blocking",
     "describe_outputs",
     "get_collate_for_dataset",
+    "get_non_wrapped_model",
 ]
 
 
@@ -201,7 +203,7 @@ def image_to_tensor(image: np.ndarray, dummy_channels_dim=True) -> torch.Tensor:
     else:
         # HWC -> CHW
         image = np.moveaxis(image, -1, 0)
-    image = np.ascontiguousarray(image)
+    image = np.require(image, requirements="C")
     image = torch.from_numpy(image)
     return image
 
@@ -330,7 +332,9 @@ def describe_outputs(outputs: Union[Tensor, Dict[str, Tensor], Iterable[Tensor]]
     return desc
 
 
-def get_collate_for_dataset(dataset: Union[Dataset, ConcatDataset]) -> Callable:
+def get_collate_for_dataset(
+    dataset: Union[Dataset, ConcatDataset], ensure_collate_fn_are_the_same: bool = True
+) -> Callable:
     """
     Return collate_fn function for dataset. By default, default_collate returned.
     If the dataset has method get_collate_fn() we will use it's return value instead.
@@ -346,14 +350,57 @@ def get_collate_for_dataset(dataset: Union[Dataset, ConcatDataset]) -> Callable:
     collate_fn = default_collate
 
     if hasattr(dataset, "get_collate_fn"):
-        collate_fn = dataset.get_collate_fn()
+        return dataset.get_collate_fn()
+    elif isinstance(dataset, ConcatDataset):
+        collate_fns = [get_collate_for_dataset(ds) for ds in dataset.datasets]
+        collate_fn = collate_fns[0]
 
-    if isinstance(dataset, ConcatDataset):
-        collates = set(get_collate_for_dataset(ds) for ds in dataset.datasets)
-        if len(collates) != 1:
-            raise RuntimeError(
-                "Detected ConcatDataset with datasets having different collate functions. " "This is not supported."
-            )
-        collate_fn = collates[0]
+        if ensure_collate_fn_are_the_same:
+            for other_collate_fn in collate_fns[1:]:
+                if type(other_collate_fn) != type(collate_fn):
+                    raise ValueError(
+                        f"Detected ConcatDataset consist of datasets with different collate functions: {type(collate_fn)} and {type(other_collate_fn)}."
+                    )
+
+                if isinstance(collate_fn, functools.partial):
+                    if not _partial_functions_equal(collate_fn, other_collate_fn):
+                        raise ValueError(
+                            f"Detected ConcatDataset consist of datasets with different collate functions: {collate_fn} and {type(other_collate_fn)}."
+                        )
+                elif collate_fn != other_collate_fn:
+                    raise ValueError(
+                        f"Detected ConcatDataset consist of datasets with different collate functions: {collate_fn} and {other_collate_fn}."
+                    )
+
+        collate_fn = collate_fns[0]
 
     return collate_fn
+
+
+def _partial_functions_equal(func1, func2):
+    if not (isinstance(func1, functools.partial) and isinstance(func2, functools.partial)):
+        return False
+    are_equal = all([getattr(func1, attr) == getattr(func2, attr) for attr in ["func", "args", "keywords"]])
+    return are_equal
+
+
+def get_non_wrapped_model(model: nn.Module) -> nn.Module:
+    """
+    Return real model from (maybe) wrapped in DP / DDP
+
+    Args:
+        model:
+
+    Returns:
+
+    """
+    from torch.nn import DataParallel
+    from torch.nn.parallel import DistributedDataParallel
+
+    if not isinstance(model, nn.Module):
+        raise RuntimeError("Input model must be a subclass of nn.Module.")
+
+    if isinstance(model, (DataParallel, DistributedDataParallel)):
+        model = model.module
+
+    return model

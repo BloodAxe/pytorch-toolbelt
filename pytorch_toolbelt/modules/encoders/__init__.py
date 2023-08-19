@@ -16,3 +16,4 @@ from .xresnet import *
 from .hourglass import *
 from .timm import *
 from .swin import *
+from .mix_transformer import *

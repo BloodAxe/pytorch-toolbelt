@@ -12,6 +12,11 @@ from torch import nn, Tensor
 __all__ = ["EncoderModule", "_take", "_take_ints", "_take_tensors", "make_n_channel_input"]
 
 from pytorch_toolbelt.utils.support import pytorch_toolbelt_deprecated
+from pytorch_toolbelt.modules.interfaces import (
+    HasOutputFeaturesSpecification,
+    FeatureMapsSpecification,
+    AbstractEncoder,
+)
 
 
 def _take(elements: List[Any], indexes: List[int]) -> List[Any]:
@@ -94,7 +99,7 @@ def make_n_channel_input(conv: nn.Module, in_channels: int, mode="auto", **kwarg
     raise ValueError(f"Unsupported class {conv.__class__.__name__}")
 
 
-class EncoderModule(nn.Module):
+class EncoderModule(AbstractEncoder):
     __constants__ = ["_layers", "_output_strides", "_output_filters"]
 
     def __init__(self, channels: List[int], strides: List[int], layers: List[int]):
@@ -103,8 +108,9 @@ class EncoderModule(nn.Module):
             raise ValueError("Number of channels must be equal to number of strides")
 
         self._layers = list(layers)
-        self._output_strides = _take_ints(strides, self._layers)
-        self._output_filters = _take_ints(channels, self._layers)
+        self.output_spec = FeatureMapsSpecification(
+            channels=_take_ints(channels, layers), strides=_take_ints(strides, layers)
+        )
 
     def forward(self, x: Tensor) -> List[Tensor]:  # skipcq: PYL-W0221
         output_features = []
@@ -118,12 +124,12 @@ class EncoderModule(nn.Module):
     @property
     @torch.jit.unused
     def channels(self) -> Tuple[int, ...]:
-        return tuple(self._output_filters)
+        return self.get_output_spec().channels
 
     @property
     @torch.jit.unused
     def strides(self) -> Tuple[int, ...]:
-        return tuple(self._output_strides)
+        return self.get_output_spec().strides
 
     @torch.jit.unused
     def set_trainable(self, trainable):
@@ -139,3 +145,7 @@ class EncoderModule(nn.Module):
         channels as input.
         """
         raise NotImplementedError
+
+    @torch.jit.unused
+    def get_output_spec(self) -> FeatureMapsSpecification:
+        return self.output_spec

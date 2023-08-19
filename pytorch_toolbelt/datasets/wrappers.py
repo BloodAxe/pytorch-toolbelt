@@ -1,5 +1,6 @@
 import random
-from typing import Any
+import typing
+from typing import Any, Optional
 
 from torch.utils.data import Dataset
 import numpy as np
@@ -14,22 +15,34 @@ class RandomSubsetDataset(Dataset):
     Wrapper to get desired number of samples from underlying dataset
     """
 
-    def __init__(self, dataset, num_samples: int):
+    def __init__(self, dataset, num_samples: int, weights: Optional[np.ndarray] = None):
+        if weights is not None:
+            if len(dataset) != len(weights):
+                raise ValueError(
+                    "Length of weights must be equal to length of dataset. Got {} and {}".format(
+                        len(weights), len(dataset)
+                    )
+                )
         self.dataset = dataset
         self.num_samples = num_samples
+        self.weights = np.cumsum(weights) if weights is not None else None
 
     def __len__(self) -> int:
         return self.num_samples
 
     def __getitem__(self, _) -> Any:
-        index = random.randrange(len(self.dataset))
+        if self.weights is not None:
+            population = range(len(self.dataset))
+            index = random.choices(population, cum_weights=self.weights, k=1)[0]
+        else:
+            index = random.randrange(len(self.dataset))
         return self.dataset[index]
 
     def get_collate_fn(self):
         get_collate_fn = getattr(self.dataset, "get_collate_fn", None)
         if callable(get_collate_fn):
             return get_collate_fn()
-        return default_collate()
+        return default_collate
 
 
 class RandomSubsetWithMaskDataset(Dataset):
@@ -62,8 +75,8 @@ class RandomSubsetWithMaskDataset(Dataset):
         index = random.choice(self.indexes)
         return self.dataset[index]
 
-    def get_collate_fn(self):
+    def get_collate_fn(self) -> typing.Callable:
         get_collate_fn = getattr(self.dataset, "get_collate_fn", None)
         if callable(get_collate_fn):
             return get_collate_fn()
-        return default_collate()
+        return default_collate
