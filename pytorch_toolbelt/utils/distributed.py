@@ -137,7 +137,7 @@ def broadcast_from_master(data: Any) -> Any:
 
     if local_rank == 0:
         buffer = pickle.dumps(data)
-        storage = torch.ByteStorage.from_buffer(buffer)
+        storage = torch.UntypedStorage.from_buffer(buffer, dtype=torch.uint8)
         payload = torch.ByteTensor(storage).to("cuda")
         local_size = payload.numel()
     else:
