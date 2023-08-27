@@ -299,8 +299,8 @@ def transfer_weights(model: nn.Module, model_state_dict: collections.OrderedDict
                     f"transfer_weights found that {name} weights tensor have incompatible shape {value.shape} and model has shape {existing_value.shape}. "
                     f"Initializing with random values with same mean {existing_value.mean()} and std {existing_value.std()} from corresponding checkpoint weights tensor."
                 )
-                value = torch.zeros_like(existing_value)
-                torch.nn.init.normal_(value, mean=existing_value.mean(), std=existing_value.std())
+                torch.nn.init.normal_(existing_value, mean=value.mean(), std=value.std())
+                value = existing_value
             else:
                 raise ValueError(f"Unsupported incompatible_shape_action={incompatible_shape_action}")
 
