@@ -2,6 +2,7 @@
 
 """
 import collections
+import dataclasses
 import functools
 import warnings
 import logging
@@ -354,6 +355,10 @@ def describe_outputs(outputs: Union[Tensor, Dict[str, Tensor], Iterable[Tensor]]
     elif isinstance(outputs, collections.abc.Mapping):
         desc = {}
         for key, value in outputs.items():
+            desc[key] = describe_outputs(value)
+    elif dataclasses.is_dataclass(outputs):
+        desc = dataclasses.asdict(outputs)
+        for key, value in desc.items():
             desc[key] = describe_outputs(value)
     elif isinstance(outputs, collections.abc.Iterable):
         desc = []
