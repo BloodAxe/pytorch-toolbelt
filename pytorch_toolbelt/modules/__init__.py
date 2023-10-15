@@ -17,3 +17,4 @@ from .encoders import *
 from .decoders import *
 from .initialization import *
 from .normalization import *
+from .global_response_normalization import *

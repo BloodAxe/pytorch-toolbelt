@@ -1,6 +1,6 @@
 import pytest
 import torch
-from pytorch_toolbelt.modules import HFF, ResidualDeconvolutionUpsample2d, GlobalKMaxPool2d
+from pytorch_toolbelt.modules import HFF, ResidualDeconvolutionUpsample2d, GlobalKMaxPool2d, GlobalResponseNormalization2d
 
 skip_if_no_cuda = pytest.mark.skipif(not torch.cuda.is_available(), reason="Cuda is not available")
 
@@ -66,3 +66,12 @@ def test_kmax_pool():
 
     assert y1.size() == (8, 512)
     assert y2.size() == (8, 512, 1, 1)
+
+
+def test_grn_2d():
+    layer = GlobalResponseNormalization2d(32)
+    x = torch.randn((4, 32, 64, 64))
+    y = layer(x)
+    assert y.size() == x.size()
+    print(x.mean(dim=(0, 2, 3)), x.std(dim=(0, 2, 3)))
+    print(y.mean(dim=(0,2,3)), y.std(dim=(0,2,3)))
