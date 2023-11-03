@@ -94,6 +94,10 @@ class Ensembler(nn.Module):
             keys = self.outputs
         elif isinstance(outputs[0], dict):
             keys = outputs[0].keys()
+            output_is_dict = True
+        elif isinstance(outputs[0], (list, tuple)):
+            keys = list(range(len(outputs[0])))
+            output_is_dict = False
         elif torch.is_tensor(outputs[0]):
             keys = None
         else:
@@ -104,12 +108,15 @@ class Ensembler(nn.Module):
             predictions = _deaugment_averaging(predictions, self.reduction)
             averaged_output = predictions
         else:
-            averaged_output = {}
+            averaged_output = {} if output_is_dict else []
             for key in keys:
                 predictions = [output[key] for output in outputs]
                 predictions = torch.stack(predictions)
                 predictions = _deaugment_averaging(predictions, self.reduction)
-                averaged_output[key] = predictions
+                if output_is_dict:
+                    averaged_output[key] = predictions
+                else:
+                    averaged_output.append(predictions)
 
         return averaged_output
 
