@@ -103,13 +103,13 @@ class SKResNeXt50Encoder(EncoderModule):
 
 
 class SWSLResNeXt101Encoder(EncoderModule):
-    def __init__(self, pretrained=True, layers=None, activation=ACT_RELU):
+    def __init__(self, pretrained=True, layers=None, activation=ACT_RELU, **kwargs):
         if layers is None:
             layers = [1, 2, 3, 4]
         from timm.models.resnet import swsl_resnext101_32x8d
 
         act_layer = get_activation_block(activation)
-        encoder = swsl_resnext101_32x8d(pretrained=pretrained, act_layer=act_layer)
+        encoder = swsl_resnext101_32x8d(pretrained=pretrained, act_layer=act_layer, **kwargs)
         super().__init__([64, 256, 512, 1024, 2048], [2, 4, 8, 16, 32], layers)
         self.stem = nn.Sequential(
             OrderedDict(
