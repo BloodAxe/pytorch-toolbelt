@@ -1,20 +1,30 @@
-from typing import Optional, Callable
+from typing import Optional, Callable, Mapping
 
 import numpy as np
 from torch import nn
 
 from pytorch_toolbelt.modules import instantiate_activation_block
 from pytorch_toolbelt.modules.interfaces import AbstractHead, FeatureMapsSpecification
+from pytorch_toolbelt.modules.normalization import NORM_BATCH, instantiate_normalization_block
 
 __all__ = ["ProgressiveShuffleHead"]
 
 
 class ProgressiveShuffleBlock(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int, activation: str):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        activation: str,
+        normalization: str = NORM_BATCH,
+        normalization_kwargs: Optional[Mapping] = None,
+    ):
         super().__init__()
+        if normalization_kwargs is None:
+            normalization_kwargs = {}
         self.conv = nn.Sequential(
             nn.Conv2d(in_channels, in_channels, kernel_size=3, padding=1, bias=False),
-            nn.BatchNorm2d(in_channels),
+            instantiate_normalization_block(normalization, in_channels, **normalization_kwargs),
             instantiate_activation_block(activation, inplace=True),
             nn.Conv2d(in_channels, out_channels * 4, kernel_size=1, padding=0, bias=False),
         )
@@ -45,6 +55,8 @@ class ProgressiveShuffleHead(AbstractHead):
         dropout_rate,
         output_name: Optional[str],
         reduction_factor: int = 2,
+        normalization: str = NORM_BATCH,
+        normalization_kwargs: Optional[Mapping] = None,
     ):
         super().__init__(input_spec)
 
@@ -59,7 +71,15 @@ class ProgressiveShuffleHead(AbstractHead):
 
         for _ in range(num_upsample_blocks):
             out_channels = divisible(in_channels / reduction_factor, 8)
-            blocks.append(ProgressiveShuffleBlock(in_channels, out_channels, activation=activation))
+            blocks.append(
+                ProgressiveShuffleBlock(
+                    in_channels,
+                    out_channels,
+                    activation=activation,
+                    normalization=normalization,
+                    normalization_kwargs=normalization_kwargs,
+                )
+            )
             in_channels = out_channels
 
         blocks += [
