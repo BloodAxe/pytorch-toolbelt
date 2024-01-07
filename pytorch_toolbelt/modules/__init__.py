@@ -17,3 +17,5 @@ from .encoders import *
 from .decoders import *
 from .initialization import *
 from .normalization import *
+
+from .heads import *
