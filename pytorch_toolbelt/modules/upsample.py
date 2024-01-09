@@ -228,7 +228,7 @@ class ResidualDeconvolutionUpsample2d(AbstractResizeLayer):
 
 
 def instantiate_upsample_block(
-    block: Union[str, Type[AbstractResizeLayer]], in_channels, scale_factor: int
+    block: Union[str, Type[AbstractResizeLayer]], in_channels, scale_factor: int, **kwargs
 ) -> AbstractResizeLayer:
     if isinstance(block, str):
         block = UpsampleLayerType(block)
@@ -243,4 +243,4 @@ def instantiate_upsample_block(
             UpsampleLayerType.RESIDUAL_DECONV: ResidualDeconvolutionUpsample2d,
         }[block]
 
-    return block(in_channels, scale_factor=scale_factor)
+    return block(in_channels, scale_factor=scale_factor, **kwargs)

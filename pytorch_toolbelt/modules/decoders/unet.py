@@ -28,11 +28,15 @@ class UNetDecoder(AbstractDecoder):
         out_channels: Union[Tuple[int, ...], List[int]],
         block_type: Union[Type[UnetBlock], Type[UnetResidualBlock]] = UnetBlock,
         upsample_block: Union[UpsampleLayerType, Type[AbstractResizeLayer]] = UpsampleLayerType.BILINEAR,
+        upsample_kwargs: Union[None, Mapping] = None,
         activation: str = ACT_RELU,
         normalization: str = NORM_BATCH,
         block_kwargs=None,
         unet_block=None,
     ):
+        if upsample_kwargs is None:
+            upsample_kwargs = {}
+
         if unet_block is not None:
             logger.warning("unet_block argument is deprecated, use block_type instead", DeprecationWarning)
             block_type = unet_block
@@ -59,7 +63,10 @@ class UNetDecoder(AbstractDecoder):
 
             scale_factor = input_spec.strides[block_index + 1] // input_spec.strides[block_index]
             upsample_layer: AbstractResizeLayer = instantiate_upsample_block(
-                upsample_block, in_channels=in_channels_for_upsample_block, scale_factor=scale_factor
+                upsample_block,
+                in_channels=in_channels_for_upsample_block,
+                scale_factor=scale_factor,
+                **upsample_kwargs,
             )
 
             upsamples.append(upsample_layer)
