@@ -1,4 +1,4 @@
-from typing import List, Union, Type, Tuple
+from typing import List, Union, Type, Tuple, Mapping
 
 import torch
 import logging
