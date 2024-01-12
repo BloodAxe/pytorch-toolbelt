@@ -54,11 +54,11 @@ class UnetResidualBlock(nn.Module):
         self,
         in_channels: int,
         out_channels: int,
-        activation=ACT_RELU,
-        normalization=NORM_BATCH,
+        activation: str = ACT_RELU,
+        normalization: str = NORM_BATCH,
         normalization_kwargs=None,
         activation_kwargs=None,
-        drop_path_rate=0.0,
+        drop_path_rate: float = 0.0,
     ):
         super().__init__()
 
@@ -92,6 +92,6 @@ class UnetResidualBlock(nn.Module):
 
         x = self.conv2(x)
         x = self.norm2(x)
-        x = self.act2(x)
+        x = self.act2(self.drop_path(x) + residual)
 
-        return self.drop_path(x) + residual
+        return x
