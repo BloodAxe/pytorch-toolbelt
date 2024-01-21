@@ -169,7 +169,7 @@ class TimmResnet26D(GenericTimmEncoder):
         from timm.models.resnet import resnet26d
 
         act_layer = get_activation_block(activation)
-        encoder = resnet50d(features_only=True, pretrained=pretrained, act_layer=act_layer, **kwargs)
+        encoder = resnet26d(features_only=True, pretrained=pretrained, act_layer=act_layer, **kwargs)
         if first_conv_stride_one:
             encoder.conv1[0].stride = (1, 1)
             for info in encoder.feature_info:
