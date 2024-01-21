@@ -14,6 +14,7 @@ __all__ = [
     "TResNetMEncoder",
     "TimmResnet152D",
     "TimmSEResnet152D",
+    "TimmResnet26D"
     "TimmResnet50D",
     "TimmResnet101D",
     "TimmResnet200D",
@@ -159,6 +160,22 @@ class TimmSEResnet152D(GenericTimmEncoder):
     def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
         self.encoder.conv1[0] = make_n_channel_input(self.encoder.conv1[0], input_channels, mode=mode, **kwargs)
         return self
+
+
+class TimmResnet26D(GenericTimmEncoder):
+    def __init__(
+        self, pretrained=True, layers=None, activation=ACT_RELU, first_conv_stride_one: bool = False, **kwargs
+    ):
+        from timm.models.resnet import resnet26d
+
+        act_layer = get_activation_block(activation)
+        encoder = resnet50d(features_only=True, pretrained=pretrained, act_layer=act_layer, **kwargs)
+        if first_conv_stride_one:
+            encoder.conv1[0].stride = (1, 1)
+            for info in encoder.feature_info:
+                info["reduction"] = info["reduction"] // 2
+
+        super().__init__(encoder, layers)
 
 
 class TimmResnet50D(GenericTimmEncoder):
