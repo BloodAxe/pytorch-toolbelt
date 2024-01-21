@@ -14,7 +14,7 @@ __all__ = [
     "TResNetMEncoder",
     "TimmResnet152D",
     "TimmSEResnet152D",
-    "TimmResnet26D"
+    "TimmResnet26D",
     "TimmResnet50D",
     "TimmResnet101D",
     "TimmResnet200D",
