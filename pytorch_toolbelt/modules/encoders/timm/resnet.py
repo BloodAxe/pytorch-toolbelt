@@ -177,6 +177,9 @@ class TimmResnet26D(GenericTimmEncoder):
 
         super().__init__(encoder, layers)
 
+    def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
+        self.encoder.conv1[0] = make_n_channel_input(self.encoder.conv1[0], input_channels, mode=mode, **kwargs)
+        return self
 
 class TimmResnet50D(GenericTimmEncoder):
     def __init__(
