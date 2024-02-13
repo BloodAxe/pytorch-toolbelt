@@ -66,7 +66,7 @@ class DistributedGuard:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         try:
-            if self.dist_is_available:
+            if self.dist_is_available and self.dist_is_initialized:
                 torch.distributed.barrier()
                 # torch.distributed.destroy_process_group()
         except Exception as e:
