@@ -6,7 +6,7 @@ import dataclasses
 import functools
 import warnings
 import logging
-from typing import Optional, Sequence, Union, Dict, List, Any, Iterable, Callable
+from typing import Optional, Sequence, Union, Dict, List, Any, Iterable, Callable, Tuple
 
 import numpy as np
 import torch
@@ -40,6 +40,7 @@ __all__ = [
     "to_numpy",
     "to_tensor",
     "transfer_weights",
+    "move_to_device",
     "move_to_device_non_blocking",
     "describe_outputs",
     "get_collate_for_dataset",
@@ -328,8 +329,20 @@ def resize_like(x: Tensor, target: Tensor, mode: str = "bilinear", align_corners
 
 
 def move_to_device_non_blocking(x: Tensor, device: torch.device) -> Tensor:
-    if x.device != device:
-        x = x.to(device=device, non_blocking=True)
+    return move_to_device(x, device, non_blocking=True)
+
+
+def move_to_device(
+    x: Union[Tensor, List[Tensor], Tuple[Tensor, ...], Dict[Any, Tensor]], device: torch.device, non_blocking=False
+) -> Tensor:
+    if torch.is_tensor(x):
+        x = x.to(device=device, non_blocking=non_blocking)
+    elif isinstance(x, tuple):
+        return tuple(move_to_device(item, device, non_blocking) for item in x)
+    elif isinstance(x, list):
+        return [move_to_device(item, device, non_blocking) for item in x]
+    elif isinstance(x, dict):
+        return {key: move_to_device(item, device, non_blocking) for key, item in x.items()}
     return x
 
 
