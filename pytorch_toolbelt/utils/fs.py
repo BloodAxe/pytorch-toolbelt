@@ -24,6 +24,7 @@ __all__ = [
     "id_from_fname",
     "read_image_as_is",
     "read_rgb_image",
+    "zipdir",
 ]
 
 COMMON_IMAGE_EXTENSIONS = (".bmp", ".png", ".jpeg", ".jpg", ".tiff", ".tif", ".jp2")
@@ -153,3 +154,15 @@ def read_image_as_is(fname: Union[str, Path]) -> np.ndarray:
     if image is None:
         raise IOError(f'Cannot read image "{fname}"')
     return image
+
+
+def zipdir(path, output_filename):
+    """Create a zip file from a directory."""
+    import zipfile
+
+    with zipfile.ZipFile(output_filename, "w", zipfile.ZIP_DEFLATED) as zipf:
+        for root, dirs, files in os.walk(path):
+            for file in files:
+                zipf.write(
+                    os.path.join(root, file), os.path.relpath(os.path.join(root, file), os.path.join(path, ".."))
+                )
