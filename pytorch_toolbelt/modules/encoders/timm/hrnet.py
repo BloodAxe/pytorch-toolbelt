@@ -73,7 +73,7 @@ class HRNetW48Encoder(HRNetTimmEncoder):
 
 class TimmHRNetW18SmallV2Encoder(HRNetTimmEncoder):
     def __init__(
-        self, elf, pretrained=True, use_incre_features: bool = True, layers=None, first_conv_stride_one: bool = False
+        self, pretrained=True, use_incre_features: bool = True, layers=None, first_conv_stride_one: bool = False
     ):
         from timm.models import hrnet
 
