@@ -1,6 +1,7 @@
 """Implementation of different pooling modules
 
 """
+
 from typing import Union, Dict
 
 import torch
@@ -18,6 +19,7 @@ __all__ = [
     "GlobalWeightedAvgPool2d",
     "MILCustomPoolingModule",
     "RMSPool",
+    "GlobalMaxAvgPooling2d",
 ]
 
 
@@ -203,3 +205,19 @@ class GeneralizedMeanPooling2d(nn.Module):
             + str(self.eps)
             + ")"
         )
+
+
+class GlobalMaxAvgPooling2d(nn.Module):
+    def __init__(self, flatten: bool = False):
+        super().__init__()
+        self.max_pooling = nn.AdaptiveMaxPool2d((1, 1))
+        self.avg_pooling = nn.AdaptiveAvgPool2d((1, 1))
+        self.flatten = flatten
+
+    def forward(self, x):
+        x_max = self.max_pooling(x).flatten(start_dim=1)
+        x_avg = self.avg_pooling(x).flatten(start_dim=1)
+        y = torch.cat([x_max, x_avg], dim=1)
+        if self.flatten:
+            y = torch.flatten(y, 1)
+        return y
