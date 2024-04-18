@@ -12,6 +12,7 @@ from .torch_utils import image_to_tensor
 
 __all__ = [
     "plot_confusion_matrix",
+    "plot_compressed_confusion_matrix",
     "render_figure_to_tensor",
     "hstack_autopad",
     "vstack_autopad",
@@ -87,6 +88,46 @@ def plot_heatmap(
     if not noshow:
         plt.show()
 
+    return f
+
+
+def plot_compressed_confusion_matrix(
+    cm: np.ndarray,
+    figsize: Tuple[int, int] = (16, 16),
+    normalize: bool = False,
+    title: str = "Confusion matrix",
+    cmap=None,
+    fname=None,
+    noshow: bool = False,
+):
+    from matplotlib import pyplot as plt
+
+    if normalize:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            cm = cm.astype(np.float32) / cm.sum(axis=1)[:, np.newaxis]
+    else:
+        accuracy = np.trace(cm) / (float(np.sum(cm)) + 1e-8)
+        misclass = 1 - accuracy
+
+    f = plt.figure(figsize=figsize)
+    plt.imshow(cm, interpolation="nearest", cmap=cmap)
+    plt.colorbar(fraction=0.046, pad=0.04)
+    plt.title(title)
+
+    if normalize:
+        # We don't show Accuracy & Misclassification scores for normalized CM
+        plt.xlabel("Predicted label")
+    else:
+        plt.xlabel("Predicted label\nAccuracy={:0.4f}; Misclass={:0.4f}".format(accuracy, misclass))
+
+    plt.xlabel("Predicted label")
+    plt.ylabel("True label")
+    plt.tight_layout()
+    if fname is not None:
+        plt.savefig(fname=fname, dpi=200)
+    if not noshow:
+        plt.show()
     return f
 
 
