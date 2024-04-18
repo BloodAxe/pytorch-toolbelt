@@ -91,15 +91,15 @@ class Ensembler(nn.Module):
 
     def forward(self, *input, **kwargs):  # skipcq: PYL-W0221
         outputs = [model(*input, **kwargs) for model in self.models]
+        output_is_dict = isinstance(outputs[0], dict)
+        output_is_list = isinstance(outputs[0], (list, tuple))
 
         if self.return_some_outputs:
             keys = self.outputs
         elif isinstance(outputs[0], dict):
             keys = outputs[0].keys()
-            output_is_dict = True
         elif isinstance(outputs[0], (list, tuple)):
             keys = list(range(len(outputs[0])))
-            output_is_dict = False
         elif torch.is_tensor(outputs[0]):
             keys = None
         else:
