@@ -4,7 +4,7 @@ import torch
 from torch import nn, Tensor
 
 from pytorch_toolbelt.modules import instantiate_activation_block
-from pytorch_toolbelt.modules.interfaces import AbstractHead, FeatureMapsSpecification
+from pytorch_toolbelt.modules.interfaces import AbstractHead, FeatureMapsSpecification, HasOutputFeaturesSpecification
 
 __all__ = [
     "GlobalAveragePoolingClassificationHead",
@@ -39,7 +39,7 @@ class GenericPoolingClassificationHead(AbstractHead):
         return x
 
 
-class GlobalMaxPoolingClassificationHead(GenericPoolingClassificationHead):
+class GlobalMaxPoolingClassificationHead(GenericPoolingClassificationHead, HasOutputFeaturesSpecification):
     def __init__(
         self,
         input_spec: FeatureMapsSpecification,
@@ -56,8 +56,11 @@ class GlobalMaxPoolingClassificationHead(GenericPoolingClassificationHead):
             feature_map_index=feature_map_index,
         )
 
+    def get_output_spec(self) -> FeatureMapsSpecification:
+        return FeatureMapsSpecification(channels=[self.num_classes], strides=[-1])
 
-class GlobalAveragePoolingClassificationHead(GenericPoolingClassificationHead):
+
+class GlobalAveragePoolingClassificationHead(GenericPoolingClassificationHead, HasOutputFeaturesSpecification):
     def __init__(
         self,
         input_spec: FeatureMapsSpecification,
@@ -75,8 +78,11 @@ class GlobalAveragePoolingClassificationHead(GenericPoolingClassificationHead):
             feature_map_index=feature_map_index,
         )
 
+    def get_output_spec(self) -> FeatureMapsSpecification:
+        return FeatureMapsSpecification(channels=[self.num_classes], strides=[-1])
 
-class GlobalMaxAvgPoolingClassificationHead(AbstractHead):
+
+class GlobalMaxAvgPoolingClassificationHead(AbstractHead, HasOutputFeaturesSpecification):
     def __init__(
         self,
         *,
@@ -87,6 +93,7 @@ class GlobalMaxAvgPoolingClassificationHead(AbstractHead):
         feature_map_index: int = -1,
     ):
         super().__init__(input_spec)
+        self.num_classes = num_classes
         self.max_pooling = nn.AdaptiveMaxPool2d((1, 1))
         self.avg_pooling = nn.AdaptiveAvgPool2d((1, 1))
         self.feature_map_index = feature_map_index
@@ -111,6 +118,9 @@ class GlobalMaxAvgPoolingClassificationHead(AbstractHead):
         x = self.bottleneck(x)
         x = self.classifier(x)
         return x
+
+    def get_output_spec(self) -> FeatureMapsSpecification:
+        return FeatureMapsSpecification(channels=[self.num_classes], strides=[-1])
 
 
 class FullyConnectedClassificationHead(AbstractHead):
