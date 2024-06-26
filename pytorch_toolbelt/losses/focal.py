@@ -23,6 +23,7 @@ class BinaryFocalLoss(nn.Module):
         reduced_threshold: Optional[float] = None,
         activation: str = "sigmoid",
         softmax_dim: Optional[int] = None,
+        class_weights: Optional[Tensor] = None,
     ):
         """
 
@@ -44,6 +45,10 @@ class BinaryFocalLoss(nn.Module):
         self.activation = activation
         self.softmax_dim = softmax_dim
 
+        if class_weights is not None and not torch.is_tensor(class_weights):
+            class_weights = torch.tensor(list(class_weights), dtype=torch.float32)
+        self.register_buffer('class_weights', class_weights, persistent=False)
+
         self.focal_loss_fn = partial(
             focal_loss_with_logits,
             alpha=alpha,
@@ -64,7 +69,9 @@ class BinaryFocalLoss(nn.Module):
         repr = f"{self.__class__.__name__}(alpha={self.alpha}, gamma={self.gamma}, "
         repr += f"ignore_index={self.ignore_index}, reduction={self.reduction}, normalized={self.normalized}, "
         repr += f"reduced_threshold={self.reduced_threshold}, activation={self.activation}, "
-        repr += f"softmax_dim={self.softmax_dim})"
+        repr += f"softmax_dim={self.softmax_dim},"
+        repr += f"class_weights={self.class_weights.tolist()}, "
+        repr += f")"
         return repr
 
     def forward(self, inputs: Tensor, targets: Tensor) -> Tensor:
@@ -81,7 +88,7 @@ class BinaryFocalLoss(nn.Module):
         if len(targets.shape) + 1 == len(inputs.shape):
             targets = self.get_one_hot_targets(targets, num_classes=inputs.size(1))
 
-        loss = self.focal_loss_fn(inputs, targets)
+        loss = self.focal_loss_fn(inputs, targets, class_weights=self.class_weights)
         return loss
 
     def _one_hot_targets(self, targets, num_classes):

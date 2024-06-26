@@ -29,6 +29,7 @@ def focal_loss_with_logits(
     ignore_index=None,
     activation: str = "sigmoid",
     softmax_dim: Optional[int] = None,
+    class_weights: Optional[torch.Tensor] = None
 ) -> torch.Tensor:
     """Compute binary focal loss between target and output logits.
 
@@ -76,6 +77,13 @@ def focal_loss_with_logits(
 
     if alpha is not None:
         loss *= alpha * target + (1 - alpha) * (1 - target)
+
+    if class_weights is not None:
+        # class_weights is of shape [C]
+        # Loss is of shape [B,C ...]
+        # Reshape class_weights to [1, C, ...]
+        class_weights = class_weights.view(1, -1, *(1 for _ in range(loss.dim() - 2)))
+        loss *= class_weights
 
     if ignore_index is not None:
         ignore_mask = target.eq(ignore_index)
