@@ -131,7 +131,6 @@ class TimmB1Encoder(TimmBaseEfficientNetEncoder):
 
         act_layer = get_activation_block(activation)
         encoder = tf_efficientnet_b1_ns(
-            variant,
             pretrained=pretrained,
             features_only=True,
             act_layer=act_layer,
