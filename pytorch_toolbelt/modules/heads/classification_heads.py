@@ -3,7 +3,7 @@ from typing import List, Union, Tuple, Mapping
 import torch
 from torch import nn, Tensor
 
-from pytorch_toolbelt.modules import instantiate_activation_block
+from pytorch_toolbelt.modules import instantiate_activation_block, GeneralizedMeanPooling2d
 from pytorch_toolbelt.modules.interfaces import AbstractHead, FeatureMapsSpecification, HasOutputFeaturesSpecification
 
 __all__ = [
@@ -12,6 +12,7 @@ __all__ = [
     "GenericPoolingClassificationHead",
     "FullyConnectedClassificationHead",
     "GlobalMaxAvgPoolingClassificationHead",
+    "GeneralizedMeanPoolingClassificationHead"
 ]
 
 
@@ -116,6 +117,35 @@ class GlobalMaxAvgPoolingClassificationHead(AbstractHead, HasOutputFeaturesSpeci
         x_avg = self.avg_pooling(x).flatten(start_dim=1)
         x = torch.cat([x_max, x_avg], dim=1)
         x = self.bottleneck(x)
+        x = self.classifier(x)
+        return x
+
+    def get_output_spec(self) -> FeatureMapsSpecification:
+        return FeatureMapsSpecification(channels=[self.num_classes], strides=[-1])
+
+
+class GeneralizedMeanPoolingClassificationHead(AbstractHead, HasOutputFeaturesSpecification):
+    def __init__(
+        self,
+        *,
+        input_spec: FeatureMapsSpecification,
+        num_classes: int,
+        dropout_rate: float = 0.0,
+        feature_map_index: int = -1,
+    ):
+        super().__init__(input_spec)
+        self.num_classes = num_classes
+        self.pooling = GeneralizedMeanPooling2d(l2_normalize=True, flatten=True)
+
+        self.feature_map_index = feature_map_index
+        num_channels = input_spec.channels[self.feature_map_index]
+        self.dropout = nn.Dropout(dropout_rate, inplace=True)
+        self.classifier = nn.Linear(num_channels, num_classes)
+
+    def forward(self, feature_maps: List[Tensor]) -> Tensor:
+        x = feature_maps[self.feature_map_index]
+        x = self.pooling(x)
+        x = self.dropout(x)
         x = self.classifier(x)
         return x
 
