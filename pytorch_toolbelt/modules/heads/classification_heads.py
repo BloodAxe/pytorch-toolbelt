@@ -1,4 +1,4 @@
-from typing import List, Union, Tuple, Mapping
+from typing import List
 
 import torch
 from torch import nn, Tensor
@@ -12,7 +12,8 @@ __all__ = [
     "GenericPoolingClassificationHead",
     "FullyConnectedClassificationHead",
     "GlobalMaxAvgPoolingClassificationHead",
-    "GeneralizedMeanPoolingClassificationHead"
+    "GlobalMaxAvgSumPoolingClassificationHead",
+    "GeneralizedMeanPoolingClassificationHead",
 ]
 
 
@@ -29,6 +30,7 @@ class GenericPoolingClassificationHead(AbstractHead):
         super().__init__(input_spec)
         self.pooling = pooling
         self.feature_map_index = feature_map_index
+        self.num_classes = num_classes
         self.dropout = nn.Dropout(dropout_rate)
         self.classifier = nn.Linear(input_spec.channels[self.feature_map_index], num_classes)
 
@@ -172,3 +174,34 @@ class FullyConnectedClassificationHead(AbstractHead):
         x = self.dropout(x)
         x = self.classifier(x)
         return x
+
+
+class GlobalMaxAvgSumPoolingClassificationHead(AbstractHead, HasOutputFeaturesSpecification):
+    def __init__(
+        self,
+        *,
+        input_spec: FeatureMapsSpecification,
+        num_classes: int,
+        feature_map_index: int = -1,
+        dropout_rate: float = 0.0,
+    ):
+        super().__init__(input_spec)
+        self.num_classes = num_classes
+        self.max_pooling = nn.AdaptiveMaxPool2d((1, 1))
+        self.avg_pooling = nn.AdaptiveAvgPool2d((1, 1))
+        self.feature_map_index = feature_map_index
+        self.num_classes = num_classes
+        self.dropout = nn.Dropout(dropout_rate, inplace=True) if dropout_rate > 0 else nn.Identity()
+        num_channels = input_spec.channels[self.feature_map_index]
+        self.classifier = nn.Linear(num_channels, num_classes)
+
+    def forward(self, feature_maps: List[Tensor]) -> Tensor:
+        x = feature_maps[self.feature_map_index]
+        x_max = self.max_pooling(x).flatten(start_dim=1)
+        x_avg = self.avg_pooling(x).flatten(start_dim=1)
+        x = self.dropout((x_max + x_avg) * 0.5)
+        x = self.classifier(x)
+        return x
+
+    def get_output_spec(self) -> FeatureMapsSpecification:
+        return FeatureMapsSpecification(channels=[self.num_classes], strides=[-1])
