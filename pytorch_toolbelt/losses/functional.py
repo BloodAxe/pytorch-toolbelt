@@ -108,6 +108,7 @@ def focal_loss_with_logits(
 def softmax_focal_loss_with_logits(
     output: torch.Tensor,
     target: torch.Tensor,
+    class_weights: Optional[torch.Tensor] = None,
     gamma: float = 2.0,
     reduction: str = "mean",
     normalized: bool = False,
@@ -117,7 +118,7 @@ def softmax_focal_loss_with_logits(
 ) -> torch.Tensor:
     """
     Softmax version of focal loss between target and output logits.
-    See :class:`~pytorch_toolbelt.losses.FocalLoss` for details.
+    See :class:`~pytorch_toolbelt.losses.CrossEntropyFocalLoss` for details.
 
     Args:
         output: Tensor of shape [B, C, *] (Similar to nn.CrossEntropyLoss)
@@ -133,21 +134,30 @@ def softmax_focal_loss_with_logits(
         normalized (bool): Compute normalized focal loss (https://arxiv.org/pdf/1909.07829.pdf).
         reduced_threshold (float, optional): Compute reduced focal loss (https://arxiv.org/abs/1903.01347).
     """
-    log_softmax = F.log_softmax(output, dim=1)
+    ignore_mask = target.eq(ignore_index)
+    pos_mask = ~ignore_mask
+    targets_masked = torch.masked_fill(target, ignore_mask, 0)
+    targets_oh = F.one_hot(targets_masked, num_classes=output.size(1)).moveaxis(-1, 1).float()
+    probs = F.softmax(output, dim=1)
+    pt = (1 - targets_oh) * probs + targets_oh * (1 - probs)
 
-    loss = F.nll_loss(log_softmax, target, reduction="none", ignore_index=ignore_index)
-    pt = torch.exp(-loss)
+    loss = F.binary_cross_entropy_with_logits(output, targets_oh, reduction="none")
 
     # compute the loss
     if reduced_threshold is None:
-        focal_term = (1.0 - pt).pow(gamma)
+        focal_term = pt.pow(gamma)
     else:
-        focal_term = ((1.0 - pt) / reduced_threshold).pow(gamma)
+        focal_term = (pt / reduced_threshold).pow(gamma)
         focal_term[pt < reduced_threshold] = 1
 
     loss = focal_term * loss
+    if class_weights is not None:
+        class_weights = class_weights.reshape(1, -1, *[1 for _ in range(loss.dim() - 2)])
+        loss = loss * class_weights
+    loss = loss.sum(dim=1) * pos_mask
 
     if normalized:
+        # Does not really work, will be removed in future
         norm_factor = focal_term.sum().clamp_min(eps)
         loss = loss / norm_factor
 

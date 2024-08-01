@@ -47,7 +47,7 @@ class BinaryFocalLoss(nn.Module):
 
         if class_weights is not None and not torch.is_tensor(class_weights):
             class_weights = torch.tensor(list(class_weights), dtype=torch.float32)
-        self.register_buffer('class_weights', class_weights, persistent=False)
+        self.register_buffer("class_weights", class_weights, persistent=False)
 
         self.focal_loss_fn = partial(
             focal_loss_with_logits,
@@ -119,6 +119,7 @@ class CrossEntropyFocalLoss(nn.Module):
         normalized: bool = False,
         reduced_threshold: Optional[float] = None,
         ignore_index: int = -100,
+        class_weights: Optional[Tensor] = None,
     ):
         """
 
@@ -126,6 +127,9 @@ class CrossEntropyFocalLoss(nn.Module):
         :param gamma:
         :param ignore_index: If not None, targets with given index are ignored
         :param reduced_threshold: A threshold factor for computing reduced focal loss
+        :param class_weights: A tensor of shape [C] where C is the number of classes.
+               It represents weights for each class. If None, all classes are treated equally.
+               Unreduced loss is multiplied by class_weights before reduction.
         """
         super().__init__()
         self.gamma = gamma
@@ -133,6 +137,7 @@ class CrossEntropyFocalLoss(nn.Module):
         self.reduced_threshold = reduced_threshold
         self.normalized = normalized
         self.ignore_index = ignore_index
+        self.register_buffer("class_weights", class_weights, persistent=False)
 
     def forward(self, inputs: Tensor, targets: Tensor) -> Tensor:
         """
@@ -152,6 +157,7 @@ class CrossEntropyFocalLoss(nn.Module):
             normalized=self.normalized,
             reduced_threshold=self.reduced_threshold,
             ignore_index=self.ignore_index,
+            class_weights=self.class_weights,
         )
 
 
