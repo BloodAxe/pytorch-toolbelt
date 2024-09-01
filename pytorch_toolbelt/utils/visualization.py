@@ -238,7 +238,7 @@ def render_figure_to_tensor(figure):
     return image
 
 
-def hstack_autopad(images: Iterable[np.ndarray], pad_value: int = 0) -> np.ndarray:
+def hstack_autopad(images: Iterable[np.ndarray], pad_value: int = 0, spacing=0) -> np.ndarray:
     """
     Stack images horizontally with automatic padding
 
@@ -253,12 +253,13 @@ def hstack_autopad(images: Iterable[np.ndarray], pad_value: int = 0) -> np.ndarr
         max_height = max(max_height, img.shape[0])
 
     padded_images = []
-    for img in images:
+    for img_index, img in enumerate(images):
+        is_last_image = img_index == len(images) - 1
         height = img.shape[0]
         pad_top = 0
         pad_bottom = max_height - height
         pad_left = 0
-        pad_right = 0
+        pad_right = 0 if is_last_image else spacing
         img = cv2.copyMakeBorder(img, pad_top, pad_bottom, pad_left, pad_right, cv2.BORDER_CONSTANT, value=pad_value)
         (rows, cols) = img.shape[0:2]
         padded_images.append(img)
@@ -266,7 +267,7 @@ def hstack_autopad(images: Iterable[np.ndarray], pad_value: int = 0) -> np.ndarr
     return np.hstack(padded_images)
 
 
-def vstack_autopad(images: Iterable[np.ndarray], pad_value: int = 0) -> np.ndarray:
+def vstack_autopad(images: Iterable[np.ndarray], pad_value: int = 0, spacing: int = 0) -> np.ndarray:
     """
     Stack images vertically with automatic padding
 
@@ -281,10 +282,11 @@ def vstack_autopad(images: Iterable[np.ndarray], pad_value: int = 0) -> np.ndarr
         max_width = max(max_width, img.shape[1])
 
     padded_images = []
-    for img in images:
+    for img_index, img in enumerate(images):
+        is_last_image = img_index == len(images) - 1
         width = img.shape[1]
         pad_top = 0
-        pad_bottom = 0
+        pad_bottom = 0 if is_last_image else spacing
         pad_left = 0
         pad_right = max_width - width
         img = cv2.copyMakeBorder(img, pad_top, pad_bottom, pad_left, pad_right, cv2.BORDER_CONSTANT, value=pad_value)
@@ -319,7 +321,9 @@ def vstack_header(
     return vstack_autopad([title_image, image])
 
 
-def grid_stack(images: List[np.ndarray], rows: int = None, cols: int = None) -> np.ndarray:
+def grid_stack(
+    images: List[np.ndarray], rows: int = None, cols: int = None, bg_color=0, spacing: int = 0
+) -> np.ndarray:
     if rows is None and cols is None:
         rows = int(math.ceil(math.sqrt(len(images))))
         cols = int(math.ceil(len(images) / rows))
@@ -333,6 +337,6 @@ def grid_stack(images: List[np.ndarray], rows: int = None, cols: int = None) -> 
 
     image_rows = []
     for r in range(rows):
-        image_rows.append(hstack_autopad(images[r * cols : (r + 1) * cols]))
+        image_rows.append(hstack_autopad(images[r * cols : (r + 1) * cols], bg_color=bg_color, spacing=spacing))
 
-    return vstack_autopad(image_rows)
+    return vstack_autopad(image_rows, bg_color=bg_color, spacing=spacing)
