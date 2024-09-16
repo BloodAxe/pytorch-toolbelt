@@ -31,7 +31,8 @@ __all__ = [
     "master_print",
     "reduce_dict_sum",
     "split_across_nodes",
-    "master_node_only" "all_gather_and_cat",
+    "master_node_only",
+    "all_gather_and_cat",
 ]
 
 logger = logging.getLogger("pytorch_toolbelt.utils.distributed")
