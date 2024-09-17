@@ -32,7 +32,6 @@ __all__ = [
     "reduce_dict_sum",
     "split_across_nodes",
     "master_node_only",
-    "all_gather_and_cat",
 ]
 
 logger = logging.getLogger("pytorch_toolbelt.utils.distributed")
@@ -194,16 +193,6 @@ def all_gather(data: Any) -> List[Any]:
         data_list.append(pickle.loads(buffer))
 
     return data_list
-
-
-def all_gather_and_cat(data: Any, dim=0) -> Any:
-    if not torch.is_tensor(data):
-        raise RuntimeError(f"Input data must be torch.Tensor, got {type(data)}")
-
-    device = data.device
-    data = all_gather(data)
-    data = [x.to(device) for x in data]
-    return torch.cat(data, dim=0)
 
 
 def reduce_dict_sum(input_dict: Dict[Any, Any]) -> Dict[Any, Any]:
