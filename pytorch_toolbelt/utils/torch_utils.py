@@ -1,6 +1,7 @@
 """Common functions to marshal data to/from PyTorch
 
 """
+
 import collections
 import dataclasses
 import functools
@@ -282,6 +283,8 @@ def transfer_weights(model: nn.Module, model_state_dict: collections.OrderedDict
     """
     existing_model_state_dict = model.state_dict()
 
+    loaded_layers = 0
+
     for name, value in model_state_dict.items():
         if name not in existing_model_state_dict:
             logger.debug(
@@ -308,8 +311,15 @@ def transfer_weights(model: nn.Module, model_state_dict: collections.OrderedDict
 
         try:
             model.load_state_dict(collections.OrderedDict([(name, value)]), strict=False)
+            loaded_layers += 1
         except Exception as e:
             logger.debug(f"transfer_weights skipped loading weights for key {name}, because of error: {e}")
+
+    percentage_of_layers_from_checkpoint = loaded_layers / len(model_state_dict) * 100
+    percentage_of_layers_in_model = loaded_layers / len(existing_model_state_dict) * 100
+    logger.info(
+        f"Transferred {percentage_of_layers_from_checkpoint:.2f}% of layers from checkpoint to model, filling {percentage_of_layers_in_model:.2f}% of model layers"
+    )
 
 
 def resize_like(x: Tensor, target: Tensor, mode: str = "bilinear", align_corners: Union[bool, None] = True) -> Tensor:
