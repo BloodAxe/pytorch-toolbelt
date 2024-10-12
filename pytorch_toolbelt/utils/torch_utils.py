@@ -1,12 +1,13 @@
 """Common functions to marshal data to/from PyTorch
 
 """
+
 import collections
 import dataclasses
 import functools
 import warnings
 import logging
-from typing import Optional, Sequence, Union, Dict, List, Any, Iterable, Callable, Tuple
+from typing import Optional, Sequence, Union, Dict, List, Any, Iterable, Callable, Tuple, Mapping
 
 import numpy as np
 import torch
@@ -45,6 +46,7 @@ __all__ = [
     "describe_outputs",
     "get_collate_for_dataset",
     "get_non_wrapped_model",
+    "container_to_tensor",
 ]
 
 
@@ -179,6 +181,22 @@ def to_tensor(x, dtype=None) -> torch.Tensor:
         return x
 
     raise ValueError("Unsupported input type" + str(type(x)))
+
+
+def container_to_tensor(value: Union[np.ndarray, List, Tuple, Mapping, Any]):
+    if torch.is_tensor(value):
+        return value
+    if isinstance(value, np.ndarray) and value.dtype.kind not in {"O", "M", "U", "S"}:
+        return torch.from_numpy(value)
+    if isinstance(value, list):
+        return [container_to_tensor(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(container_to_tensor(item) for item in value)
+    if isinstance(value, Mapping):
+        cls = type(value)
+        return cls((k, container_to_tensor(v)) for k, v in value.items())
+
+    raise ValueError(f"Unsupported container type")
 
 
 def image_to_tensor(image: np.ndarray, dummy_channels_dim=True) -> torch.Tensor:
@@ -336,13 +354,14 @@ def move_to_device(
     x: Union[Tensor, List[Tensor], Tuple[Tensor, ...], Dict[Any, Tensor]], device: torch.device, non_blocking=False
 ) -> Tensor:
     if torch.is_tensor(x):
-        x = x.to(device=device, non_blocking=non_blocking)
+        return x.to(device=device, non_blocking=non_blocking)
     elif isinstance(x, tuple):
         return tuple(move_to_device(item, device, non_blocking) for item in x)
     elif isinstance(x, list):
         return [move_to_device(item, device, non_blocking) for item in x]
-    elif isinstance(x, dict):
-        return {key: move_to_device(item, device, non_blocking) for key, item in x.items()}
+    elif isinstance(x, Mapping):
+        cls = type(x)
+        return cls((key, move_to_device(item, device, non_blocking)) for key, item in x.items())
     return x
 
 
