@@ -153,6 +153,8 @@ def to_numpy(x: Union[torch.Tensor, np.ndarray, Any, None]) -> Union[np.ndarray,
     """
     if x is None:
         return None
+    elif torch.is_tensor(x) and x.dtype == torch.bfloat16:
+        return x.data.float().cpu().numpy()
     elif torch.is_tensor(x):
         return x.data.cpu().numpy()
     elif isinstance(x, np.ndarray):
