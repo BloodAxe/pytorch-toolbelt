@@ -92,7 +92,7 @@ class Ensembler(nn.Module):
     def forward(self, *input, **kwargs):  # skipcq: PYL-W0221
         outputs = [model(*input, **kwargs) for model in self.models]
         output_is_dict = isinstance(outputs[0], dict)
-        output_is_list = isinstance(outputs[0], (list, tuple)) # noqa
+        output_is_list = isinstance(outputs[0], (list, tuple))  # noqa
 
         if self.return_some_outputs:
             keys = self.outputs
