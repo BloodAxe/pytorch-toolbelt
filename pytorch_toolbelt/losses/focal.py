@@ -71,7 +71,7 @@ class BinaryFocalLoss(nn.Module):
         repr += f"reduced_threshold={self.reduced_threshold}, activation={self.activation}, "
         repr += f"softmax_dim={self.softmax_dim},"
         repr += f"class_weights={self.class_weights.tolist()}, "
-        repr += f")"
+        repr += ")"
         return repr
 
     def forward(self, inputs: Tensor, targets: Tensor) -> Tensor:

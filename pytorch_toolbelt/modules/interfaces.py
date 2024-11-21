@@ -61,7 +61,8 @@ class HasInputFeaturesSpecification(Protocol):
     """
 
     @torch.jit.unused
-    def get_input_spec(self) -> FeatureMapsSpecification: ...
+    def get_input_spec(self) -> FeatureMapsSpecification:
+        ...
 
 
 class HasOutputFeaturesSpecification(Protocol):
@@ -70,7 +71,8 @@ class HasOutputFeaturesSpecification(Protocol):
     """
 
     @torch.jit.unused
-    def get_output_spec(self) -> FeatureMapsSpecification: ...
+    def get_output_spec(self) -> FeatureMapsSpecification:
+        ...
 
 
 class AbstractEncoder(nn.Module, HasOutputFeaturesSpecification):
