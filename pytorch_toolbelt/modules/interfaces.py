@@ -61,8 +61,7 @@ class HasInputFeaturesSpecification(Protocol):
     """
 
     @torch.jit.unused
-    def get_input_spec(self) -> FeatureMapsSpecification:
-        ...
+    def get_input_spec(self) -> FeatureMapsSpecification: ...
 
 
 class HasOutputFeaturesSpecification(Protocol):
@@ -71,8 +70,7 @@ class HasOutputFeaturesSpecification(Protocol):
     """
 
     @torch.jit.unused
-    def get_output_spec(self) -> FeatureMapsSpecification:
-        ...
+    def get_output_spec(self) -> FeatureMapsSpecification: ...
 
 
 class AbstractEncoder(nn.Module, HasOutputFeaturesSpecification):
@@ -108,8 +106,7 @@ class AbstractHead(AbstractDecoder):
     @abstractmethod
     def forward(
         self, feature_maps: List[Tensor], output_size: Union[Tuple[int, int], torch.Size, None] = None
-    ) -> Union[Tensor, Tuple[Tensor, ...], List[Tensor], Mapping[str, Tensor]]:
-        ...
+    ) -> Union[Tensor, Tuple[Tensor, ...], List[Tensor], Mapping[str, Tensor]]: ...
 
     @torch.jit.unused
     def apply_to_final_layer(self, func: Callable[[nn.Module], None]):

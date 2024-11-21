@@ -181,6 +181,7 @@ class TimmResnet26D(GenericTimmEncoder):
         self.encoder.conv1[0] = make_n_channel_input(self.encoder.conv1[0], input_channels, mode=mode, **kwargs)
         return self
 
+
 class TimmResnet50D(GenericTimmEncoder):
     def __init__(
         self, pretrained=True, layers=None, activation=ACT_RELU, first_conv_stride_one: bool = False, **kwargs

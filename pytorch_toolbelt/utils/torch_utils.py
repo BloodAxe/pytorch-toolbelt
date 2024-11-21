@@ -198,7 +198,7 @@ def container_to_tensor(value: Union[np.ndarray, List, Tuple, Mapping, Any]):
         cls = type(value)
         return cls((k, container_to_tensor(v)) for k, v in value.items())
 
-    raise ValueError(f"Unsupported container type")
+    raise ValueError(f"Unsupported container type {type(value)}")
 
 
 def image_to_tensor(image: np.ndarray, dummy_channels_dim=True) -> torch.Tensor:

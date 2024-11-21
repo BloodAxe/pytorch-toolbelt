@@ -3,6 +3,7 @@
 Despite this is called test-time augmentation, these method can be used at training time as well since all
 transformation written in PyTorch and respect gradients flow.
 """
+
 from collections import defaultdict
 from functools import partial
 from typing import Tuple, List, Optional, Union, Callable, Dict, Mapping

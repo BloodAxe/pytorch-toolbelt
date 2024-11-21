@@ -29,7 +29,7 @@ def focal_loss_with_logits(
     ignore_index=None,
     activation: str = "sigmoid",
     softmax_dim: Optional[int] = None,
-    class_weights: Optional[torch.Tensor] = None
+    class_weights: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
     """Compute binary focal loss between target and output logits.
 
@@ -70,7 +70,9 @@ def focal_loss_with_logits(
     if reduced_threshold is None:
         focal_term = (1.0 - pt).pow(gamma)
     else:
-        focal_term = ((1.0 - pt) / (1 - reduced_threshold)).pow(gamma) #the focal term continuity breaks when reduced_threshold not equal to 0.5. At pt equal to reduced_threshold, the value of piecewise function of focal term should be 1 from both sides .
+        focal_term = ((1.0 - pt) / (1 - reduced_threshold)).pow(
+            gamma
+        )  # the focal term continuity breaks when reduced_threshold not equal to 0.5. At pt equal to reduced_threshold, the value of piecewise function of focal term should be 1 from both sides .
         focal_term = torch.masked_fill(focal_term, pt < reduced_threshold, 1)
 
     loss = focal_term * ce_loss

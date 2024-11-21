@@ -169,7 +169,7 @@ setup(
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
-        "Topic :: Software Development :: Libraries :: Application Frameworks"
+        "Topic :: Software Development :: Libraries :: Application Frameworks",
         # "Private :: Do Not Upload"
     ],
 )

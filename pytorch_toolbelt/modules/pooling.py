@@ -200,16 +200,7 @@ class GeneralizedMeanPooling2d(nn.Module):
 
     def __repr__(self):
         p = torch.softplus(self.p) + 1
-        return (
-            self.__class__.__name__
-            + "("
-            + "p="
-            + "{:.4f}".format(p.item())
-            + ", "
-            + "eps="
-            + str(self.eps)
-            + ")"
-        )
+        return self.__class__.__name__ + "(" + "p=" + "{:.4f}".format(p.item()) + ", " + "eps=" + str(self.eps) + ")"
 
 
 class GlobalMaxAvgPooling2d(nn.Module):
