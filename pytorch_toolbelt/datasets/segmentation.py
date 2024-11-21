@@ -1,24 +1,11 @@
 from functools import partial
-from typing import Optional, List, Callable
 
-import albumentations as A
 import cv2
 import numpy as np
-from skimage.measure import block_reduce
-from torch.utils.data import Dataset
 
-from .common import (
-    read_image_rgb,
-    INPUT_IMAGE_KEY,
-    INPUT_IMAGE_ID_KEY,
-    INPUT_INDEX_KEY,
-    TARGET_MASK_WEIGHT_KEY,
-    TARGET_MASK_KEY,
-    name_for_stride,
-)
-from ..utils import fs, image_to_tensor
+from ..utils import image_to_tensor
 
-__all__ = ["mask_to_bce_target", "mask_to_ce_target", "read_binary_mask", "SegmentationDataset", "compute_weight_mask"]
+__all__ = ["mask_to_bce_target", "mask_to_ce_target", "read_binary_mask", "compute_weight_mask"]
 
 
 def mask_to_bce_target(mask):
@@ -75,72 +62,3 @@ def read_binary_mask(mask_fname: str) -> np.ndarray:
 
     cv2.threshold(mask, thresh=0, maxval=1, type=cv2.THRESH_BINARY, dst=mask)
     return mask
-
-
-class SegmentationDataset(Dataset):
-    """
-    Dataset class suitable for segmentation tasks
-    """
-
-    def __init__(
-        self,
-        image_filenames: List[str],
-        mask_filenames: Optional[List[str]],
-        transform: A.Compose,
-        read_image_fn: Callable = read_image_rgb,
-        read_mask_fn: Callable = cv2.imread,
-        need_weight_mask=False,
-        need_supervision_masks=False,
-        make_mask_target_fn: Callable = mask_to_ce_target,
-        image_ids: Optional[List[str]] = None,
-    ):
-        if mask_filenames is not None and len(image_filenames) != len(mask_filenames):
-            raise ValueError("Number of images does not corresponds to number of targets")
-
-        if image_ids is None:
-            self.image_ids = [fs.id_from_fname(fname) for fname in image_filenames]
-        else:
-            self.image_ids = image_ids
-
-        self.need_weight_mask = need_weight_mask
-        self.need_supervision_masks = need_supervision_masks
-
-        self.images = image_filenames
-        self.masks = mask_filenames
-        self.read_image = read_image_fn
-        self.read_mask = read_mask_fn
-
-        self.transform = transform
-        self.make_target = make_mask_target_fn
-
-    def __len__(self):
-        return len(self.images)
-
-    def __getitem__(self, index):
-        image = self.read_image(self.images[index])
-        data = {"image": image}
-        if self.masks is not None:
-            data["mask"] = self.read_mask(self.masks[index])
-
-        data = self.transform(**data)
-
-        image = data["image"]
-        sample = {
-            INPUT_INDEX_KEY: index,
-            INPUT_IMAGE_ID_KEY: self.image_ids[index],
-            INPUT_IMAGE_KEY: image_to_tensor(image),
-        }
-
-        if self.masks is not None:
-            mask = data["mask"]
-            sample[TARGET_MASK_KEY] = self.make_target(mask)
-            if self.need_weight_mask:
-                sample[TARGET_MASK_WEIGHT_KEY] = image_to_tensor(compute_weight_mask(mask)).float()
-
-            if self.need_supervision_masks:
-                for i in range(1, 6):
-                    stride = 2**i
-                    mask = block_reduce(mask, (2, 2), partial(_block_reduce_dominant_label))
-                    sample[name_for_stride(TARGET_MASK_KEY, stride)] = self.make_target(mask)
-
-        return sample

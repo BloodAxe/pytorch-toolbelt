@@ -5,7 +5,7 @@
 import glob
 import os
 from pathlib import Path
-from typing import Union, List
+from typing import Union, List, Iterable
 
 import cv2
 import numpy as np
@@ -24,13 +24,14 @@ __all__ = [
     "id_from_fname",
     "read_image_as_is",
     "read_rgb_image",
+    "zipdir",
 ]
 
-COMMON_IMAGE_EXTENSIONS = [".bmp", ".png", ".jpeg", ".jpg", ".tiff", ".tif"]
+COMMON_IMAGE_EXTENSIONS = (".bmp", ".png", ".jpeg", ".jpg", ".tiff", ".tif", ".jp2")
 
 
-def has_ext(fname: str, extensions: Union[str, List[str]]) -> bool:
-    if not isinstance(extensions, (str, list)):
+def has_ext(fname: str, extensions: Union[str, Iterable[str]]) -> bool:
+    if not isinstance(extensions, (str, list, tuple)):
         raise ValueError("Argument extensions must be either string or list of strings")
     if isinstance(extensions, str):
         extensions = [extensions]
@@ -45,6 +46,9 @@ def has_image_ext(fname: str) -> bool:
 
 
 def find_in_dir(dirname: str) -> List[str]:
+    if not os.path.isdir(dirname):
+        raise FileNotFoundError(f"Directory {dirname} not found")
+
     return [os.path.join(dirname, fname) for fname in sorted(os.listdir(dirname))]
 
 
@@ -150,3 +154,15 @@ def read_image_as_is(fname: Union[str, Path]) -> np.ndarray:
     if image is None:
         raise IOError(f'Cannot read image "{fname}"')
     return image
+
+
+def zipdir(path, output_filename):
+    """Create a zip file from a directory."""
+    import zipfile
+
+    with zipfile.ZipFile(output_filename, "w", zipfile.ZIP_DEFLATED) as zipf:
+        for root, dirs, files in os.walk(path):
+            for file in files:
+                zipf.write(
+                    os.path.join(root, file), os.path.relpath(os.path.join(root, file), os.path.join(path, ".."))
+                )

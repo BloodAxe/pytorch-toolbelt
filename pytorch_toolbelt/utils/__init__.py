@@ -1,5 +1,5 @@
 from .fs import *
-from .random import *
+from .random_utils import *
 from .support import *
 from .visualization import *
 from .torch_utils import *

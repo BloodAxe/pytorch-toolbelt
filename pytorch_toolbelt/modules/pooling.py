@@ -1,6 +1,7 @@
 """Implementation of different pooling modules
 
 """
+
 from typing import Union, Dict
 
 import torch
@@ -18,6 +19,7 @@ __all__ = [
     "GlobalWeightedAvgPool2d",
     "MILCustomPoolingModule",
     "RMSPool",
+    "GlobalMaxAvgPooling2d",
 ]
 
 
@@ -179,27 +181,39 @@ class GeneralizedMeanPooling2d(nn.Module):
     https://amaarora.github.io/2020/08/30/gempool.html
     """
 
-    def __init__(self, p: float = 3, eps=1e-6, flatten=False):
+    def __init__(self, p: float = 3, eps=1e-6, flatten=False, l2_normalize: bool = False):
         super(GeneralizedMeanPooling2d, self).__init__()
-        self.p = nn.Parameter(torch.ones(1) * p)
+        self.register_parameter("p", nn.Parameter(torch.ones(1) * p))
         self.eps = eps
         self.flatten = flatten
+        self.l2_normalize = l2_normalize
 
     def forward(self, x: Tensor) -> Tensor:
-        x = F.adaptive_avg_pool2d(x.clamp_min(self.eps).pow(self.p), output_size=1).pow(1.0 / self.p)
+        p = F.softplus(self.p) + 1
+        x = F.adaptive_avg_pool2d(x.clamp_min(self.eps).pow(p), output_size=1).pow(1.0 / p)
+        if self.l2_normalize:
+            x = F.normalize(x, p=2, dim=1)
         if self.flatten:
             x = x.view(x.size(0), x.size(1))
 
         return x
 
     def __repr__(self):
-        return (
-            self.__class__.__name__
-            + "("
-            + "p="
-            + "{:.4f}".format(self.p.data.item())
-            + ", "
-            + "eps="
-            + str(self.eps)
-            + ")"
-        )
+        p = torch.softplus(self.p) + 1
+        return self.__class__.__name__ + "(" + "p=" + "{:.4f}".format(p.item()) + ", " + "eps=" + str(self.eps) + ")"
+
+
+class GlobalMaxAvgPooling2d(nn.Module):
+    def __init__(self, flatten: bool = False):
+        super().__init__()
+        self.max_pooling = nn.AdaptiveMaxPool2d((1, 1))
+        self.avg_pooling = nn.AdaptiveAvgPool2d((1, 1))
+        self.flatten = flatten
+
+    def forward(self, x):
+        x_max = self.max_pooling(x).flatten(start_dim=1)
+        x_avg = self.avg_pooling(x).flatten(start_dim=1)
+        y = torch.cat([x_max, x_avg], dim=1)
+        if self.flatten:
+            y = torch.flatten(y, 1)
+        return y

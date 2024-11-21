@@ -1,6 +1,7 @@
 import math
 import warnings
 
+
 import torch
 from torch import nn
 
@@ -118,13 +119,23 @@ class TimmB0Encoder(TimmBaseEfficientNetEncoder):
 
 class TimmB1Encoder(TimmBaseEfficientNetEncoder):
     def __init__(
-        self, pretrained=True, layers=[1, 2, 3, 4], activation: str = ACT_SILU, first_conv_stride_one: bool = False
+        self,
+        pretrained: bool = True,
+        layers=[1, 2, 3, 4],
+        activation: str = ACT_SILU,
+        first_conv_stride_one: bool = False,
+        drop_path_rate: float = 0.05,
+        **kwargs,
     ):
         from timm.models.efficientnet import tf_efficientnet_b1_ns
 
         act_layer = get_activation_block(activation)
         encoder = tf_efficientnet_b1_ns(
-            pretrained=pretrained, features_only=True, act_layer=act_layer, drop_path_rate=0.05
+            pretrained=pretrained,
+            features_only=True,
+            act_layer=act_layer,
+            drop_path_rate=drop_path_rate,
+            **kwargs,
         )
         super().__init__(encoder, [16, 24, 40, 112, 320], layers=layers, first_conv_stride_one=first_conv_stride_one)
 

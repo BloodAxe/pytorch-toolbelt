@@ -1,10 +1,13 @@
 """Common functions to marshal data to/from PyTorch
 
 """
+
 import collections
+import dataclasses
 import functools
 import warnings
-from typing import Optional, Sequence, Union, Dict, List, Any, Iterable, Callable
+import logging
+from typing import Optional, Sequence, Union, Dict, List, Any, Iterable, Callable, Tuple, Mapping
 
 import numpy as np
 import torch
@@ -38,10 +41,12 @@ __all__ = [
     "to_numpy",
     "to_tensor",
     "transfer_weights",
+    "move_to_device",
     "move_to_device_non_blocking",
     "describe_outputs",
     "get_collate_for_dataset",
     "get_non_wrapped_model",
+    "container_to_tensor",
 ]
 
 
@@ -148,6 +153,8 @@ def to_numpy(x: Union[torch.Tensor, np.ndarray, Any, None]) -> Union[np.ndarray,
     """
     if x is None:
         return None
+    elif torch.is_tensor(x) and x.dtype == torch.bfloat16:
+        return x.data.float().cpu().numpy()
     elif torch.is_tensor(x):
         return x.data.cpu().numpy()
     elif isinstance(x, np.ndarray):
@@ -176,6 +183,22 @@ def to_tensor(x, dtype=None) -> torch.Tensor:
         return x
 
     raise ValueError("Unsupported input type" + str(type(x)))
+
+
+def container_to_tensor(value: Union[np.ndarray, List, Tuple, Mapping, Any]):
+    if torch.is_tensor(value):
+        return value
+    if isinstance(value, np.ndarray) and value.dtype.kind not in {"O", "M", "U", "S"}:
+        return torch.from_numpy(value)
+    if isinstance(value, list):
+        return [container_to_tensor(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(container_to_tensor(item) for item in value)
+    if isinstance(value, Mapping):
+        cls = type(value)
+        return cls((k, container_to_tensor(v)) for k, v in value.items())
+
+    raise ValueError(f"Unsupported container type {type(value)}")
 
 
 def image_to_tensor(image: np.ndarray, dummy_channels_dim=True) -> torch.Tensor:
@@ -261,20 +284,61 @@ def maybe_cuda(x: Union[torch.Tensor, nn.Module]) -> Union[torch.Tensor, nn.Modu
     return x
 
 
-def transfer_weights(model: nn.Module, model_state_dict: collections.OrderedDict):
+logger = logging.getLogger("pytorch_toolbelt.utils")
+
+
+def transfer_weights(model: nn.Module, model_state_dict: collections.OrderedDict, incompatible_shape_action="skip"):
     """
     Copy weights from state dict to model, skipping layers that are incompatible.
     This method is helpful if you are doing some model surgery and want to load
     part of the model weights into different model.
     :param model: Model to load weights into
     :param model_state_dict: Model state dict to load weights from
+    :param incompatible_shape_action: What to do if shape of weight tensor is incompatible.
+    Possible values are:
+        - "skip" - Skip loading this tensor
+        - "match_mean_std" - Initialize tensor with random values with same mean and std as source tensor
     :return: None
     """
+    existing_model_state_dict = model.state_dict()
+
+    loaded_layers = 0
+
     for name, value in model_state_dict.items():
+        if name not in existing_model_state_dict:
+            logger.debug(
+                f"transfer_weights skipped loading weights for key {name}, because it does not exist in model"
+            )
+            continue
+
+        existing_value = existing_model_state_dict[name]
+        if value.shape != existing_value.shape:
+            if incompatible_shape_action == "skip":
+                logger.debug(
+                    f"transfer_weights skipped loading weights for key {name}, because of checkpoint has shape {value.shape} and model has shape {existing_model_state_dict[name].shape}"
+                )
+                continue
+            elif incompatible_shape_action == "match_mean_std":
+                logger.debug(
+                    f"transfer_weights found that {name} weights tensor have incompatible shape {value.shape} and model has shape {existing_value.shape}. "
+                    f"Initializing with random values with same mean {existing_value.mean()} and std {existing_value.std()} from corresponding checkpoint weights tensor."
+                )
+                torch.nn.init.normal_(existing_value, mean=value.mean(), std=value.std())
+                value = existing_value
+            else:
+                raise ValueError(f"Unsupported incompatible_shape_action={incompatible_shape_action}")
+
         try:
             model.load_state_dict(collections.OrderedDict([(name, value)]), strict=False)
+            loaded_layers += 1
         except Exception as e:
-            print(e)
+            logger.debug(f"transfer_weights skipped loading weights for key {name}, because of error: {e}")
+
+    percentage_of_layers_from_checkpoint = loaded_layers / len(model_state_dict) * 100
+    percentage_of_layers_in_model = loaded_layers / len(existing_model_state_dict) * 100
+    logger.info(
+        f"Transferred {percentage_of_layers_from_checkpoint:.2f}% of layers from checkpoint to model, filling {percentage_of_layers_in_model:.2f}% of model layers"
+    )
 
 
 def resize_like(x: Tensor, target: Tensor, mode: str = "bilinear", align_corners: Union[bool, None] = True) -> Tensor:
@@ -294,8 +358,21 @@ def resize_like(x: Tensor, target: Tensor, mode: str = "bilinear", align_corners
 
 
 def move_to_device_non_blocking(x: Tensor, device: torch.device) -> Tensor:
-    if x.device != device:
-        x = x.to(device=device, non_blocking=True)
+    return move_to_device(x, device, non_blocking=True)
+
+
+def move_to_device(
+    x: Union[Tensor, List[Tensor], Tuple[Tensor, ...], Dict[Any, Tensor]], device: torch.device, non_blocking=False
+) -> Tensor:
+    if torch.is_tensor(x):
+        return x.to(device=device, non_blocking=non_blocking)
+    elif isinstance(x, tuple):
+        return tuple(move_to_device(item, device, non_blocking) for item in x)
+    elif isinstance(x, list):
+        return [move_to_device(item, device, non_blocking) for item in x]
+    elif isinstance(x, Mapping):
+        cls = type(x)
+        return cls((key, move_to_device(item, device, non_blocking)) for key, item in x.items())
     return x
 
 
@@ -321,6 +398,10 @@ def describe_outputs(outputs: Union[Tensor, Dict[str, Tensor], Iterable[Tensor]]
     elif isinstance(outputs, collections.abc.Mapping):
         desc = {}
         for key, value in outputs.items():
+            desc[key] = describe_outputs(value)
+    elif dataclasses.is_dataclass(outputs):
+        desc = dataclasses.asdict(outputs)
+        for key, value in desc.items():
             desc[key] = describe_outputs(value)
     elif isinstance(outputs, collections.abc.Iterable):
         desc = []

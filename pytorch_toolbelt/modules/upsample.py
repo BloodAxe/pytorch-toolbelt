@@ -156,10 +156,12 @@ class PixelShuffleWithLinear(AbstractResizeLayer):
     https://arxiv.org/ftp/arxiv/papers/1707/1707.02937.pdf
     """
 
-    def __init__(self, in_channels: int, scale_factor: int):
+    def __init__(self, in_channels: int, scale_factor: int, kernel_size: int = 3):
         super().__init__()
         n = scale_factor * scale_factor
-        self.conv = nn.Conv2d(in_channels, in_channels * n, kernel_size=3, padding=1, bias=False)
+        self.conv = nn.Conv2d(
+            in_channels, in_channels * n, kernel_size=kernel_size, padding=kernel_size // 2, bias=False
+        )
         self.out_channels = in_channels
         self.shuffle = nn.PixelShuffle(upscale_factor=scale_factor)
 
@@ -226,7 +228,7 @@ class ResidualDeconvolutionUpsample2d(AbstractResizeLayer):
 
 
 def instantiate_upsample_block(
-    block: Union[str, Type[AbstractResizeLayer]], in_channels, scale_factor: int
+    block: Union[str, Type[AbstractResizeLayer]], in_channels, scale_factor: int, **kwargs
 ) -> AbstractResizeLayer:
     if isinstance(block, str):
         block = UpsampleLayerType(block)
@@ -241,4 +243,4 @@ def instantiate_upsample_block(
             UpsampleLayerType.RESIDUAL_DECONV: ResidualDeconvolutionUpsample2d,
         }[block]
 
-    return block(in_channels, scale_factor=scale_factor)
+    return block(in_channels, scale_factor=scale_factor, **kwargs)

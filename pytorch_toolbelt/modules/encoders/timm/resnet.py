@@ -14,6 +14,7 @@ __all__ = [
     "TResNetMEncoder",
     "TimmResnet152D",
     "TimmSEResnet152D",
+    "TimmResnet26D",
     "TimmResnet50D",
     "TimmResnet101D",
     "TimmResnet200D",
@@ -103,13 +104,13 @@ class SKResNeXt50Encoder(EncoderModule):
 
 
 class SWSLResNeXt101Encoder(EncoderModule):
-    def __init__(self, pretrained=True, layers=None, activation=ACT_RELU):
+    def __init__(self, pretrained=True, layers=None, activation=ACT_RELU, **kwargs):
         if layers is None:
             layers = [1, 2, 3, 4]
         from timm.models.resnet import swsl_resnext101_32x8d
 
         act_layer = get_activation_block(activation)
-        encoder = swsl_resnext101_32x8d(pretrained=pretrained, act_layer=act_layer)
+        encoder = swsl_resnext101_32x8d(pretrained=pretrained, act_layer=act_layer, **kwargs)
         super().__init__([64, 256, 512, 1024, 2048], [2, 4, 8, 16, 32], layers)
         self.stem = nn.Sequential(
             OrderedDict(
@@ -161,12 +162,39 @@ class TimmSEResnet152D(GenericTimmEncoder):
         return self
 
 
+class TimmResnet26D(GenericTimmEncoder):
+    def __init__(
+        self, pretrained=True, layers=None, activation=ACT_RELU, first_conv_stride_one: bool = False, **kwargs
+    ):
+        from timm.models.resnet import resnet26d
+
+        act_layer = get_activation_block(activation)
+        encoder = resnet26d(features_only=True, pretrained=pretrained, act_layer=act_layer, **kwargs)
+        if first_conv_stride_one:
+            encoder.conv1[0].stride = (1, 1)
+            for info in encoder.feature_info:
+                info["reduction"] = info["reduction"] // 2
+
+        super().__init__(encoder, layers)
+
+    def change_input_channels(self, input_channels: int, mode="auto", **kwargs):
+        self.encoder.conv1[0] = make_n_channel_input(self.encoder.conv1[0], input_channels, mode=mode, **kwargs)
+        return self
+
+
 class TimmResnet50D(GenericTimmEncoder):
-    def __init__(self, pretrained=True, layers=None, activation=ACT_RELU, **kwargs):
+    def __init__(
+        self, pretrained=True, layers=None, activation=ACT_RELU, first_conv_stride_one: bool = False, **kwargs
+    ):
         from timm.models.resnet import resnet50d
 
         act_layer = get_activation_block(activation)
         encoder = resnet50d(features_only=True, pretrained=pretrained, act_layer=act_layer, **kwargs)
+        if first_conv_stride_one:
+            encoder.conv1[0].stride = (1, 1)
+            for info in encoder.feature_info:
+                info["reduction"] = info["reduction"] // 2
+
         super().__init__(encoder, layers)
 
     def change_input_channels(self, input_channels: int, mode="auto", **kwargs):

@@ -178,7 +178,7 @@ def build_optimizer_param_groups(
 
     for parameter_name, parameter in parameters:
         total_optimizable_params += parameter.numel()
-        module_name = ".".join(parameter_name.split(".")[:-1])
+        module_name = ".".join(parameter_name.split(".")[:-1]) if "." in parameter_name else parameter_name
         module = recursive_getattr(model, module_name)
 
         param_group: ParametersGroup = get_param_group(parameter_name, module)

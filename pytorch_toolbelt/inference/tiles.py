@@ -1,17 +1,16 @@
 """Implementation of tile-based inference allowing to predict huge images that does not fit into GPU memory entirely
 in a sliding-window fashion and merging prediction mask back to full-resolution.
 """
+
+import dataclasses
 import math
-import typing
-from typing import List, Iterable, Tuple
+from typing import List, Iterable, Tuple, Union, Sequence
 
 import cv2
 import numpy as np
 import torch
 
-from pytorch_toolbelt.utils import pytorch_toolbelt_deprecated
-
-__all__ = ["ImageSlicer", "TileMerger", "CudaTileMerger", "compute_pyramid_patch_weight_loss"]
+__all__ = ["ImageSlicer", "TileMerger", "compute_pyramid_patch_weight_loss"]
 
 
 def compute_pyramid_patch_weight_loss(width: int, height: int) -> np.ndarray:
@@ -72,14 +71,14 @@ class ImageSlicer:
         self.image_height = image_shape[0]
         self.image_width = image_shape[1]
 
-        if isinstance(tile_size, (np.ndarray, typing.Sequence)):
+        if isinstance(tile_size, (np.ndarray, Sequence)):
             if len(tile_size) != 2:
                 raise ValueError(f"Tile size must have exactly 2 elements. Got: tile_size={tile_size}")
             self.tile_size = int(tile_size[0]), int(tile_size[1])
         else:
             self.tile_size = int(tile_size), int(tile_size)
 
-        if isinstance(tile_step, (np.ndarray, typing.Sequence)):
+        if isinstance(tile_step, (np.ndarray, Sequence)):
             if len(tile_step) != 2:
                 raise ValueError(f"Tile size must have exactly 2 elements. Got: tile_step={tile_size}")
             self.tile_step = int(tile_step[0]), int(tile_step[1])
@@ -117,7 +116,7 @@ class ImageSlicer:
             self.margin_bottom = extra_h - self.margin_top
 
         else:
-            if isinstance(image_margin, typing.Sequence):
+            if isinstance(image_margin, Sequence):
                 margin_left, margin_right, margin_top, margin_bottom = image_margin
             else:
                 margin_left = margin_right = margin_top = margin_bottom = image_margin
@@ -349,9 +348,3 @@ class TileMerger:
     def merge_(self) -> torch.Tensor:
         self.image /= self.norm_mask
         return self.image
-
-
-@pytorch_toolbelt_deprecated("This class is deprecated and will be removed in 0.5.0. Please use TileMerger instead.")
-class CudaTileMerger(TileMerger):
-    def __init__(self, image_shape, channels, weight, device="cuda"):
-        super().__init__(image_shape, channels, weight, device)

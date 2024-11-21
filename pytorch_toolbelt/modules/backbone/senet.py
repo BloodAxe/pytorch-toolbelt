@@ -2,6 +2,7 @@
 ResNet code gently borrowed from
 https://github.com/pytorch/vision/blob/master/torchvision/models/resnet.py
 """
+
 from __future__ import print_function, division, absolute_import
 
 import math
