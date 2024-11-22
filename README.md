@@ -52,6 +52,10 @@ This lib is not meant to replace catalyst / ignite / fast.ai high-level framewor
 
 `pip install pytorch_toolbelt`
 
+Alternatively, using conda:
+
+`conda install pytorch_toolbelt`
+
 # How do I ... 
 
 ## Model creation
