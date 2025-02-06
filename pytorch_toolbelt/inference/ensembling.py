@@ -2,7 +2,7 @@ import collections
 
 import torch
 from torch import nn, Tensor
-from typing import List, Union, Iterable, Optional, Dict, Tuple
+from typing import List, Union, Iterable, Optional, Dict, Tuple, Mapping
 
 __all__ = [
     "ApplySoftmaxTo",
