@@ -47,6 +47,7 @@ __all__ = [
     "get_collate_for_dataset",
     "get_non_wrapped_model",
     "container_to_tensor",
+    "convert_2d_to_3d",
 ]
 
 
