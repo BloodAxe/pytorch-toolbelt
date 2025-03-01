@@ -597,9 +597,6 @@ def convert_2d_to_3d(model: nn.Module) -> nn.Module:
 
             # Replace the BatchNorm2d with BatchNorm3d
             setattr(model, name, new_bn)
-        elif isinstance(module, nn.ReLU) and replace_relu_with_silu:
-            # Replace with SILU
-            setattr(model, name, nn.SiLU(inplace=True))
         elif isinstance(module, nn.Dropout2d):
             # Replace with Dropout3d
             setattr(model, name, nn.Dropout3d(p=module.p, inplace=module.inplace))
