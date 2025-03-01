@@ -4,6 +4,7 @@ from typing import Protocol, Tuple, List, Union, Mapping, Callable
 
 import numpy as np
 import torch.jit
+from torch import nn, Tensor
 
 __all__ = [
     "FeatureMapsSpecification",
@@ -12,10 +13,6 @@ __all__ = [
     "AbstractHead",
     "AbstractEncoder",
 ]
-
-from torch import nn, Tensor
-
-from pytorch_toolbelt.utils import pytorch_toolbelt_deprecated
 
 
 @dataclasses.dataclass
