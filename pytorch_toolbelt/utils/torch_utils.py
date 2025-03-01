@@ -17,6 +17,8 @@ from torch.utils.data.dataloader import default_collate
 
 from .support import pytorch_toolbelt_deprecated
 
+logger = logging.getLogger("pytorch_toolbelt.utils")
+
 __all__ = [
     "argmax_over_dim_0",
     "argmax_over_dim_1",
@@ -284,10 +286,27 @@ def maybe_cuda(x: Union[torch.Tensor, nn.Module]) -> Union[torch.Tensor, nn.Modu
     return x
 
 
-logger = logging.getLogger("pytorch_toolbelt.utils")
 
+@dataclasses.dataclass
+class TransferWeightsOuptut:
+    """
+    Output of transfer_weights function. Holds information about how many layers were loaded, skipped, etc.
+    Can be used to get detailed information about how many layers were loaded from checkpoint to model.
+    """
+    loaded_layers: List[str]
+    skipped_layers: List[str]
+    missing_layers_in_model: List[str]
+    missing_layers_in_checkpoint: List[str]
 
-def transfer_weights(model: nn.Module, model_state_dict: collections.OrderedDict, incompatible_shape_action="skip"):
+    def __repr__(self):
+        total_layers_in_checkpoint = len(self.loaded_layers) + len(self.missing_layers_in_model) + len(self.skipped_layers)
+        total_layers_in_model = len(self.loaded_layers) + len(self.missing_layers_in_checkpoint) + len(self.skipped_layers)
+        loaded_layers_percentage = 100.0 * len(self.loaded_layers) / total_layers_in_checkpoint
+        skipped_layers_percentage = 100.0 * len(self.skipped_layers) / total_layers_in_checkpoint
+        model_initialized_percentage = 100.0 * len(self.loaded_layers) / total_layers_in_model
+        return f"TransferWeightsOuptut({model_initialized_percentage=:.2f}, {loaded_layers_percentage=:.2f}, {skipped_layers_percentage=:.2f})"
+
+def transfer_weights(model: nn.Module, model_state_dict: collections.OrderedDict, incompatible_shape_action="skip") ->TransferWeightsOuptut:
     """
     Copy weights from state dict to model, skipping layers that are incompatible.
     This method is helpful if you are doing some model surgery and want to load
@@ -295,14 +314,17 @@ def transfer_weights(model: nn.Module, model_state_dict: collections.OrderedDict
     :param model: Model to load weights into
     :param model_state_dict: Model state dict to load weights from
     :param incompatible_shape_action: What to do if shape of weight tensor is incompatible.
-    Possible values are:
-        - "skip" - Skip loading this tensor
-        - "match_mean_std" - Initialize tensor with random values with same mean and std as source tensor
-    :return: None
+           Possible values are:
+               - "skip" - Skip loading this tensor
+               - "match_mean_std" - Initialize tensor with random values with same mean and std as source tensor
+    :return: Instance of TransferWeightsOuptut
     """
     existing_model_state_dict = model.state_dict()
 
-    loaded_layers = 0
+    loaded_layer_names = []
+    skipped_layers_names = []
+    layers_not_in_model = list(set(existing_model_state_dict.keys()) - set(model_state_dict.keys()))
+    layers_not_in_checkpoint = list(set(model_state_dict.keys()) - set(existing_model_state_dict.keys()))
 
     for name, value in model_state_dict.items():
         if name not in existing_model_state_dict:
@@ -314,6 +336,7 @@ def transfer_weights(model: nn.Module, model_state_dict: collections.OrderedDict
         existing_value = existing_model_state_dict[name]
         if value.shape != existing_value.shape:
             if incompatible_shape_action == "skip":
+                skipped_layers_names.append(name)
                 logger.debug(
                     f"transfer_weights skipped loading weights for key {name}, because of checkpoint has shape {value.shape} and model has shape {existing_model_state_dict[name].shape}"
                 )
@@ -330,14 +353,15 @@ def transfer_weights(model: nn.Module, model_state_dict: collections.OrderedDict
 
         try:
             model.load_state_dict(collections.OrderedDict([(name, value)]), strict=False)
-            loaded_layers += 1
+            loaded_layer_names.append(name)
         except Exception as e:
             logger.debug(f"transfer_weights skipped loading weights for key {name}, because of error: {e}")
 
-    percentage_of_layers_from_checkpoint = loaded_layers / len(model_state_dict) * 100
-    percentage_of_layers_in_model = loaded_layers / len(existing_model_state_dict) * 100
-    logger.info(
-        f"Transferred {percentage_of_layers_from_checkpoint:.2f}% of layers from checkpoint to model, filling {percentage_of_layers_in_model:.2f}% of model layers"
+    return TransferWeightsOuptut(
+        loaded_layers=loaded_layer_names,
+        skipped_layers=skipped_layers_names,
+        missing_layers_in_model=layers_not_in_model,
+        missing_layers_in_checkpoint=layers_not_in_checkpoint,
     )
 
 
