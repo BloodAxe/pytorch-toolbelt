@@ -1,6 +1,7 @@
 import torch
 from torch import nn, Tensor
 
+
 class QualityFocalLoss(nn.Module):
     __constants__ = ["beta", "reduction"]
 

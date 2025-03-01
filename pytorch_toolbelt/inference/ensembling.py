@@ -231,7 +231,7 @@ def average_state_dicts(state_dicts: List[Mapping[str, Tensor]]) -> Mapping[str,
 
 def average_checkpoints(inputs: List[str], key=None, map_location="cpu", weights_only=True) -> collections.OrderedDict:
     """Loads checkpoints from inputs and returns a model with averaged weights.
-    
+
     Args:
       inputs (List[str]): An iterable of string paths of checkpoints to load from.
       key (str): An optional key to select a sub-dictionary from the checkpoint.

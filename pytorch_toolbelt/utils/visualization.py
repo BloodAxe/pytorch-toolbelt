@@ -317,11 +317,11 @@ def wrap_text_to_width(text, font_face, font_scale, thickness, max_width):
         return []
 
     # If the text has no whitespace, we switch to character-level wrapping
-    has_whitespace = (' ' in text)
+    has_whitespace = " " in text
 
     # Depending on presence of whitespace, choose how to split the text initially
     if has_whitespace:
-        tokens = text.split(' ')
+        tokens = text.split(" ")
     else:
         # No whitespace - treat every character as a separate "token"
         tokens = list(text)
@@ -376,6 +376,7 @@ def wrap_text_to_width(text, font_face, font_scale, thickness, max_width):
 
     return lines
 
+
 def vstack_header(
     image: np.ndarray,
     title: str,
@@ -396,7 +397,9 @@ def vstack_header(
     row_height = int(height * 2 + 0.5)
 
     if wrap_text and (width + padding_left + padding_right) > image_width:
-        lines = wrap_text_to_width(title, text_font_face, text_scale, text_thickness, image_width - padding_left - padding_right)
+        lines = wrap_text_to_width(
+            title, text_font_face, text_scale, text_thickness, image_width - padding_left - padding_right
+        )
     else:
         lines = [title]
 

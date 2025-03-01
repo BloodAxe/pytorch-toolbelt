@@ -287,27 +287,34 @@ def maybe_cuda(x: Union[torch.Tensor, nn.Module]) -> Union[torch.Tensor, nn.Modu
     return x
 
 
-
 @dataclasses.dataclass
 class TransferWeightsOuptut:
     """
     Output of transfer_weights function. Holds information about how many layers were loaded, skipped, etc.
     Can be used to get detailed information about how many layers were loaded from checkpoint to model.
     """
+
     loaded_layers: List[str]
     skipped_layers: List[str]
     missing_layers_in_model: List[str]
     missing_layers_in_checkpoint: List[str]
 
     def __repr__(self):
-        total_layers_in_checkpoint = len(self.loaded_layers) + len(self.missing_layers_in_model) + len(self.skipped_layers)
-        total_layers_in_model = len(self.loaded_layers) + len(self.missing_layers_in_checkpoint) + len(self.skipped_layers)
+        total_layers_in_checkpoint = (
+            len(self.loaded_layers) + len(self.missing_layers_in_model) + len(self.skipped_layers)
+        )
+        total_layers_in_model = (
+            len(self.loaded_layers) + len(self.missing_layers_in_checkpoint) + len(self.skipped_layers)
+        )
         loaded_layers_percentage = 100.0 * len(self.loaded_layers) / total_layers_in_checkpoint
         skipped_layers_percentage = 100.0 * len(self.skipped_layers) / total_layers_in_checkpoint
         model_initialized_percentage = 100.0 * len(self.loaded_layers) / total_layers_in_model
         return f"TransferWeightsOuptut({model_initialized_percentage=:.2f}, {loaded_layers_percentage=:.2f}, {skipped_layers_percentage=:.2f})"
 
-def transfer_weights(model: nn.Module, model_state_dict: collections.OrderedDict, incompatible_shape_action="skip") ->TransferWeightsOuptut:
+
+def transfer_weights(
+    model: nn.Module, model_state_dict: collections.OrderedDict, incompatible_shape_action="skip"
+) -> TransferWeightsOuptut:
     """
     Copy weights from state dict to model, skipping layers that are incompatible.
     This method is helpful if you are doing some model surgery and want to load
@@ -518,7 +525,7 @@ def convert_2d_to_3d(model: nn.Module) -> nn.Module:
     This method converts 2D CNN model to 3D version. Important note - models/layers with non-trivial forward() method
     probably not going to work (LayerNorm2d or GlobalResponseNormalization for instance)
     Replicates the existing Conv2d weights along the 3rd dimension (depth=1 by default) and scales them accordingly.
-    
+
     :param model: Model to convert
     """
     for name, module in model.named_children():
@@ -530,7 +537,8 @@ def convert_2d_to_3d(model: nn.Module) -> nn.Module:
             # --------------------------------------------
             if module.kernel_size[0] != module.kernel_size[1]:
                 raise ValueError(
-                    f"Non-square kernel detected: {module.kernel_size}. " "This example only handles square kernels (k, k)."
+                    f"Non-square kernel detected: {module.kernel_size}. "
+                    "This example only handles square kernels (k, k)."
                 )
             k = module.kernel_size[0]
 
