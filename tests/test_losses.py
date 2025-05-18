@@ -269,3 +269,61 @@ def test_bbce():
     y = torch.tensor([0, 1, 1, 1, 1]).float()
     loss = L.balanced_binary_cross_entropy_with_logits(x, y, gamma=1, reduction="none")
     print(loss)
+
+
+@torch.no_grad()
+def test_mcc_loss():
+    eps = 1e-5
+
+    # Ideal case - perfect predictions, all ones. Sample-wise reduction.
+    criterion = L.MCCLoss(from_logits=False, reduction="sample")
+    y_pred = torch.tensor([1.0, 1.0, 1.0]).view(1, 1, 1, -1)
+    y_true = torch.tensor([1, 1, 1]).view(1, 1, 1, -1)
+    loss = criterion(y_pred, y_true)
+    assert float(loss) == pytest.approx(0.0, abs=eps)
+
+    # Ideal case - perfect predictions, all zeros. Batch-wise reduction.
+    criterion = L.MCCLoss(from_logits=False, reduction="batch")
+    y_pred = torch.tensor([0.0, 0.0, 0.0]).view(1, 1, 1, -1)
+    y_true = torch.tensor([0, 0, 0]).view(1, 1, 1, -1)
+    loss = criterion(y_pred, y_true)
+    assert float(loss) == pytest.approx(0.0, abs=eps)
+
+    # Ideal case - perfect predictions with mixed values. Sample-wise reduction.
+    criterion = L.MCCLoss(from_logits=False, reduction="sample")
+    y_pred = torch.tensor([[1.0, 1.0], [0.0, 0.0]]).view(2, 1, 1, -1)
+    y_true = torch.tensor([[1, 1], [0, 0]]).view(2, 1, 1, -1)
+    loss = criterion(y_pred, y_true)
+    assert float(loss) == pytest.approx(0.0, abs=eps)
+
+    # Ideal case - perfect predictions with mixed values. Batch-wise reduction.
+    criterion = L.MCCLoss(from_logits=False, reduction="batch")
+    y_pred = torch.tensor([[1.0, 1.0], [0.0, 0.0]]).view(2, 1, 1, -1)
+    y_true = torch.tensor([[1, 1], [0, 0]]).view(2, 1, 1, -1)
+    loss = criterion(y_pred, y_true)
+    assert float(loss) == pytest.approx(0.0, abs=eps)
+
+    # Ideal case - perfect predictions with logits.
+    criterion_logits = L.MCCLoss(from_logits=True)
+    y_pred = torch.tensor([10.0, -10.0, 10.0]).view(1, 1, 1, -1)
+    y_true = torch.tensor([1, 0, 1]).view(1, 1, 1, -1)
+    loss = criterion_logits(y_pred, y_true)
+    assert float(loss) == pytest.approx(0.0, abs=eps)
+
+    # Random case - mixed predictions. Sample-wise reduction.
+    criterion = L.MCCLoss(from_logits=False, reduction="sample")
+    shape = (4, 3, 5, 5)
+    y_pred = torch.bernoulli(torch.rand(shape))
+    y_true = torch.bernoulli(torch.rand(shape))
+    loss = criterion(y_pred, y_true)
+    # Check that the loss is between 0 and 2.
+    assert 0.0 <= float(loss) <= 2.0
+
+    # Random case - mixed predictions. Batch-wise reduction.
+    criterion = L.MCCLoss(from_logits=False, reduction="batch")
+    shape = (4, 3, 5, 5)
+    y_pred = torch.bernoulli(torch.rand(shape))
+    y_true = torch.bernoulli(torch.rand(shape))
+    loss = criterion(y_pred, y_true)
+    # Check that the loss is between 0 and 2.
+    assert 0.0 <= float(loss) <= 2.0
