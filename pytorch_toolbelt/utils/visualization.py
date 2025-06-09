@@ -440,6 +440,6 @@ def grid_stack(
 
     image_rows = []
     for r in range(rows):
-        image_rows.append(hstack_autopad(images[r * cols : (r + 1) * cols], bg_color=bg_color, spacing=spacing))
+        image_rows.append(hstack_autopad(images[r * cols : (r + 1) * cols], pad_value=bg_color, spacing=spacing))
 
-    return vstack_autopad(image_rows, bg_color=bg_color, spacing=spacing)
+    return vstack_autopad(image_rows, pad_value=bg_color, spacing=spacing)
