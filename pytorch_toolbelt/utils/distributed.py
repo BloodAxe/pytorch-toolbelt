@@ -32,6 +32,7 @@ __all__ = [
     "reduce_dict_sum",
     "split_across_nodes",
     "master_node_only",
+    "wait_for_the_master",
 ]
 
 logger = logging.getLogger("pytorch_toolbelt.utils.distributed")
@@ -340,3 +341,28 @@ def master_node_only(func):
             return None
 
     return wrapper
+
+
+@contextmanager
+def master_node_first(local_rank: int | None = None):
+    """
+    Execute some code on master node first, then wait for all other nodes to finish.
+
+    Usage:
+    with master_node_first():
+        ...
+
+    """
+    if local_rank is None:
+        local_rank = get_rank()
+
+    if local_rank > 0:
+        dist.barrier()
+    yield
+    if local_rank == 0:
+        if not dist.is_available():
+            return
+        if not dist.is_initialized():
+            return
+        else:
+            dist.barrier()
