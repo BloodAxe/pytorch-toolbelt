@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 import torch
 from torch import Tensor
-
+from contextlib import contextmanager
 import torch.distributed as dist
 
 from pytorch_toolbelt.utils.bucket_assignment import (
