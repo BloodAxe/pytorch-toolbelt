@@ -32,7 +32,7 @@ __all__ = [
     "reduce_dict_sum",
     "split_across_nodes",
     "master_node_only",
-    "wait_for_the_master",
+    "master_node_first",
 ]
 
 logger = logging.getLogger("pytorch_toolbelt.utils.distributed")
