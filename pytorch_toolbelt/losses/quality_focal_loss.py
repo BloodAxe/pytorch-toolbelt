@@ -20,7 +20,6 @@ class QualityFocalLoss(nn.Module):
         self.beta = beta
         self.reduction = reduction
 
-    @torch.cuda.amp.autocast(False)
     def forward(self, predictions: Tensor, targets: Tensor) -> Tensor:
         """
         Compute quality focal loss
@@ -32,15 +31,16 @@ class QualityFocalLoss(nn.Module):
         predictions = predictions.float()
         targets = targets.float()
 
-        bce = torch.nn.functional.binary_cross_entropy_with_logits(predictions, targets, reduction="none")
-        focal_term = torch.nn.functional.l1_loss(predictions.sigmoid(), targets, reduction="none").pow_(self.beta)
-        loss = focal_term * bce
+        with torch.amp.autocast(device_type=predictions.device.type, enabled=False):
+            bce = torch.nn.functional.binary_cross_entropy_with_logits(predictions, targets, reduction="none")
+            focal_term = torch.nn.functional.l1_loss(predictions.sigmoid(), targets, reduction="none").pow_(self.beta)
+            loss = focal_term * bce
 
-        if self.reduction == "mean":
-            return loss.mean()
-        if self.reduction == "sum":
-            return loss.sum()
-        if self.reduction == "normalized":
-            return loss.sum() / focal_term.sum()
+            if self.reduction == "mean":
+                return loss.mean()
+            if self.reduction == "sum":
+                return loss.sum()
+            if self.reduction == "normalized":
+                return loss.sum() / focal_term.sum()
 
         return loss

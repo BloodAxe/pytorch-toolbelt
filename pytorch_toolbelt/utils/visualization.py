@@ -295,6 +295,88 @@ def vstack_autopad(images: Iterable[np.ndarray], pad_value: int = 0, spacing: in
     return np.vstack(padded_images)
 
 
+def wrap_text_to_width(text, font_face, font_scale, thickness, max_width):
+    """
+    Splits a text string into multiple lines so that each line's width (using the provided text parameters)
+    does not exceed max_width.
+
+    Priority is given to whitespace when wrapping; if there are no spaces,
+    it wraps at the character level.
+    After lines are formed, leading and trailing whitespace is stripped.
+
+    :param text: The input text to wrap.
+    :param font_face: OpenCV font face (e.g., cv2.FONT_HERSHEY_SIMPLEX).
+    :param font_scale: Font scale factor that is multiplied by the base font size.
+    :param thickness: Thickness of the strokes used to draw text.
+    :param max_width: Maximum allowed width (in pixels) for one line of text.
+    :return: A list of text lines (strings).
+    """
+
+    # Early exit for empty text
+    if not text.strip():
+        return []
+
+    # If the text has no whitespace, we switch to character-level wrapping
+    has_whitespace = " " in text
+
+    # Depending on presence of whitespace, choose how to split the text initially
+    if has_whitespace:
+        tokens = text.split(" ")
+    else:
+        # No whitespace - treat every character as a separate "token"
+        tokens = list(text)
+
+    lines = []
+    current_line = ""
+
+    def fits_in_width(candidate_text):
+        """Check if candidate_text fits within max_width using cv2.getTextSize."""
+        size, _ = cv2.getTextSize(candidate_text, font_face, font_scale, thickness)
+        return size[0] <= max_width
+
+    for i, token in enumerate(tokens):
+        # If there is whitespace, tokens are words; otherwise tokens are individual characters.
+        # We add a space if it's word-based wrapping (has_whitespace and not the very first word)
+        if has_whitespace:
+            tentative_line = (current_line + " " + token) if current_line else token
+        else:
+            # If we are in character-mode, do not prepend a space
+            tentative_line = current_line + token
+
+        # Check if the tentative line fits
+        if fits_in_width(tentative_line):
+            current_line = tentative_line
+        else:
+            # If it doesn't fit, we need to finalize the current_line and start a new one.
+            if current_line:
+                lines.append(current_line.strip())
+            # In word-based mode, if a single token (word) doesn't fit on an empty line,
+            # we might need to break it further by characters:
+            if has_whitespace and not fits_in_width(token):
+                # Break this word by character
+                char_line = ""
+                for ch in token:
+                    if fits_in_width(char_line + ch):
+                        char_line += ch
+                    else:
+                        if char_line:
+                            lines.append(char_line.strip())
+                        char_line = ch
+                current_line = char_line  # start the next line with leftover
+            else:
+                # Start new current_line with the token
+                current_line = token if not has_whitespace else token
+
+    # Append any leftover text in current_line
+    if current_line:
+        lines.append(current_line.strip())
+
+    # Strip each line (remove leading/trailing whitespace) just in case
+    lines = [line.strip() for line in lines if line.strip()]
+
+    return lines
+
+
 def vstack_header(
     image: np.ndarray,
     title: str,
@@ -302,22 +384,43 @@ def vstack_header(
     text_color=(242, 248, 248),
     text_thickness: int = 2,
     text_scale=1.5,
+    wrap_text: bool = False,
+    text_font_face=cv2.FONT_HERSHEY_PLAIN,
 ) -> np.ndarray:
     (rows, cols) = image.shape[:2]
 
-    title_image = np.zeros((30, cols, 3), dtype=np.uint8)
-    title_image[:] = bg_color
-    cv2.putText(
-        title_image,
-        title,
-        (10, 24),
-        fontFace=cv2.FONT_HERSHEY_PLAIN,
-        fontScale=text_scale,
-        color=text_color,
-        thickness=text_thickness,
-        lineType=cv2.LINE_AA,
-    )
+    image_width = image.shape[1]
+    (width, height), baseline = cv2.getTextSize(title, text_font_face, text_scale, text_thickness)
+    padding_left = 10
+    padding_right = 10
 
+    row_height = int(height * 2 + 0.5)
+
+    if wrap_text and (width + padding_left + padding_right) > image_width:
+        lines = wrap_text_to_width(
+            title, text_font_face, text_scale, text_thickness, image_width - padding_left - padding_right
+        )
+    else:
+        lines = [title]
+
+    title_images = []
+
+    for line in lines:
+        title_image = np.zeros((row_height, cols, 3), dtype=np.uint8)
+        title_image[:] = bg_color
+        cv2.putText(
+            title_image,
+            line,
+            (padding_left, row_height - int(height * 0.5)),
+            fontFace=text_font_face,
+            fontScale=text_scale,
+            color=text_color,
+            thickness=text_thickness,
+            lineType=cv2.LINE_AA,
+        )
+        title_images.append(title_image)
+
+    title_image = np.vstack(title_images)
     return vstack_autopad([title_image, image])
 
 
@@ -337,6 +440,6 @@ def grid_stack(
 
     image_rows = []
     for r in range(rows):
-        image_rows.append(hstack_autopad(images[r * cols : (r + 1) * cols], bg_color=bg_color, spacing=spacing))
+        image_rows.append(hstack_autopad(images[r * cols : (r + 1) * cols], pad_value=bg_color, spacing=spacing))
 
-    return vstack_autopad(image_rows, bg_color=bg_color, spacing=spacing)
+    return vstack_autopad(image_rows, pad_value=bg_color, spacing=spacing)
