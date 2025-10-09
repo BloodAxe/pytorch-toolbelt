@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 import torch
 from torch import Tensor
-
+from contextlib import contextmanager
 import torch.distributed as dist
 
 from pytorch_toolbelt.utils.bucket_assignment import (
@@ -32,6 +32,7 @@ __all__ = [
     "reduce_dict_sum",
     "split_across_nodes",
     "master_node_only",
+    "master_node_first",
 ]
 
 logger = logging.getLogger("pytorch_toolbelt.utils.distributed")
@@ -61,7 +62,7 @@ class DistributedGuard:
         if self.dist_is_available and self.world_size > 1:
             if not self.dist_is_initialized:
                 logger.info(f"Setting CUDA device {self.device} for rank {self.local_rank}/{self.world_size}")
-                torch.distributed.init_process_group(backend="nccl", world_size=self.world_size, rank=self.local_rank)
+                torch.distributed.init_process_group(backend="nccl", world_size=self.world_size, rank=self.local_rank, device_id=self.device)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -340,3 +341,28 @@ def master_node_only(func):
             return None
 
     return wrapper
+
+
+@contextmanager
+def master_node_first(local_rank: int | None = None):
+    """
+    Execute some code on master node first, then wait for all other nodes to finish.
+
+    Usage:
+    with master_node_first():
+        ...
+
+    """
+    if local_rank is None:
+        local_rank = get_rank()
+
+    if local_rank > 0:
+        dist.barrier()
+    yield
+    if local_rank == 0:
+        if not dist.is_available():
+            return
+        if not dist.is_initialized():
+            return
+        else:
+            dist.barrier()

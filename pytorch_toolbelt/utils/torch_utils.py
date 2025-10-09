@@ -17,6 +17,8 @@ from torch.utils.data.dataloader import default_collate
 
 from .support import pytorch_toolbelt_deprecated
 
+logger = logging.getLogger("pytorch_toolbelt.utils")
+
 __all__ = [
     "argmax_over_dim_0",
     "argmax_over_dim_1",
@@ -47,6 +49,7 @@ __all__ = [
     "get_collate_for_dataset",
     "get_non_wrapped_model",
     "container_to_tensor",
+    "convert_2d_to_3d",
 ]
 
 
@@ -176,7 +179,7 @@ def to_tensor(x, dtype=None) -> torch.Tensor:
             x = x.type(dtype)
         return x
     if isinstance(x, (list, tuple)):
-        x = np.ndarray(x)
+        x = np.array(x)
         x = torch.from_numpy(x)
         if dtype is not None:
             x = x.type(dtype)
@@ -284,10 +287,34 @@ def maybe_cuda(x: Union[torch.Tensor, nn.Module]) -> Union[torch.Tensor, nn.Modu
     return x
 
 
-logger = logging.getLogger("pytorch_toolbelt.utils")
+@dataclasses.dataclass
+class TransferWeightsOuptut:
+    """
+    Output of transfer_weights function. Holds information about how many layers were loaded, skipped, etc.
+    Can be used to get detailed information about how many layers were loaded from checkpoint to model.
+    """
+
+    loaded_layers: List[str]
+    skipped_layers: List[str]
+    missing_layers_in_model: List[str]
+    missing_layers_in_checkpoint: List[str]
+
+    def __repr__(self):
+        total_layers_in_checkpoint = (
+            len(self.loaded_layers) + len(self.missing_layers_in_model) + len(self.skipped_layers)
+        )
+        total_layers_in_model = (
+            len(self.loaded_layers) + len(self.missing_layers_in_checkpoint) + len(self.skipped_layers)
+        )
+        loaded_layers_percentage = 100.0 * len(self.loaded_layers) / total_layers_in_checkpoint
+        skipped_layers_percentage = 100.0 * len(self.skipped_layers) / total_layers_in_checkpoint
+        model_initialized_percentage = 100.0 * len(self.loaded_layers) / total_layers_in_model
+        return f"TransferWeightsOuptut({model_initialized_percentage=:.2f}, {loaded_layers_percentage=:.2f}, {skipped_layers_percentage=:.2f})"
 
 
-def transfer_weights(model: nn.Module, model_state_dict: collections.OrderedDict, incompatible_shape_action="skip"):
+def transfer_weights(
+    model: nn.Module, model_state_dict: collections.OrderedDict, incompatible_shape_action="skip"
+) -> TransferWeightsOuptut:
     """
     Copy weights from state dict to model, skipping layers that are incompatible.
     This method is helpful if you are doing some model surgery and want to load
@@ -295,14 +322,17 @@ def transfer_weights(model: nn.Module, model_state_dict: collections.OrderedDict
     :param model: Model to load weights into
     :param model_state_dict: Model state dict to load weights from
     :param incompatible_shape_action: What to do if shape of weight tensor is incompatible.
-    Possible values are:
-        - "skip" - Skip loading this tensor
-        - "match_mean_std" - Initialize tensor with random values with same mean and std as source tensor
-    :return: None
+           Possible values are:
+               - "skip" - Skip loading this tensor
+               - "match_mean_std" - Initialize tensor with random values with same mean and std as source tensor
+    :return: Instance of TransferWeightsOuptut
     """
     existing_model_state_dict = model.state_dict()
 
-    loaded_layers = 0
+    loaded_layer_names = []
+    skipped_layers_names = []
+    layers_not_in_model = list(set(existing_model_state_dict.keys()) - set(model_state_dict.keys()))
+    layers_not_in_checkpoint = list(set(model_state_dict.keys()) - set(existing_model_state_dict.keys()))
 
     for name, value in model_state_dict.items():
         if name not in existing_model_state_dict:
@@ -314,6 +344,7 @@ def transfer_weights(model: nn.Module, model_state_dict: collections.OrderedDict
         existing_value = existing_model_state_dict[name]
         if value.shape != existing_value.shape:
             if incompatible_shape_action == "skip":
+                skipped_layers_names.append(name)
                 logger.debug(
                     f"transfer_weights skipped loading weights for key {name}, because of checkpoint has shape {value.shape} and model has shape {existing_model_state_dict[name].shape}"
                 )
@@ -330,14 +361,15 @@ def transfer_weights(model: nn.Module, model_state_dict: collections.OrderedDict
 
         try:
             model.load_state_dict(collections.OrderedDict([(name, value)]), strict=False)
-            loaded_layers += 1
+            loaded_layer_names.append(name)
         except Exception as e:
             logger.debug(f"transfer_weights skipped loading weights for key {name}, because of error: {e}")
 
-    percentage_of_layers_from_checkpoint = loaded_layers / len(model_state_dict) * 100
-    percentage_of_layers_in_model = loaded_layers / len(existing_model_state_dict) * 100
-    logger.info(
-        f"Transferred {percentage_of_layers_from_checkpoint:.2f}% of layers from checkpoint to model, filling {percentage_of_layers_in_model:.2f}% of model layers"
+    return TransferWeightsOuptut(
+        loaded_layers=loaded_layer_names,
+        skipped_layers=skipped_layers_names,
+        missing_layers_in_model=layers_not_in_model,
+        missing_layers_in_checkpoint=layers_not_in_checkpoint,
     )
 
 
@@ -483,5 +515,93 @@ def get_non_wrapped_model(model: nn.Module) -> nn.Module:
 
     if isinstance(model, (DataParallel, DistributedDataParallel)):
         model = model.module
+
+    return model
+
+
+def convert_2d_to_3d(model: nn.Module) -> nn.Module:
+    """
+    Recursively convert all 2d layers in `model` to their 3d versions.
+    This method converts 2D CNN model to 3D version. Important note - models/layers with non-trivial forward() method
+    probably not going to work (LayerNorm2d or GlobalResponseNormalization for instance)
+    Replicates the existing Conv2d weights along the 3rd dimension (depth=1 by default) and scales them accordingly.
+
+    :param model: Model to convert
+    """
+    for name, module in model.named_children():
+
+        # If we find a Conv2d, replace it with a Conv3d.
+        if isinstance(module, nn.Conv2d):
+            # --------------------------------------------
+            # 1) Check that the 2D kernel is square
+            # --------------------------------------------
+            if module.kernel_size[0] != module.kernel_size[1]:
+                raise ValueError(
+                    f"Non-square kernel detected: {module.kernel_size}. "
+                    "This example only handles square kernels (k, k)."
+                )
+            k = module.kernel_size[0]
+
+            # --------------------------------------------
+            # 2) Build a new Conv3d with kernel_size = (k, k, k)
+            #    using the same hyperparameters as best we can
+            # --------------------------------------------
+            new_conv = nn.Conv3d(
+                in_channels=module.in_channels,
+                out_channels=module.out_channels,
+                kernel_size=(k, k, k),
+                # For stride, padding, and dilation, we replicate
+                # the 2D values in each dimension:
+                stride=(module.stride[0], module.stride[0], module.stride[1]),
+                padding=(module.padding[0], module.padding[0], module.padding[1]),
+                dilation=(module.dilation[0], module.dilation[0], module.dilation[1]),
+                groups=module.groups,
+                bias=(module.bias is not None),
+            )
+
+            # --------------------------------------------
+            # 3) Copy and replicate the 2D weights -> 3D
+            # old_weight shape: (out_c, in_c, k, k)
+            # new_weight shape: (out_c, in_c, k, k, k)
+            # --------------------------------------------
+            with torch.no_grad():
+                old_weight = module.weight  # shape: (out_c, in_c, k, k)
+                # Expand along a new depth dimension
+                old_weight_3d = old_weight.unsqueeze(2)  # (out_c, in_c, 1, k, k)
+                old_weight_3d = old_weight_3d.repeat(1, 1, k, 1, 1).div(k)  # (out_c, in_c, k, k, k)
+                new_conv.weight.copy_(old_weight_3d)
+
+                if module.bias is not None:
+                    new_conv.bias.copy_(module.bias)
+
+            # Replace the old Conv2d with our new Conv3d
+            setattr(model, name, new_conv)
+
+        # If we find a BatchNorm2d, replace it with a BatchNorm3d.
+        elif isinstance(module, nn.BatchNorm2d):
+            new_bn = nn.BatchNorm3d(
+                num_features=module.num_features,
+                eps=module.eps,
+                momentum=module.momentum,
+                affine=module.affine,
+                track_running_stats=module.track_running_stats,
+            )
+
+            # Copy running statistics and affine parameters
+            with torch.no_grad():
+                if module.affine:
+                    new_bn.weight.copy_(module.weight)
+                    new_bn.bias.copy_(module.bias)
+                new_bn.running_mean.copy_(module.running_mean)
+                new_bn.running_var.copy_(module.running_var)
+
+            # Replace the BatchNorm2d with BatchNorm3d
+            setattr(model, name, new_bn)
+        elif isinstance(module, nn.Dropout2d):
+            # Replace with Dropout3d
+            setattr(model, name, nn.Dropout3d(p=module.p, inplace=module.inplace))
+        else:
+            # Recursively convert children
+            convert_2d_to_3d(module)
 
     return model

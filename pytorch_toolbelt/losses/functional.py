@@ -16,7 +16,6 @@ __all__ = [
 ]
 
 
-@torch.cuda.amp.autocast(False)
 def focal_loss_with_logits(
     output: torch.Tensor,
     target: torch.Tensor,
@@ -58,51 +57,52 @@ def focal_loss_with_logits(
     output = output.float()
     target = target.float()
 
-    if activation == "sigmoid":
-        p = torch.sigmoid(output)
-    else:
-        p = torch.softmax(output, dim=softmax_dim)
+    with torch.amp.autocast(device_type=output.device.type, enabled=False):
+        if activation == "sigmoid":
+            p = torch.sigmoid(output)
+        else:
+            p = torch.softmax(output, dim=softmax_dim)
 
-    ce_loss = F.binary_cross_entropy_with_logits(output, target, reduction="none")
-    pt = p * target + (1 - p) * (1 - target)
+        ce_loss = F.binary_cross_entropy_with_logits(output, target, reduction="none")
+        pt = p * target + (1 - p) * (1 - target)
 
-    # compute the loss
-    if reduced_threshold is None:
-        focal_term = (1.0 - pt).pow(gamma)
-    else:
-        focal_term = ((1.0 - pt) / (1 - reduced_threshold)).pow(
-            gamma
-        )  # the focal term continuity breaks when reduced_threshold not equal to 0.5. At pt equal to reduced_threshold, the value of piecewise function of focal term should be 1 from both sides .
-        focal_term = torch.masked_fill(focal_term, pt < reduced_threshold, 1)
+        # compute the loss
+        if reduced_threshold is None:
+            focal_term = (1.0 - pt).pow(gamma)
+        else:
+            focal_term = ((1.0 - pt) / (1 - reduced_threshold)).pow(
+                gamma
+            )  # the focal term continuity breaks when reduced_threshold not equal to 0.5. At pt equal to reduced_threshold, the value of piecewise function of focal term should be 1 from both sides .
+            focal_term = torch.masked_fill(focal_term, pt < reduced_threshold, 1)
 
-    loss = focal_term * ce_loss
+        loss = focal_term * ce_loss
 
-    if alpha is not None:
-        loss *= alpha * target + (1 - alpha) * (1 - target)
+        if alpha is not None:
+            loss *= alpha * target + (1 - alpha) * (1 - target)
 
-    if class_weights is not None:
-        # class_weights is of shape [C]
-        # Loss is of shape [B,C ...]
-        # Reshape class_weights to [1, C, ...]
-        class_weights = class_weights.view(1, -1, *(1 for _ in range(loss.dim() - 2)))
-        loss *= class_weights
+        if class_weights is not None:
+            # class_weights is of shape [C]
+            # Loss is of shape [B,C ...]
+            # Reshape class_weights to [1, C, ...]
+            class_weights = class_weights.view(1, -1, *(1 for _ in range(loss.dim() - 2)))
+            loss *= class_weights
 
-    if ignore_index is not None:
-        ignore_mask = target.eq(ignore_index)
-        loss = torch.masked_fill(loss, ignore_mask, 0)
+        if ignore_index is not None:
+            ignore_mask = target.eq(ignore_index)
+            loss = torch.masked_fill(loss, ignore_mask, 0)
+            if normalized:
+                focal_term = torch.masked_fill(focal_term, ignore_mask, 0)
+
         if normalized:
-            focal_term = torch.masked_fill(focal_term, ignore_mask, 0)
+            norm_factor = focal_term.sum(dtype=torch.float32).clamp_min(eps)
+            loss /= norm_factor
 
-    if normalized:
-        norm_factor = focal_term.sum(dtype=torch.float32).clamp_min(eps)
-        loss /= norm_factor
-
-    if reduction == "mean":
-        loss = loss.mean()
-    if reduction == "sum":
-        loss = loss.sum()
-    if reduction == "batchwise_mean":
-        loss = loss.sum(dim=0)
+        if reduction == "mean":
+            loss = loss.mean()
+        if reduction == "sum":
+            loss = loss.sum()
+        if reduction == "batchwise_mean":
+            loss = loss.sum(dim=0)
 
     return loss
 
